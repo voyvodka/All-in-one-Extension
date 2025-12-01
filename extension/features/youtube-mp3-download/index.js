@@ -13,6 +13,66 @@ const isYoutube = (url) => {
   }
 };
 
+function setCustomIcon(node, fill = '#0ea5e9') {
+  const PATHS = `
+    <circle cx="12" cy="12" r="10" fill="${fill}"></circle>
+    <path d="M12 6v7.5m0 0-3-3m3 3 3-3M7 17h10"
+      stroke="#fff"
+      stroke-width="1.8"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      fill="none"
+    />
+  `;
+
+  // 1) Eğer zaten bizim kontrolümüzde bir svg varsa sadece içini güncelle
+  let svg = node.querySelector('.aio-mp3-icon svg') || node.querySelector('yt-icon svg');
+  if (svg) {
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+    svg.style.height = '100%';
+    svg.innerHTML = PATHS;
+    return;
+  }
+
+  // 2) yt-icon varsa tamamen kaldırıp yerine kendi span + svg’mizi koy
+  const ytIcon = node.querySelector('yt-icon');
+  if (ytIcon) {
+    const wrapper = document.createElement('span');
+    // YouTube stiline benzesin diye class’ları kopyala
+    wrapper.className = (ytIcon.className || '') + ' yt-icon-shape ytSpecIconShapeHost aio-mp3-icon';
+
+    wrapper.innerHTML = `
+      <svg viewBox="0 0 24 24"
+        height="100%"
+        aria-hidden="true"
+        focusable="false">
+        ${PATHS}
+      </svg>
+    `;
+
+    ytIcon.replaceWith(wrapper);
+    return;
+  }
+
+  // 3) Hiç ikon yoksa (çok edge case) başa bir tane ekle
+  const button = node.querySelector('button');
+  if (button) {
+    const wrapper = document.createElement('span');
+    wrapper.className = 'yt-icon-shape ytSpecIconShapeHost aio-mp3-icon';
+    wrapper.innerHTML = `
+      <svg viewBox="0 0 24 24"
+        height="100%"
+        aria-hidden="true"
+        focusable="false">
+        ${PATHS}
+      </svg>
+    `;
+    button.insertBefore(wrapper, button.firstChild);
+  }
+}
+
 function createMp3ShareTarget(container, onClick) {
   // Var olan bir share target’ı baz al (ör: WhatsApp)
   const template = container.querySelector('yt-share-target-renderer');
@@ -40,14 +100,7 @@ function createMp3ShareTarget(container, onClick) {
     titleEl.setAttribute('style-target', 'title');
   }
 
-  // İKON: SVG’yi elle doldurmak yerine YouTube’un icon sistemini kullan
-  const ytIcon = node.querySelector('yt-icon');
-  if (ytIcon) {
-    // Örn. YouTube’un kendi download ikonunu kullan
-    // (İkon adını kendi tarafta DevTools’tan kontrol et: genelde "download", "download_outline" vb.)
-    ytIcon.setAttribute('icon', 'download');
-    ytIcon.removeAttribute('src'); // varsa temizle
-  }
+  setCustomIcon(node, '#0ea5e9');
 
   return node;
 }
@@ -74,7 +127,10 @@ function buildFallbackTarget() {
   svg.style.width = '100%';
   svg.style.height = '100%';
   svg.setAttribute('aria-hidden', 'true');
-  svg.innerHTML = `<path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/>`;
+  svg.innerHTML = `
+    <circle cx="12" cy="12" r="10" fill="#0ea5e9"></circle>
+    <path d="M12 6v7.5m0 0-3-3m3 3 3-3M7 17h10" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  `;
 
   iconShape.appendChild(svg);
   icon.appendChild(iconShape);
