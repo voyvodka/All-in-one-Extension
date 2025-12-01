@@ -3,6 +3,13 @@ const DEFAULT_SETTINGS = {
   features: {}
 };
 
+const DEFAULT_DOWNLOADS = {
+  active: [],
+  history: []
+};
+
+const DOWNLOAD_HISTORY_LIMIT = 50;
+
 export async function getSettings() {
   const result = await new Promise((resolve) => {
     chrome.storage.local.get(DEFAULT_SETTINGS, resolve);
@@ -43,5 +50,44 @@ export function onSettingsChanged(callback) {
       features: changes.features?.newValue ?? undefined
     };
     callback(next);
+  });
+}
+
+export async function getDownloadsState() {
+  const result = await new Promise((resolve) => {
+    chrome.storage.local.get({ downloads: DEFAULT_DOWNLOADS }, resolve);
+  });
+  const downloads = result.downloads || DEFAULT_DOWNLOADS;
+  return {
+    active: Array.isArray(downloads.active) ? downloads.active : [],
+    history: Array.isArray(downloads.history) ? downloads.history : []
+  };
+}
+
+export async function setDownloadsState(next) {
+  const normalized = {
+    active: Array.isArray(next.active) ? next.active : [],
+    history: Array.isArray(next.history) ? next.history : []
+  };
+  normalized.history = normalized.history.slice(-DOWNLOAD_HISTORY_LIMIT);
+  await new Promise((resolve) => chrome.storage.local.set({ downloads: normalized }, resolve));
+  return normalized;
+}
+
+export async function updateDownloads(updater) {
+  const current = await getDownloadsState();
+  const clone = JSON.parse(JSON.stringify(current));
+  const next = updater(clone) || clone;
+  return setDownloadsState(next);
+}
+
+export function onDownloadsChanged(callback) {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || !changes.downloads) return;
+    const next = changes.downloads.newValue || DEFAULT_DOWNLOADS;
+    callback({
+      active: Array.isArray(next.active) ? next.active : [],
+      history: Array.isArray(next.history) ? next.history : []
+    });
   });
 }

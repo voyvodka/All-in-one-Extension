@@ -22,6 +22,37 @@ header {
   margin-bottom: 12px;
 }
 
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tab {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.tab.active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+.tab-view {
+  display: none;
+}
+
+.tab-view.active {
+  display: block;
+}
+
 .eyebrow {
   font-size: 11px;
   letter-spacing: 0.08em;
@@ -109,4 +140,112 @@ p {
   border-radius: 10px;
   border: 1px dashed #38bdf8;
   font-size: 12px;
+}
+
+.download-group h3 {
+  margin: 8px 0 6px;
+  font-size: 13px;
+}
+
+.download-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.download-actions button {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  cursor: pointer;
+}
+
+.download-actions button:hover {
+  border-color: #2563eb;
+}
+
+.download-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.download-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 4px;
+}
+
+.download-title {
+  font-size: 13px;
+  margin: 0;
+  color: #0f172a;
+}
+
+.download-meta {
+  font-size: 11px;
+  color: #475569;
+  margin: 0 0 6px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  border: 1px solid #e2e8f0;
+}
+
+.pill.mp3 { color: #0f172a; }
+.pill.mp4 { color: #0f172a; }
+
+.status {
+  font-size: 11px;
+  color: #334155;
+}
+
+.progress {
+  position: relative;
+  background: #e2e8f0;
+  border-radius: 8px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.progress span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: #2563eb;
+  width: 0%;
+  transition: width 0.2s ease;
+}
+
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.card-actions button {
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.card-actions button:hover {
+  border-color: #2563eb;
 }

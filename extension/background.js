@@ -4,7 +4,13 @@ import youtubeMp4Download from './features/youtube-mp4-download/index.js';
 import instagramReelsMp3 from './features/instagram-reels-mp3/index.js';
 
 // Import shared utilities
-import { getSettings, onSettingsChanged, upsertFeatureState } from './shared/storage.js';
+import {
+  getSettings,
+  onSettingsChanged,
+  upsertFeatureState,
+  getDownloadsState,
+  updateDownloads
+} from './shared/storage.js';
 
 // Statically define the list of features for the background script.
 const features = [
@@ -16,6 +22,7 @@ const features = [
 const LOADER_BASE_URL = 'https://loader.to';
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const downloadIdToJobId = new Map();
 
 function sanitizeTitle(title, maxLen = 30, identifier) {
   const base = (title || 'download')
@@ -31,6 +38,75 @@ function sanitizeTitle(title, maxLen = 30, identifier) {
   const combined = (base + suffix).slice(0, maxLen);
   return combined || 'download';
 }
+
+function normalizeErrorMessage(message) {
+  if (!message) return '';
+  if (/USER_CANCELED/i.test(message)) return 'İndirme kabul edilmedi';
+  return message;
+}
+
+function createJob({ type, title, sourceUrl, fileName }) {
+  return {
+    id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    type,
+    title,
+    fileName,
+    sourceUrl,
+    status: 'preparing',
+    progress: 0,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+}
+
+async function addJob(job) {
+  await updateDownloads((state) => {
+    state.active.push(job);
+    return state;
+  });
+  return job;
+}
+
+async function updateJob(jobId, updater) {
+  await updateDownloads((state) => {
+    const idx = state.active.findIndex((item) => item.id === jobId);
+    if (idx === -1) return state;
+
+    const next = { ...state.active[idx] };
+    updater(next);
+    next.updatedAt = Date.now();
+
+    const finished = ['completed', 'failed', 'cancelled'].includes(next.status);
+    if (finished) {
+      state.active.splice(idx, 1);
+      state.history.push(next);
+      state.history = state.history.slice(-50);
+      if (next.downloadId) downloadIdToJobId.delete(next.downloadId);
+    } else {
+      state.active[idx] = next;
+      if (next.downloadId) downloadIdToJobId.set(next.downloadId, jobId);
+    }
+    return state;
+  });
+}
+
+async function clearHistory() {
+  await updateDownloads((state) => {
+    state.history = [];
+    return state;
+  });
+}
+
+async function loadDownloadMap() {
+  const state = await getDownloadsState();
+  state.active.forEach((job) => {
+    if (job.downloadId) {
+      downloadIdToJobId.set(job.downloadId, job.id);
+    }
+  });
+}
+
+loadDownloadMap().catch((err) => console.error('Failed to load download map', err));
 
 async function fetchLoaderJson(url, context) {
   const response = await fetch(url);
@@ -48,7 +124,7 @@ async function fetchLoaderJson(url, context) {
   }
 }
 
-async function getMp3DownloadUrl(videoUrl) {
+async function getMp3DownloadUrl(videoUrl, onProgress) {
   const startUrl = `${LOADER_BASE_URL}/ajax/download.php?format=mp3&url=${encodeURIComponent(videoUrl)}`;
   const startData = await fetchLoaderJson(startUrl, 'Failed to start conversion');
 
@@ -58,20 +134,30 @@ async function getMp3DownloadUrl(videoUrl) {
   }
 
   if (startData.download_url) {
+    onProgress?.({ status: 'preparing', progress: 100 });
     return startData.download_url;
   }
 
   // Loader.to can take a while; poll for up to ~2 minutes
   const maxAttempts = 60;
   let lastStatus = startData?.status || startData?.text;
+  const startProgress = Number(startData?.progress);
+  if (!Number.isNaN(startProgress)) {
+    onProgress?.({ status: 'preparing', progress: startProgress });
+  }
   await wait(2500);
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     await wait(2000);
     const progressUrl = `${LOADER_BASE_URL}/ajax/progress.php?id=${jobId}`;
     const progressData = await fetchLoaderJson(progressUrl, 'Failed to poll conversion');
+    const prog = Number(progressData?.progress);
+    if (!Number.isNaN(prog)) {
+      onProgress?.({ status: 'preparing', progress: prog });
+    }
 
     if (progressData?.download_url) {
+      onProgress?.({ status: 'preparing', progress: 100 });
       return progressData.download_url;
     }
 
@@ -85,7 +171,7 @@ async function getMp3DownloadUrl(videoUrl) {
   throw new Error(`Timed out while waiting for download link. Last status: ${lastStatus || 'unknown'}`);
 }
 
-async function getMp4DownloadUrl(videoUrl) {
+async function getMp4DownloadUrl(videoUrl, onProgress) {
   const startUrl = `${LOADER_BASE_URL}/ajax/download.php?format=1080&url=${encodeURIComponent(videoUrl)}`;
   const startData = await fetchLoaderJson(startUrl, 'Failed to start conversion');
 
@@ -95,20 +181,30 @@ async function getMp4DownloadUrl(videoUrl) {
   }
 
   if (startData.download_url) {
+    onProgress?.({ status: 'preparing', progress: 100 });
     return startData.download_url;
   }
 
   // Loader.to can take a while; poll for up to ~2 minutes
   const maxAttempts = 60;
   let lastStatus = startData?.status || startData?.text;
+  const startProgress = Number(startData?.progress);
+  if (!Number.isNaN(startProgress)) {
+    onProgress?.({ status: 'preparing', progress: startProgress });
+  }
   await wait(2500);
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     await wait(2000);
     const progressUrl = `${LOADER_BASE_URL}/ajax/progress.php?id=${jobId}`;
     const progressData = await fetchLoaderJson(progressUrl, 'Failed to poll conversion');
+    const prog = Number(progressData?.progress);
+    if (!Number.isNaN(prog)) {
+      onProgress?.({ status: 'preparing', progress: prog });
+    }
 
     if (progressData?.download_url) {
+      onProgress?.({ status: 'preparing', progress: 100 });
       return progressData.download_url;
     }
 
@@ -130,6 +226,34 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.runtime.onStartup.addListener(() => {
   registerContextMenus();
+});
+
+chrome.downloads.onChanged.addListener(async (delta) => {
+  const jobId = downloadIdToJobId.get(delta.id);
+  if (!jobId) return;
+
+  await updateJob(jobId, (job) => {
+    if (delta.bytesReceived?.current != null && delta.totalBytes?.current) {
+      const total = delta.totalBytes.current || job.totalBytes || 0;
+      const received = delta.bytesReceived.current;
+      if (total > 0) {
+        job.totalBytes = total;
+        job.progress = Math.min(100, Math.round((received / total) * 100));
+      }
+    }
+
+  if (delta.state?.current === 'complete') {
+    job.status = 'completed';
+    job.progress = 100;
+  } else if (delta.state?.current === 'interrupted') {
+    job.status = 'failed';
+    job.error = normalizeErrorMessage(delta.error?.current) || 'Download interrupted';
+  } else {
+    if (job.status === 'preparing') {
+      job.status = 'downloading';
+    }
+  }
+  });
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -173,31 +297,62 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message?.type === 'download-mp3') {
     (async () => {
+      const { videoId, videoTitle } = message;
+      const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      const fileName = `${sanitizeTitle(videoTitle, 30, videoId)}.mp3`;
+      const job = createJob({
+        type: 'youtube-mp3',
+        title: videoTitle,
+        fileName,
+        sourceUrl: videoUrl
+      });
+      await addJob(job);
       try {
-        const { videoId, videoTitle } = message;
-        const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-        const downloadUrl = await getMp3DownloadUrl(videoUrl);
-        const sanitizedTitle = sanitizeTitle(videoTitle, 30, videoId);
+        const downloadUrl = await getMp3DownloadUrl(videoUrl, (progress) => {
+          if (progress?.progress != null) {
+            updateJob(job.id, (j) => {
+              j.status = 'preparing';
+              j.progress = Math.max(j.progress || 0, Math.min(99, Math.round(progress.progress)));
+            });
+          }
+        });
 
         chrome.downloads.download({
           url: downloadUrl,
-          filename: `${sanitizedTitle}.mp3`,
+          filename: fileName,
           saveAs: true
         }, (downloadId) => {
           if (chrome.runtime.lastError) {
-            console.error('Download failed:', chrome.runtime.lastError.message);
+            const errMsg = normalizeErrorMessage(chrome.runtime.lastError.message);
+            console.error('Download failed:', errMsg);
+            updateJob(job.id, (j) => {
+              j.status = 'failed';
+              j.error = errMsg;
+            });
             sendResponse({ success: false, error: chrome.runtime.lastError.message });
           } else if (downloadId) {
             console.log('Download started with ID:', downloadId);
+            updateJob(job.id, (j) => {
+              j.status = 'downloading';
+              j.downloadId = downloadId;
+            });
             sendResponse({ success: true });
           } else {
             // Download was cancelled by the user
             console.log('Download cancelled by user.');
+            updateJob(job.id, (j) => {
+              j.status = 'failed';
+              j.error = 'İndirme kabul edilmedi';
+            });
             sendResponse({ success: false, error: 'Download cancelled by user.' });
           }
         });
       } catch (error) {
         console.error('Error during MP3 download:', error);
+        updateJob(job.id, (j) => {
+          j.status = 'failed';
+          j.error = error.message;
+        });
         sendResponse({ success: false, error: error.message });
       }
     })();
@@ -206,31 +361,62 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message?.type === 'download-mp4') {
     (async () => {
+      const { videoId, videoTitle } = message;
+      const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      const fileName = `${sanitizeTitle(videoTitle, 30, videoId)}.mp4`;
+      const job = createJob({
+        type: 'youtube-mp4',
+        title: videoTitle,
+        fileName,
+        sourceUrl: videoUrl
+      });
+      await addJob(job);
       try {
-        const { videoId, videoTitle } = message;
-        const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-        const downloadUrl = await getMp4DownloadUrl(videoUrl);
-        const sanitizedTitle = sanitizeTitle(videoTitle, 30, videoId);
+        const downloadUrl = await getMp4DownloadUrl(videoUrl, (progress) => {
+          if (progress?.progress != null) {
+            updateJob(job.id, (j) => {
+              j.status = 'preparing';
+              j.progress = Math.max(j.progress || 0, Math.min(99, Math.round(progress.progress)));
+            });
+          }
+        });
 
         chrome.downloads.download({
           url: downloadUrl,
-          filename: `${sanitizedTitle}.mp4`,
+          filename: fileName,
           saveAs: true
         }, (downloadId) => {
           if (chrome.runtime.lastError) {
-            console.error('Download failed:', chrome.runtime.lastError.message);
+            const errMsg = normalizeErrorMessage(chrome.runtime.lastError.message);
+            console.error('Download failed:', errMsg);
+            updateJob(job.id, (j) => {
+              j.status = 'failed';
+              j.error = errMsg;
+            });
             sendResponse({ success: false, error: chrome.runtime.lastError.message });
           } else if (downloadId) {
             console.log('Download started with ID:', downloadId);
+            updateJob(job.id, (j) => {
+              j.status = 'downloading';
+              j.downloadId = downloadId;
+            });
             sendResponse({ success: true });
           } else {
             // Download was cancelled by the user
             console.log('Download cancelled by user.');
+            updateJob(job.id, (j) => {
+              j.status = 'failed';
+              j.error = 'İndirme kabul edilmedi';
+            });
             sendResponse({ success: false, error: 'Download cancelled by user.' });
           }
         });
       } catch (error) {
         console.error('Error during MP4 download:', error);
+        updateJob(job.id, (j) => {
+          j.status = 'failed';
+          j.error = error.message;
+        });
         sendResponse({ success: false, error: error.message });
       }
     })();
@@ -239,38 +425,90 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message?.type === 'download-instagram-mp3') {
     (async () => {
+      const { reelUrl, reelTitle } = message;
+      let reelId = '';
       try {
-        const { reelUrl, reelTitle } = message;
-        const downloadUrl = await getMp3DownloadUrl(reelUrl);
-        let reelId = '';
-        try {
-          reelId = new URL(reelUrl).pathname.split('/').filter(Boolean).pop() || '';
-        } catch (e) {
-          reelId = '';
-        }
-        const sanitizedTitle = sanitizeTitle(reelTitle || 'instagram-reel', 30, reelId);
+        reelId = new URL(reelUrl).pathname.split('/').filter(Boolean).pop() || '';
+      } catch (e) {
+        reelId = '';
+      }
+      const fileName = `${sanitizeTitle(reelTitle || 'instagram-reel', 30, reelId)}.mp3`;
+      const job = createJob({
+        type: 'instagram-mp3',
+        title: reelTitle,
+        fileName,
+        sourceUrl: reelUrl
+      });
+      await addJob(job);
+      try {
+        const downloadUrl = await getMp3DownloadUrl(reelUrl, (progress) => {
+          if (progress?.progress != null) {
+            updateJob(job.id, (j) => {
+              j.status = 'preparing';
+              j.progress = Math.max(j.progress || 0, Math.min(99, Math.round(progress.progress)));
+            });
+          }
+        });
 
         chrome.downloads.download({
           url: downloadUrl,
-          filename: `${sanitizedTitle}.mp3`,
+          filename: fileName,
           saveAs: true
         }, (downloadId) => {
           if (chrome.runtime.lastError) {
-            console.error('Download failed:', chrome.runtime.lastError.message);
+            const errMsg = normalizeErrorMessage(chrome.runtime.lastError.message);
+            console.error('Download failed:', errMsg);
+            updateJob(job.id, (j) => {
+              j.status = 'failed';
+              j.error = errMsg;
+            });
             sendResponse({ success: false, error: chrome.runtime.lastError.message });
           } else if (downloadId) {
             console.log('Download started with ID:', downloadId);
+            updateJob(job.id, (j) => {
+              j.status = 'downloading';
+              j.downloadId = downloadId;
+            });
             sendResponse({ success: true });
           } else {
             console.log('Download cancelled by user.');
+            updateJob(job.id, (j) => {
+              j.status = 'failed';
+              j.error = 'İndirme kabul edilmedi';
+            });
             sendResponse({ success: false, error: 'Download cancelled by user.' });
           }
         });
       } catch (error) {
         console.error('Error during MP3 download:', error);
+        updateJob(job.id, (j) => {
+          j.status = 'failed';
+          j.error = error.message;
+        });
         sendResponse({ success: false, error: error.message });
       }
     })();
+    return true;
+  }
+
+  if (message?.type === 'get-downloads') {
+    getDownloadsState().then(sendResponse);
+    return true;
+  }
+
+  if (message?.type === 'cancel-download') {
+    const { jobId, downloadId } = message;
+    if (downloadId) {
+      chrome.downloads.cancel(downloadId);
+    }
+    updateJob(jobId, (job) => {
+      job.status = 'cancelled';
+    }).then(() => sendResponse({ success: true }));
+    return true;
+  }
+
+  if (message?.type === 'clear-download-history') {
+    clearHistory().then(() => sendResponse({ success: true }));
     return true;
   }
   return undefined;

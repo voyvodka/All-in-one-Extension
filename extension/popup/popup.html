@@ -1,28 +1,53 @@
 <!doctype html>
 <html lang="tr">
-  <head>
-    <meta charset="UTF-8" />
-    <title>All-in-One Toolkit</title>
-    <link rel="stylesheet" href="./popup.css" />
-  </head>
-  <body>
-    <main id="app">
-      <header>
-        <div>
-          <div class="eyebrow">Yerel geliştirme</div>
-          <h1>All-in-One Toolkit</h1>
-          <p>Popup üzerinden özellikleri aç/kapat veya varsayılanları belirle.</p>
-        </div>
-        <label class="switch">
-          <input id="global-toggle" type="checkbox" />
-          <span>Genel</span>
-        </label>
-      </header>
+
+<head>
+  <meta charset="UTF-8" />
+  <title>All-in-One Toolkit</title>
+  <link rel="stylesheet" href="./popup.css" />
+</head>
+
+<body>
+  <main id="app">
+    <header>
+      <div>
+        <h1>All-in-One Toolkit</h1>
+        <p>Popup üzerinden özellikleri aç/kapat veya varsayılanları belirle.</p>
+      </div>
+      <label class="switch">
+        <input id="global-toggle" type="checkbox" />
+        <span>Genel</span>
+      </label>
+    </header>
+    <div class="tabs">
+      <button class="tab active" data-tab="features">Özellikler</button>
+      <button class="tab" data-tab="downloads">İndirmeler</button>
+    </div>
+
+    <section id="features-view" class="tab-view active" data-tab="features">
       <section id="feature-list"></section>
-      <section class="note">
-        <strong>Not:</strong> Senkron yerine şu anda yalnızca local storage kullanılıyor. Gerektiğinde chrome sync eklenebilir.
-      </section>
-    </main>
-    <script type="module" src="./popup.js"></script>
-  </body>
-  </html>
+      <!-- <section class="note">
+        <strong>Not:</strong> Senkron yerine şu anda yalnızca local storage kullanılıyor. Gerektiğinde chrome sync
+        eklenebilir.
+      </section> -->
+    </section>
+
+    <section id="downloads-view" class="tab-view" data-tab="downloads">
+      <div class="download-actions">
+        <button id="refresh-downloads">Yenile</button>
+        <button id="clear-history">Geçmişi temizle</button>
+      </div>
+      <div class="download-group">
+        <h3>Aktif indirmeler</h3>
+        <div id="download-active"></div>
+      </div>
+      <div class="download-group">
+        <h3>Geçmiş</h3>
+        <div id="download-history"></div>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./popup.js"></script>
+</body>
+
+</html>
