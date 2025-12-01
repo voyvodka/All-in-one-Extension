@@ -12,7 +12,7 @@
     <header>
       <div>
         <h1>All-in-One Toolkit</h1>
-        <p>Popup üzerinden özellikleri aç/kapat veya varsayılanları belirle.</p>
+        <!-- <p>Popup üzerinden özellikleri aç/kapat veya varsayılanları belirle.</p> -->
       </div>
       <label class="switch">
         <input id="global-toggle" type="checkbox" />
@@ -32,20 +32,22 @@
       </section> -->
     </section>
 
-    <section id="downloads-view" class="tab-view" data-tab="downloads">
-      <div class="download-actions">
-        <button id="refresh-downloads">Yenile</button>
-        <button id="clear-history">Geçmişi temizle</button>
-      </div>
-      <div class="download-group">
-        <h3>Aktif indirmeler</h3>
-        <div id="download-active"></div>
-      </div>
-      <div class="download-group">
-        <h3>Geçmiş</h3>
-        <div id="download-history"></div>
-      </div>
-    </section>
+      <section id="downloads-view" class="tab-view" data-tab="downloads">
+        <div class="download-subtabs">
+          <button class="subtab active" data-subtab="active">Aktif</button>
+          <button class="subtab" data-subtab="history">Geçmiş</button>
+          <div class="download-actions">
+            <button id="refresh-downloads" class="icon-btn" title="Yenile">⟳</button>
+            <button id="clear-history" class="icon-btn" title="Geçmişi temizle">🗑</button>
+          </div>
+        </div>
+        <div class="download-group" data-subtab="active">
+          <div id="download-active"></div>
+        </div>
+        <div class="download-group" data-subtab="history">
+          <div id="download-history"></div>
+        </div>
+      </section>
   </main>
   <script type="module" src="./popup.js"></script>
 </body>

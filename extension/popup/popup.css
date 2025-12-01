@@ -7,7 +7,9 @@ body {
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   color: #0f172a;
   background: #f8fafc;
-  min-width: 320px;
+  min-width: 360px;
+  width: 360px;
+  min-height: 400px;
 }
 
 main {
@@ -19,7 +21,7 @@ header {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .tabs {
@@ -115,8 +117,8 @@ p {
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 12px;
-  margin-bottom: 8px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -124,13 +126,8 @@ p {
 }
 
 .feature-card h3 {
-  margin: 0 0 4px;
-  font-size: 14px;
-}
-
-.feature-card p {
   margin: 0;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .note {
@@ -143,73 +140,188 @@ p {
 }
 
 .download-group h3 {
-  margin: 8px 0 6px;
+  margin: 0 0 6px;
   font-size: 13px;
 }
 
 .download-actions {
   display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 6px;
 }
 
-.download-actions button {
-  flex: 1;
-  padding: 8px 10px;
-  border-radius: 10px;
+.download-actions .icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   border: 1px solid #e2e8f0;
   background: #fff;
   cursor: pointer;
-}
-
-.download-actions button:hover {
-  border-color: #2563eb;
+  font-size: 14px;
+  line-height: 1;
 }
 
 .download-card {
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
-  padding: 10px;
+  padding: 0;
   margin-bottom: 8px;
+  overflow: hidden;
 }
 
-.download-card header {
+.download-card .download-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin: 0 0 4px;
+  gap: 6px;
+  padding: 8px 12px;
+}
+
+.download-card[data-expanded="false"] .download-details {
+  display: none;
+}
+
+.download-card[data-expanded="true"] .chevron {
+  transform: rotate(180deg);
 }
 
 .download-title {
   font-size: 13px;
   margin: 0;
   color: #0f172a;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .download-meta {
   font-size: 11px;
   color: #475569;
-  margin: 0 0 6px;
+  margin: 0 0 4px;
 }
 
 .pill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
+  padding: 4px 10px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   border: 1px solid #e2e8f0;
+  white-space: nowrap;
 }
 
-.pill.mp3 { color: #0f172a; }
-.pill.mp4 { color: #0f172a; }
+.pill.mp3 {
+  color: #0f172a;
+}
+
+.pill.mp4 {
+  color: #0f172a;
+}
 
 .status {
   font-size: 11px;
   color: #334155;
+}
+
+.download-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.download-texts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.status-icon {
+  font-size: 14px;
+  width: 16px;
+  text-align: center;
+}
+
+.download-actions-inline {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.download-subtabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.subtab {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.subtab.active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+.download-group {
+  display: none;
+}
+
+.download-group.active {
+  display: block;
+}
+
+.link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e9f0ff;
+  border: 1px solid #c7d7ff;
+  color: #1d4ed8;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 999px;
+  text-decoration: none;
+  min-height: 28px;
+  min-width: 64px;
+}
+
+.chevron {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  border-radius: 8px;
+  padding: 4px 6px;
+  cursor: pointer;
+  transition: transform 0.16s ease;
+}
+
+.download-details {
+  padding: 6px 12px 8px;
+  border-top: 1px solid #e2e8f0;
+  display: grid;
+  gap: 4px;
+}
+
+.download-details .small {
+  color: #64748b;
+}
+
+.download-details .error {
+  color: #b91c1c;
 }
 
 .progress {

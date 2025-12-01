@@ -20,17 +20,74 @@ const refreshDownloadsBtn = document.getElementById('refresh-downloads');
 const clearHistoryBtn = document.getElementById('clear-history');
 const tabs = Array.from(document.querySelectorAll('.tab'));
 const tabViews = Array.from(document.querySelectorAll('.tab-view'));
+const TAB_KEY = 'aioPopupActiveTab';
+const defaultTab = 'features';
+
+const subTabs = Array.from(document.querySelectorAll('.subtab'));
+const subTabViews = Array.from(document.querySelectorAll('.download-group'));
+const SUBTAB_KEY = 'aioPopupDownloadsTab';
+const defaultSubTab = 'active';
 
 let current = await getSettings();
 let downloads = await getDownloadsState();
 renderFeatures(current);
 renderDownloads(downloads);
 
+function selectTab(tabName, persist = false) {
+  const name = tabName || defaultTab;
+  tabs.forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
+  tabViews.forEach((view) => view.classList.toggle('active', view.dataset.tab === name));
+  if (persist) {
+    try {
+      localStorage.setItem(TAB_KEY, name);
+    } catch (err) {
+      console.warn('Tab persist failed', err);
+    }
+  }
+}
+
+const savedTab = (() => {
+  try {
+    return localStorage.getItem(TAB_KEY);
+  } catch {
+    return null;
+  }
+})();
+
+selectTab(savedTab || defaultTab, false);
+
 tabs.forEach((tab) => {
   tab.addEventListener('click', () => {
-    const tabName = tab.dataset.tab;
-    tabs.forEach((t) => t.classList.toggle('active', t === tab));
-    tabViews.forEach((view) => view.classList.toggle('active', view.dataset.tab === tabName));
+    selectTab(tab.dataset.tab, true);
+  });
+});
+
+function selectSubTab(name, persist = false) {
+  const tabName = name || defaultSubTab;
+  subTabs.forEach((t) => t.classList.toggle('active', t.dataset.subtab === tabName));
+  subTabViews.forEach((view) => view.classList.toggle('active', view.dataset.subtab === tabName));
+  if (persist) {
+    try {
+      localStorage.setItem(SUBTAB_KEY, tabName);
+    } catch (err) {
+      console.warn('SubTab persist failed', err);
+    }
+  }
+}
+
+const savedSubTab = (() => {
+  try {
+    return localStorage.getItem(SUBTAB_KEY);
+  } catch {
+    return null;
+  }
+})();
+
+selectSubTab(savedSubTab || defaultSubTab, false);
+
+subTabs.forEach((tab) => {
+  tab.addEventListener('click', () => {
+    selectSubTab(tab.dataset.subtab, true);
   });
 });
 
@@ -68,10 +125,10 @@ function renderFeatures(settings) {
   for (const feature of features) {
     const card = document.createElement('article');
     card.className = 'feature-card';
+    card.title = feature.description;
     card.innerHTML = `
       <div>
         <h3>${feature.label}</h3>
-        <p>${feature.description}</p>
       </div>
       <label class="switch">
         <input type="checkbox" data-id="${feature.id}" />
@@ -106,41 +163,81 @@ function renderDownloadList(rootEl, items, allowCancel) {
   items.forEach((job) => {
     const card = document.createElement('div');
     card.className = 'download-card';
+    card.dataset.expanded = 'false';
 
-    const statusText = job.status === 'preparing'
-      ? 'Hazırlanıyor'
-      : job.status === 'downloading'
-        ? 'İndiriliyor'
-        : job.status === 'completed'
-          ? 'Tamamlandı'
-          : job.status === 'failed'
-            ? `Hata: ${job.error || ''}`.trim()
-            : 'İptal edildi';
-
+    const displayError = job.error && /USER_CANCELED/i.test(job.error) ? 'İndirme kabul edilmedi' : job.error;
+    const statusMap = {
+      preparing: { icon: '⏳', label: 'Hazırlanıyor' },
+      downloading: { icon: '⬇️', label: 'İndiriliyor' },
+      completed: { icon: '✅', label: 'Tamamlandı' },
+      failed: { icon: '⚠️', label: displayError ? `Hata: ${displayError}` : 'Hata' },
+      cancelled: { icon: '⚠️', label: 'İptal edildi' }
+    };
+    const statusInfo = statusMap[job.status] || statusMap.preparing;
     const progress = typeof job.progress === 'number' ? Math.min(100, Math.max(0, job.progress)) : 0;
+    const updatedAt = job.updatedAt || job.createdAt;
+    const dateText = updatedAt ? new Date(updatedAt).toLocaleString('tr-TR') : '';
 
-    card.innerHTML = `
-      <header>
-        <p class="download-title" title="${job.title || job.fileName}">${job.fileName || job.title || 'İndirme'}</p>
-        <span class="pill ${job.type?.includes('mp4') ? 'mp4' : 'mp3'}">${job.type?.includes('mp4') ? 'MP4' : 'MP3'}</span>
-      </header>
-      <p class="download-meta">${statusText}</p>
-      <div class="progress"><span style="width:${progress}%"></span></div>
-      <div class="card-actions"></div>
+    const header = document.createElement('div');
+    header.className = 'download-row';
+    header.title = job.title || job.fileName || '';
+    header.innerHTML = `
+      <div class="download-main">
+        <span class="status-icon">${statusInfo.icon}</span>
+        <div class="download-texts">
+          <p class="download-title" title="${job.title || job.fileName}">${job.fileName || job.title || 'İndirme'}</p>
+          <span class="pill ${job.type?.includes('mp4') ? 'mp4' : 'mp3'}">${job.type?.includes('mp4') ? 'MP4' : 'MP3'}</span>
+        </div>
+      </div>
+      <div class="download-actions-inline"></div>
+      <button class="chevron" aria-label="Detayları aç/kapat">▾</button>
     `;
 
-    const actions = card.querySelector('.card-actions');
+    const inlineActions = header.querySelector('.download-actions-inline');
     if (allowCancel && (job.status === 'preparing' || job.status === 'downloading')) {
       const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'link-btn';
       cancelBtn.textContent = 'İptal';
-      cancelBtn.addEventListener('click', async () => {
+      cancelBtn.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
         await chrome.runtime.sendMessage({ type: 'cancel-download', jobId: job.id, downloadId: job.downloadId });
       });
-      actions.appendChild(cancelBtn);
-    } else if (!actions.innerHTML) {
-      actions.remove();
+      inlineActions.appendChild(cancelBtn);
+    } else if (!allowCancel) {
+      const retryBtn = document.createElement('button');
+      retryBtn.className = 'link-btn';
+      retryBtn.textContent = 'İndir';
+      retryBtn.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        await chrome.runtime.sendMessage({ type: 'retry-download', jobId: job.id });
+      });
+      inlineActions.appendChild(retryBtn);
     }
 
+    const details = document.createElement('div');
+    details.className = 'download-details';
+    details.innerHTML = `
+      <p class="download-meta">${statusInfo.label}</p>
+      <div class="progress"><span style="width:${progress}%"></span></div>
+      <p class="download-meta small">Tarih: ${dateText || '-'}</p>
+      <p class="download-meta small">Tür: ${job.type || '-'}</p>
+      <p class="download-meta small">Dosya adı: ${job.fileName || '-'}</p>
+      <p class="download-meta small">Kaynak: ${job.sourceUrl || '-'}</p>
+      <p class="download-meta small">Durum: ${job.status || '-'}</p>
+      ${displayError ? `<p class="download-meta small error">Hata: ${displayError}</p>` : ''}
+    `;
+
+    const toggle = () => {
+      const expanded = card.dataset.expanded === 'true';
+      rootEl.querySelectorAll('.download-card[data-expanded="true"]').forEach((el) => {
+        if (el !== card) el.dataset.expanded = 'false';
+      });
+      card.dataset.expanded = expanded ? 'false' : 'true';
+    };
+
+    header.addEventListener('click', toggle);
+    card.appendChild(header);
+    card.appendChild(details);
     rootEl.appendChild(card);
   });
 }

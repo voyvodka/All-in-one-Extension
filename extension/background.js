@@ -2,6 +2,7 @@
 import youtubeMp3Download from './features/youtube-mp3-download/index.js';
 import youtubeMp4Download from './features/youtube-mp4-download/index.js';
 import instagramReelsMp3 from './features/instagram-reels-mp3/index.js';
+import instagramReelsMp4 from './features/instagram-reels-mp4/index.js';
 
 // Import shared utilities
 import {
@@ -17,6 +18,7 @@ const features = [
   youtubeMp3Download,
   youtubeMp4Download,
   instagramReelsMp3,
+  instagramReelsMp4,
 ];
 
 const LOADER_BASE_URL = 'https://loader.to';
@@ -39,10 +41,18 @@ function sanitizeTitle(title, maxLen = 30, identifier) {
   return combined || 'download';
 }
 
-function normalizeErrorMessage(message) {
-  if (!message) return '';
-  if (/USER_CANCELED/i.test(message)) return 'İndirme kabul edilmedi';
-  return message;
+function getYoutubeIdFromUrl(urlString) {
+  try {
+    const url = new URL(urlString);
+    const bySearch = url.searchParams.get('v');
+    if (bySearch) return bySearch;
+    if (url.hostname === 'youtu.be') return url.pathname.slice(1);
+    if (url.pathname.startsWith('/shorts/')) return url.pathname.split('/')[2] || null;
+    if (url.pathname.startsWith('/watch')) return url.searchParams.get('v');
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 function createJob({ type, title, sourceUrl, fileName }) {
@@ -107,6 +117,143 @@ async function loadDownloadMap() {
 }
 
 loadDownloadMap().catch((err) => console.error('Failed to load download map', err));
+
+async function startYoutubeDownload(kind, videoId, videoTitle) {
+  const isMp4 = kind === 'youtube-mp4';
+  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const fileExt = isMp4 ? 'mp4' : 'mp3';
+  const fileName = `${sanitizeTitle(videoTitle, 30, videoId)}.${fileExt}`;
+  const job = createJob({
+    type: kind,
+    title: videoTitle,
+    fileName,
+    sourceUrl: videoUrl
+  });
+  await addJob(job);
+
+  try {
+    const downloadUrl = await (isMp4 ? getMp4DownloadUrl : getMp3DownloadUrl)(videoUrl, (progress) => {
+      if (progress?.progress != null) {
+        updateJob(job.id, (j) => {
+          j.status = 'preparing';
+          j.progress = Math.max(j.progress || 0, Math.min(99, Math.round(progress.progress)));
+        });
+      }
+    });
+
+    const result = await new Promise((resolve) => {
+      chrome.downloads.download({
+        url: downloadUrl,
+        filename: fileName,
+        saveAs: true
+      }, (downloadId) => {
+        if (chrome.runtime.lastError) {
+          const errMsg = chrome.runtime.lastError.message || '';
+          console.error('Download failed:', errMsg);
+          updateJob(job.id, (j) => {
+            j.status = 'failed';
+            j.error = errMsg;
+          });
+          resolve({ success: false, error: errMsg });
+        } else if (downloadId) {
+          console.log('Download started with ID:', downloadId);
+          updateJob(job.id, (j) => {
+            j.status = 'downloading';
+            j.downloadId = downloadId;
+          });
+          resolve({ success: true });
+        } else {
+          console.log('Download cancelled by user.');
+          updateJob(job.id, (j) => {
+            j.status = 'failed';
+            j.error = 'USER_CANCELED';
+          });
+          resolve({ success: false, error: 'USER_CANCELED' });
+        }
+      });
+    });
+
+    return result;
+  } catch (error) {
+    console.error('Error during download:', error);
+    updateJob(job.id, (j) => {
+      j.status = 'failed';
+      j.error = error.message;
+    });
+    return { success: false, error: error.message };
+  }
+}
+
+async function startInstagramDownload(kind, reelUrl, reelTitle) {
+  let reelId = '';
+  try {
+    reelId = new URL(reelUrl).pathname.split('/').filter(Boolean).pop() || '';
+  } catch (e) {
+    reelId = '';
+  }
+  const isMp4 = kind === 'instagram-mp4';
+  const ext = isMp4 ? 'mp4' : 'mp3';
+  const fileName = `${sanitizeTitle(reelTitle || 'instagram-reel', 30, reelId)}.${ext}`;
+  const job = createJob({
+    type: kind,
+    title: reelTitle,
+    fileName,
+    sourceUrl: reelUrl
+  });
+  await addJob(job);
+
+  try {
+    const downloadUrl = await (isMp4 ? getMp4DownloadUrl : getMp3DownloadUrl)(reelUrl, (progress) => {
+      if (progress?.progress != null) {
+        updateJob(job.id, (j) => {
+          j.status = 'preparing';
+          j.progress = Math.max(j.progress || 0, Math.min(99, Math.round(progress.progress)));
+        });
+      }
+    });
+
+    const result = await new Promise((resolve) => {
+      chrome.downloads.download({
+        url: downloadUrl,
+        filename: fileName,
+        saveAs: true
+      }, (downloadId) => {
+        if (chrome.runtime.lastError) {
+          const errMsg = chrome.runtime.lastError.message || '';
+          console.error('Download failed:', errMsg);
+          updateJob(job.id, (j) => {
+            j.status = 'failed';
+            j.error = errMsg;
+          });
+          resolve({ success: false, error: errMsg });
+        } else if (downloadId) {
+          console.log('Download started with ID:', downloadId);
+          updateJob(job.id, (j) => {
+            j.status = 'downloading';
+            j.downloadId = downloadId;
+          });
+          resolve({ success: true });
+        } else {
+          console.log('Download cancelled by user.');
+          updateJob(job.id, (j) => {
+            j.status = 'failed';
+            j.error = 'USER_CANCELED';
+          });
+          resolve({ success: false, error: 'USER_CANCELED' });
+        }
+      });
+    });
+
+    return result;
+  } catch (error) {
+    console.error('Error during MP3 download:', error);
+    updateJob(job.id, (j) => {
+      j.status = 'failed';
+      j.error = error.message;
+    });
+    return { success: false, error: error.message };
+  }
+}
 
 async function fetchLoaderJson(url, context) {
   const response = await fetch(url);
@@ -247,7 +394,7 @@ chrome.downloads.onChanged.addListener(async (delta) => {
     job.progress = 100;
   } else if (delta.state?.current === 'interrupted') {
     job.status = 'failed';
-    job.error = normalizeErrorMessage(delta.error?.current) || 'Download interrupted';
+    job.error = delta.error?.current || 'Download interrupted';
   } else {
     if (job.status === 'preparing') {
       job.status = 'downloading';
@@ -296,198 +443,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message?.type === 'download-mp3') {
-    (async () => {
-      const { videoId, videoTitle } = message;
-      const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      const fileName = `${sanitizeTitle(videoTitle, 30, videoId)}.mp3`;
-      const job = createJob({
-        type: 'youtube-mp3',
-        title: videoTitle,
-        fileName,
-        sourceUrl: videoUrl
-      });
-      await addJob(job);
-      try {
-        const downloadUrl = await getMp3DownloadUrl(videoUrl, (progress) => {
-          if (progress?.progress != null) {
-            updateJob(job.id, (j) => {
-              j.status = 'preparing';
-              j.progress = Math.max(j.progress || 0, Math.min(99, Math.round(progress.progress)));
-            });
-          }
-        });
-
-        chrome.downloads.download({
-          url: downloadUrl,
-          filename: fileName,
-          saveAs: true
-        }, (downloadId) => {
-          if (chrome.runtime.lastError) {
-            const errMsg = normalizeErrorMessage(chrome.runtime.lastError.message);
-            console.error('Download failed:', errMsg);
-            updateJob(job.id, (j) => {
-              j.status = 'failed';
-              j.error = errMsg;
-            });
-            sendResponse({ success: false, error: chrome.runtime.lastError.message });
-          } else if (downloadId) {
-            console.log('Download started with ID:', downloadId);
-            updateJob(job.id, (j) => {
-              j.status = 'downloading';
-              j.downloadId = downloadId;
-            });
-            sendResponse({ success: true });
-          } else {
-            // Download was cancelled by the user
-            console.log('Download cancelled by user.');
-            updateJob(job.id, (j) => {
-              j.status = 'failed';
-              j.error = 'İndirme kabul edilmedi';
-            });
-            sendResponse({ success: false, error: 'Download cancelled by user.' });
-          }
-        });
-      } catch (error) {
-        console.error('Error during MP3 download:', error);
-        updateJob(job.id, (j) => {
-          j.status = 'failed';
-          j.error = error.message;
-        });
-        sendResponse({ success: false, error: error.message });
-      }
-    })();
+    startYoutubeDownload('youtube-mp3', message.videoId, message.videoTitle).then(sendResponse);
     return true; // keep channel open for async response
   }
 
   if (message?.type === 'download-mp4') {
-    (async () => {
-      const { videoId, videoTitle } = message;
-      const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      const fileName = `${sanitizeTitle(videoTitle, 30, videoId)}.mp4`;
-      const job = createJob({
-        type: 'youtube-mp4',
-        title: videoTitle,
-        fileName,
-        sourceUrl: videoUrl
-      });
-      await addJob(job);
-      try {
-        const downloadUrl = await getMp4DownloadUrl(videoUrl, (progress) => {
-          if (progress?.progress != null) {
-            updateJob(job.id, (j) => {
-              j.status = 'preparing';
-              j.progress = Math.max(j.progress || 0, Math.min(99, Math.round(progress.progress)));
-            });
-          }
-        });
-
-        chrome.downloads.download({
-          url: downloadUrl,
-          filename: fileName,
-          saveAs: true
-        }, (downloadId) => {
-          if (chrome.runtime.lastError) {
-            const errMsg = normalizeErrorMessage(chrome.runtime.lastError.message);
-            console.error('Download failed:', errMsg);
-            updateJob(job.id, (j) => {
-              j.status = 'failed';
-              j.error = errMsg;
-            });
-            sendResponse({ success: false, error: chrome.runtime.lastError.message });
-          } else if (downloadId) {
-            console.log('Download started with ID:', downloadId);
-            updateJob(job.id, (j) => {
-              j.status = 'downloading';
-              j.downloadId = downloadId;
-            });
-            sendResponse({ success: true });
-          } else {
-            // Download was cancelled by the user
-            console.log('Download cancelled by user.');
-            updateJob(job.id, (j) => {
-              j.status = 'failed';
-              j.error = 'İndirme kabul edilmedi';
-            });
-            sendResponse({ success: false, error: 'Download cancelled by user.' });
-          }
-        });
-      } catch (error) {
-        console.error('Error during MP4 download:', error);
-        updateJob(job.id, (j) => {
-          j.status = 'failed';
-          j.error = error.message;
-        });
-        sendResponse({ success: false, error: error.message });
-      }
-    })();
+    startYoutubeDownload('youtube-mp4', message.videoId, message.videoTitle).then(sendResponse);
     return true; // keep channel open for async response
   }
 
   if (message?.type === 'download-instagram-mp3') {
-    (async () => {
-      const { reelUrl, reelTitle } = message;
-      let reelId = '';
-      try {
-        reelId = new URL(reelUrl).pathname.split('/').filter(Boolean).pop() || '';
-      } catch (e) {
-        reelId = '';
-      }
-      const fileName = `${sanitizeTitle(reelTitle || 'instagram-reel', 30, reelId)}.mp3`;
-      const job = createJob({
-        type: 'instagram-mp3',
-        title: reelTitle,
-        fileName,
-        sourceUrl: reelUrl
-      });
-      await addJob(job);
-      try {
-        const downloadUrl = await getMp3DownloadUrl(reelUrl, (progress) => {
-          if (progress?.progress != null) {
-            updateJob(job.id, (j) => {
-              j.status = 'preparing';
-              j.progress = Math.max(j.progress || 0, Math.min(99, Math.round(progress.progress)));
-            });
-          }
-        });
+    startInstagramDownload('instagram-mp3', message.reelUrl, message.reelTitle).then(sendResponse);
+    return true;
+  }
 
-        chrome.downloads.download({
-          url: downloadUrl,
-          filename: fileName,
-          saveAs: true
-        }, (downloadId) => {
-          if (chrome.runtime.lastError) {
-            const errMsg = normalizeErrorMessage(chrome.runtime.lastError.message);
-            console.error('Download failed:', errMsg);
-            updateJob(job.id, (j) => {
-              j.status = 'failed';
-              j.error = errMsg;
-            });
-            sendResponse({ success: false, error: chrome.runtime.lastError.message });
-          } else if (downloadId) {
-            console.log('Download started with ID:', downloadId);
-            updateJob(job.id, (j) => {
-              j.status = 'downloading';
-              j.downloadId = downloadId;
-            });
-            sendResponse({ success: true });
-          } else {
-            console.log('Download cancelled by user.');
-            updateJob(job.id, (j) => {
-              j.status = 'failed';
-              j.error = 'İndirme kabul edilmedi';
-            });
-            sendResponse({ success: false, error: 'Download cancelled by user.' });
-          }
-        });
-      } catch (error) {
-        console.error('Error during MP3 download:', error);
-        updateJob(job.id, (j) => {
-          j.status = 'failed';
-          j.error = error.message;
-        });
-        sendResponse({ success: false, error: error.message });
-      }
-    })();
+  if (message?.type === 'download-instagram-mp4') {
+    startInstagramDownload('instagram-mp4', message.reelUrl, message.reelTitle).then(sendResponse);
     return true;
   }
 
@@ -509,6 +480,44 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message?.type === 'clear-download-history') {
     clearHistory().then(() => sendResponse({ success: true }));
+    return true;
+  }
+
+  if (message?.type === 'retry-download') {
+    (async () => {
+      const { jobId } = message;
+      const state = await getDownloadsState();
+      const previous = state.history.find((job) => job.id === jobId);
+      if (!previous) {
+        sendResponse({ success: false, error: 'Kayıt bulunamadı' });
+        return;
+      }
+
+      if (previous.type === 'youtube-mp3' || previous.type === 'youtube-mp4') {
+        const videoId = getYoutubeIdFromUrl(previous.sourceUrl);
+        if (!videoId) {
+          sendResponse({ success: false, error: 'Video ID bulunamadı' });
+          return;
+        }
+        const res = await startYoutubeDownload(previous.type, videoId, previous.title || previous.fileName);
+        sendResponse(res);
+        return;
+      }
+
+      if (previous.type === 'instagram-mp3') {
+        const res = await startInstagramDownload('instagram-mp3', previous.sourceUrl, previous.title || previous.fileName);
+        sendResponse(res);
+        return;
+      }
+
+      if (previous.type === 'instagram-mp4') {
+        const res = await startInstagramDownload('instagram-mp4', previous.sourceUrl, previous.title || previous.fileName);
+        sendResponse(res);
+        return;
+      }
+
+      sendResponse({ success: false, error: 'Bu tür için yeniden indirme desteklenmiyor' });
+    })();
     return true;
   }
   return undefined;

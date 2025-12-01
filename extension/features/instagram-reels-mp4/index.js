@@ -1,4 +1,4 @@
-const MP3_ATTR = 'data-aio-instagram-mp3-download';
+const MP4_ATTR = 'data-aio-instagram-mp4-download';
 
 const isInstagram = (url) => {
   try {
@@ -38,22 +38,21 @@ function findShareOptionTemplate(dialog) {
   return options.find((el) => /copy\s*link|linki\s*kopyala|bağlantı\s*kopyala/i.test(el.textContent || '')) || options[0] || null;
 }
 
-function createMp3Option(template, onClick) {
+function createMp4Option(template, onClick) {
   const wrapper = template?.parentElement ? template.parentElement.cloneNode(true) : document.createElement('div');
   if (!wrapper) return null;
 
   const button = wrapper.querySelector('div[role="button"], a[role="link"]') || template;
   if (!button) return null;
 
-  wrapper.setAttribute(MP3_ATTR, 'true');
+  wrapper.setAttribute(MP4_ATTR, 'true');
   button.setAttribute('role', 'button');
   button.tabIndex = 0;
-  button.setAttribute('aria-label', 'MP3 indir');
+  button.setAttribute('aria-label', 'MP4 indir');
   button.removeAttribute('href');
   button.removeAttribute('target');
   button.removeAttribute('rel');
 
-  // Clear existing handlers by replacing with clone
   const cleanButton = button.cloneNode(true);
   button.replaceWith(cleanButton);
 
@@ -66,7 +65,7 @@ function createMp3Option(template, onClick) {
   });
 
   const labelEl = cleanButton.querySelector('span') || cleanButton;
-  labelEl.textContent = 'MP3 indir';
+  labelEl.textContent = 'MP4 indir';
 
   const svg = cleanButton.querySelector('svg');
   if (svg) {
@@ -78,9 +77,9 @@ function createMp3Option(template, onClick) {
 }
 
 export default {
-  id: 'instagram-reels-mp3',
-  label: 'Instagram Reels MP3 Download',
-  description: 'Instagram reels paylaşım paneline MP3 indir kısayolu ekler.',
+  id: 'instagram-reels-mp4',
+  label: 'Instagram Reels MP4 Download',
+  description: 'Instagram reels paylaşım paneline MP4 indir kısayolu ekler.',
   matches: isInstagram,
   apply: () => {
     const observer = new MutationObserver(() => injectButton());
@@ -89,7 +88,7 @@ export default {
 
     return () => {
       observer.disconnect();
-      document.querySelectorAll(`[${MP3_ATTR}]`).forEach((node) => node.remove());
+      document.querySelectorAll(`[${MP4_ATTR}]`).forEach((node) => node.remove());
     };
 
     function injectButton() {
@@ -98,9 +97,9 @@ export default {
         const template = findShareOptionTemplate(dialog);
         const itemWrapper = template?.parentElement;
         const list = itemWrapper?.parentElement;
-        if (!list || list.querySelector(`[${MP3_ATTR}]`)) return;
+        if (!list || list.querySelector(`[${MP4_ATTR}]`)) return;
 
-        const node = createMp3Option(template, handleClick);
+        const node = createMp4Option(template, handleClick);
         if (!node) return;
         list.insertBefore(node, itemWrapper.nextSibling || null);
       });
@@ -126,7 +125,7 @@ export default {
         const reelTitle = getReelTitle();
 
         const response = await chrome.runtime.sendMessage({
-          type: 'download-instagram-mp3',
+          type: 'download-instagram-mp4',
           reelUrl,
           reelTitle
         });
