@@ -1,0 +1,22 @@
+node_modules/
+dist/
+build/
+.parcel-cache/
+.turbo/
+.cache/
+
+.DS_Store
+.idea/
+.vscode/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+.env
+.env.local
+.env.*
+
+# Example assets stay local
+/example/
