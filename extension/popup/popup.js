@@ -166,6 +166,16 @@ function renderDownloadList(rootEl, items, allowCancel) {
     card.dataset.expanded = 'false';
 
     const displayError = job.error && /USER_CANCELED/i.test(job.error) ? 'İndirme kabul edilmedi' : job.error;
+    const fallbackFromUrl = (() => {
+      if (!job.sourceUrl) return '';
+      try {
+        const parts = new URL(job.sourceUrl).pathname.split('/').filter(Boolean);
+        return parts.pop() || '';
+      } catch {
+        return '';
+      }
+    })();
+    const displayName = job.fileName || job.title || fallbackFromUrl || 'İndirme';
     const statusMap = {
       preparing: { icon: '⏳', label: 'Hazırlanıyor' },
       downloading: { icon: '⬇️', label: 'İndiriliyor' },
@@ -174,7 +184,9 @@ function renderDownloadList(rootEl, items, allowCancel) {
       cancelled: { icon: '⚠️', label: 'İptal edildi' }
     };
     const statusInfo = statusMap[job.status] || statusMap.preparing;
-    const progress = typeof job.progress === 'number' ? Math.min(100, Math.max(0, job.progress)) : 0;
+    const progressValue = typeof job.progress === 'number' ? job.progress : 0;
+    const normalizedProgress = progressValue > 100 ? Math.round((progressValue / 1000) * 100) : progressValue;
+    const progress = Math.min(100, Math.max(0, normalizedProgress));
     const updatedAt = job.updatedAt || job.createdAt;
     const dateText = updatedAt ? new Date(updatedAt).toLocaleString('tr-TR') : '';
 
@@ -185,9 +197,9 @@ function renderDownloadList(rootEl, items, allowCancel) {
       <div class="download-main">
         <span class="status-icon">${statusInfo.icon}</span>
         <div class="download-texts">
-          <p class="download-title" title="${job.title || job.fileName}">${job.fileName || job.title || 'İndirme'}</p>
-          <span class="pill ${job.type?.includes('mp4') ? 'mp4' : 'mp3'}">${job.type?.includes('mp4') ? 'MP4' : 'MP3'}</span>
-        </div>
+        <p class="download-title" title="${displayName}">${displayName}</p>
+        <span class="pill ${job.type?.includes('mp4') ? 'mp4' : 'mp3'}">${job.type?.includes('mp4') ? 'MP4' : 'MP3'}</span>
+      </div>
       </div>
       <div class="download-actions-inline"></div>
       <button class="chevron" aria-label="Detayları aç/kapat">▾</button>

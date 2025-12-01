@@ -193,10 +193,11 @@ async function startInstagramDownload(kind, reelUrl, reelTitle) {
   }
   const isMp4 = kind === 'instagram-mp4';
   const ext = isMp4 ? 'mp4' : 'mp3';
-  const fileName = `${sanitizeTitle(reelTitle || 'instagram-reel', 30, reelId)}.${ext}`;
+  const baseTitle = reelTitle || reelId || 'instagram-reel';
+  const fileName = `${sanitizeTitle(baseTitle, 30, reelId)}.${ext}`;
   const job = createJob({
     type: kind,
-    title: reelTitle,
+    title: baseTitle,
     fileName,
     sourceUrl: reelUrl
   });

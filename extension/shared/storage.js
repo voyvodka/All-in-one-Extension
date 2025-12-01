@@ -78,6 +78,8 @@ export async function updateDownloads(updater) {
   const current = await getDownloadsState();
   const clone = JSON.parse(JSON.stringify(current));
   const next = updater(clone) || clone;
+  next.active.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  next.history.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   return setDownloadsState(next);
 }
 
