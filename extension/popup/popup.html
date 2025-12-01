@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>All-in-One Toolkit</title>
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <main id="app">
+      <header>
+        <div>
+          <div class="eyebrow">Yerel geliştirme</div>
+          <h1>All-in-One Toolkit</h1>
+          <p>Popup üzerinden özellikleri aç/kapat veya varsayılanları belirle.</p>
+        </div>
+        <label class="switch">
+          <input id="global-toggle" type="checkbox" />
+          <span>Genel</span>
+        </label>
+      </header>
+      <section id="feature-list"></section>
+      <section class="note">
+        <strong>Not:</strong> Senkron yerine şu anda yalnızca local storage kullanılıyor. Gerektiğinde chrome sync eklenebilir.
+      </section>
+    </main>
+    <script type="module" src="./popup.js"></script>
+  </body>
+  </html>

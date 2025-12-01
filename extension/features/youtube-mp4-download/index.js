@@ -1,0 +1,219 @@
+const MP4_ATTR = 'data-aio-youtube-mp4-download';
+
+const isYoutube = (url) => {
+  try {
+    const { hostname } = new URL(url);
+    return (
+      hostname === 'youtu.be' ||
+      hostname.endsWith('youtube.com') ||
+      hostname.endsWith('youtube-nocookie.com')
+    );
+  } catch {
+    return false;
+  }
+};
+
+function createMp4ShareTarget(container, onClick) {
+  // Var olan bir share target’ı baz al (ör: WhatsApp)
+  const template = container.querySelector('yt-share-target-renderer');
+
+  // Template varsa onu klonla, yoksa fallback’e düş
+  const node = template ? template.cloneNode(true) : buildFallbackTarget();
+  if (!node) return null;
+
+  node.setAttribute('data-aio-youtube-mp4-download', 'true');
+
+  const button = node.querySelector('button') || node.querySelector('#target');
+  if (!button) return null;
+
+  // Buton temel ayarları
+  button.id = 'target';
+  button.title = 'MP4 indir';
+  button.setAttribute('aria-label', 'MP4 indir');
+  button.onclick = onClick; // eski listener’lar varsa override et
+
+  // Başlık – tema uyumluluğu için style-target önemli
+  const titleEl = node.querySelector('#title');
+  if (titleEl) {
+    titleEl.textContent = 'MP4 indir';
+    // Bazı template’lerde zaten var, biz garanti altına alalım:
+    titleEl.setAttribute('style-target', 'title');
+  }
+
+  // İKON: SVG’yi elle doldurmak yerine YouTube’un icon sistemini kullan
+  const ytIcon = node.querySelector('yt-icon');
+  if (ytIcon) {
+    // Örn. YouTube’un kendi download ikonunu kullan
+    // (İkon adını kendi tarafta DevTools’tan kontrol et: genelde "download", "download_outline" vb.)
+    ytIcon.setAttribute('icon', 'download');
+    ytIcon.removeAttribute('src'); // varsa temizle
+  }
+
+  return node;
+}
+
+function buildFallbackTarget() {
+  const wrapper = document.createElement('yt-share-target-renderer');
+  wrapper.className = 'style-scope yt-third-party-share-target-section-renderer';
+  wrapper.setAttribute('role', 'button');
+
+  const button = document.createElement('button');
+  button.className = 'style-scope yt-share-target-renderer';
+  button.id = 'target';
+
+  const icon = document.createElement('yt-icon');
+  icon.className = 'icon-resize style-scope yt-share-target-renderer';
+  icon.setAttribute('active', 'true');
+  icon.setAttribute('size', '60');
+
+  const iconShape = document.createElement('span');
+  iconShape.className = 'yt-icon-shape style-scope yt-icon ytSpecIconShapeHost';
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.style.width = '100%';
+  svg.style.height = '100%';
+  svg.setAttribute('aria-hidden', 'true');
+  svg.innerHTML = `<path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/>`;
+
+  iconShape.appendChild(svg);
+  icon.appendChild(iconShape);
+
+  const title = document.createElement('div');
+  title.id = 'title';
+  title.className = 'style-scope yt-share-target-renderer';
+  title.textContent = 'MP4 indir';
+
+  button.appendChild(icon);
+  button.appendChild(title);
+  wrapper.appendChild(button);
+
+  return wrapper;
+}
+
+function getYoutubeVideoId() {
+  const bySearch = new URLSearchParams(location.search).get('v');
+  if (bySearch) return bySearch;
+
+  const ogUrl = document.querySelector('link[rel="canonical"]')?.href;
+  if (ogUrl) {
+    try {
+      const ogId = new URLSearchParams(new URL(ogUrl).search).get('v');
+      if (ogId) return ogId;
+    } catch (e) { /* Ignore invalid URL */ }
+  }
+
+  const metaId = document.querySelector('meta[itemprop="videoId"]')?.getAttribute('content');
+  if (metaId) return metaId;
+
+  // Shorts URLs look like /shorts/{id}
+  if (location.pathname.startsWith('/shorts/')) {
+    return location.pathname.split('/')[2] || null;
+  }
+
+  // Fallback for different YouTube structures
+  if (location.pathname.startsWith('/watch')) {
+    return location.pathname.split('/')[2];
+  }
+
+  return null;
+}
+
+function getYoutubeVideoTitle() {
+  const titleElement = document.querySelector('h1.style-scope.ytd-watch-metadata yt-formatted-string');
+  if (titleElement) return titleElement.textContent.trim();
+
+  const fallbackTitle = document.querySelector('h1.ytd-video-primary-info-renderer');
+  if (fallbackTitle) return fallbackTitle.textContent.trim();
+
+  const shortsTitle = document.querySelector('yt-formatted-string.ytd-reel-player-header-renderer');
+  if (shortsTitle) return shortsTitle.textContent.trim();
+
+  const metaOgTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content');
+  if (metaOgTitle) return metaOgTitle.trim();
+
+  const metaTitle = document.querySelector('meta[name="title"]')?.getAttribute('content');
+  if (metaTitle) return metaTitle.trim();
+
+  if (document.title) return document.title.replace(/\s*-?\s*YouTube$/i, '').trim();
+
+  return 'youtube-video';
+}
+
+
+export default {
+  id: 'youtube-mp4-download',
+  label: 'YouTube MP4 Download',
+  description: 'Paylaş panelinin başına MP4 indir kısayolu ekler.',
+  matches: isYoutube,
+  apply: () => {
+    const observer = new MutationObserver(() => injectButtons());
+    observer.observe(document.body, { childList: true, subtree: true });
+    injectButtons();
+
+    return () => {
+      observer.disconnect();
+      document.querySelectorAll(`[${MP4_ATTR}]`).forEach((node) => node.remove());
+    };
+
+    function injectButtons() {
+      const selectors = [
+        'ytd-unified-share-panel-renderer #contents',
+        'yt-third-party-share-target-section-renderer #contents'
+      ];
+      const containers = document.querySelectorAll(selectors.join(', '));
+
+      containers.forEach((container) => {
+        if (container.querySelector(`[${MP4_ATTR}]`)) return;
+        const node = createMp4ShareTarget(container, handleClick);
+        if (!node) return;
+        node.setAttribute(MP4_ATTR, 'true');
+        container.prepend(node);
+      });
+    }
+
+    async function handleClick(event) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const button = event.currentTarget;
+      if (button.disabled) return;
+
+      const shareTarget = button.closest(`[${MP4_ATTR}]`);
+      const titleEl = shareTarget?.querySelector('#title');
+      const originalText = titleEl ? titleEl.textContent : 'MP4 indir';
+
+      titleEl.textContent = 'İndiriliyor...';
+      button.disabled = true;
+
+      try {
+        const videoId = getYoutubeVideoId();
+        if (!videoId) {
+          throw new Error('Could not find YouTube video ID.');
+        }
+        const videoTitle = getYoutubeVideoTitle();
+
+        const response = await chrome.runtime.sendMessage({
+          type: 'download-mp4',
+          videoId: videoId,
+          videoTitle: videoTitle || videoId
+        });
+
+        if (response?.success) {
+          if (titleEl) titleEl.textContent = 'İndirme başladı!';
+        } else {
+          console.error('Download failed or was cancelled:', response?.error);
+          if (titleEl) titleEl.textContent = 'Hata!';
+        }
+      } catch (error) {
+        console.error('Error sending download message:', error);
+        if (titleEl) titleEl.textContent = 'Hata!';
+      } finally {
+        setTimeout(() => {
+          if (titleEl) titleEl.textContent = originalText;
+          button.disabled = false;
+        }, 2500); // Revert button text after 2.5 seconds
+      }
+    }
+  }
+};
