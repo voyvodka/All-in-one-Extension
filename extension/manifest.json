@@ -46,7 +46,10 @@
         "features/youtube-shared.js",
         "features/instagram-reels-mp3/index.js",
         "features/instagram-reels-mp4/index.js",
-        "features/instagram-shared.js"
+        "features/instagram-shared.js",
+        "features/twitter-shared.js",
+        "features/twitter-mp3-download/index.js",
+        "features/twitter-mp4-download/index.js"
       ],
       "matches": [
         "https://*/*",

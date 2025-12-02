@@ -3,6 +3,8 @@ import youtubeMp3Download from './features/youtube-mp3-download/index.js';
 import youtubeMp4Download from './features/youtube-mp4-download/index.js';
 import instagramReelsMp3 from './features/instagram-reels-mp3/index.js';
 import instagramReelsMp4 from './features/instagram-reels-mp4/index.js';
+import twitterMp3Download from './features/twitter-mp3-download/index.js';
+import twitterMp4Download from './features/twitter-mp4-download/index.js';
 
 // Import shared utilities
 import {
@@ -19,6 +21,8 @@ const features = [
   youtubeMp4Download,
   instagramReelsMp3,
   instagramReelsMp4,
+  twitterMp3Download,
+  twitterMp4Download,
 ];
 
 const LOADER_BASE_URL = 'https://loader.to';
@@ -256,6 +260,78 @@ async function startInstagramDownload(kind, reelUrl, reelTitle) {
   }
 }
 
+async function startTwitterDownload(kind, tweetUrl, tweetTitle) {
+  let tweetId = '';
+  try {
+    tweetId = new URL(tweetUrl).pathname.split('/').filter(Boolean).pop() || '';
+  } catch (e) {
+    tweetId = '';
+  }
+  const isMp4 = kind === 'twitter-mp4';
+  const ext = isMp4 ? 'mp4' : 'mp3';
+  const baseTitle = tweetTitle || tweetId || 'twitter-video';
+  const fileName = `${sanitizeTitle(baseTitle, 30, tweetId)}.${ext}`;
+  const job = createJob({
+    type: kind,
+    title: baseTitle,
+    fileName,
+    sourceUrl: tweetUrl
+  });
+  await addJob(job);
+
+  try {
+    const downloadUrl = await (isMp4 ? getMp4DownloadUrl : getMp3DownloadUrl)(tweetUrl, (progress) => {
+      if (progress?.progress != null) {
+        updateJob(job.id, (j) => {
+          j.status = 'preparing';
+          j.progress = Math.max(j.progress || 0, Math.min(99, Math.round(progress.progress)));
+        });
+      }
+    });
+
+    const result = await new Promise((resolve) => {
+      chrome.downloads.download({
+        url: downloadUrl,
+        filename: fileName,
+        saveAs: true
+      }, (downloadId) => {
+        if (chrome.runtime.lastError) {
+          const errMsg = chrome.runtime.lastError.message || '';
+          console.error('Download failed:', errMsg);
+          updateJob(job.id, (j) => {
+            j.status = 'failed';
+            j.error = errMsg;
+          });
+          resolve({ success: false, error: errMsg });
+        } else if (downloadId) {
+          console.log('Download started with ID:', downloadId);
+          updateJob(job.id, (j) => {
+            j.status = 'downloading';
+            j.downloadId = downloadId;
+          });
+          resolve({ success: true });
+        } else {
+          console.log('Download cancelled by user.');
+          updateJob(job.id, (j) => {
+            j.status = 'failed';
+            j.error = 'USER_CANCELED';
+          });
+          resolve({ success: false, error: 'USER_CANCELED' });
+        }
+      });
+    });
+
+    return result;
+  } catch (error) {
+    console.error('Error during download:', error);
+    updateJob(job.id, (j) => {
+      j.status = 'failed';
+      j.error = error.message;
+    });
+    return { success: false, error: error.message };
+  }
+}
+
 async function fetchLoaderJson(url, context) {
   const response = await fetch(url);
   const text = await response.text();
@@ -420,21 +496,33 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 // Keep context menus aligned with feature list
 onSettingsChanged(registerContextMenus);
 
+let registerContextMenusPromise = null;
 async function registerContextMenus() {
   if (!chrome.contextMenus) return;
-  
-  const settings = await getSettings();
-  chrome.contextMenus.removeAll(() => {
+  if (registerContextMenusPromise) return registerContextMenusPromise; // avoid overlapping remove/create
+
+  registerContextMenusPromise = (async () => {
+    const settings = await getSettings();
+    await new Promise((resolve) => chrome.contextMenus.removeAll(resolve));
+
     for (const feature of features) {
-      chrome.contextMenus.create({
-        id: `feature-${feature.id}`,
-        title: feature.label,
-        contexts: ['all'],
-        type: 'checkbox',
-        checked: settings.features[feature.id] ?? true
-      });
+      try {
+        chrome.contextMenus.create({
+          id: `feature-${feature.id}`,
+          title: feature.label,
+          contexts: ['all'],
+          type: 'checkbox',
+          checked: settings.features[feature.id] ?? true
+        });
+      } catch (error) {
+        console.warn('Context menu create failed', feature.id, error);
+      }
     }
+  })().finally(() => {
+    registerContextMenusPromise = null;
   });
+
+  return registerContextMenusPromise;
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -460,6 +548,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message?.type === 'download-instagram-mp4') {
     startInstagramDownload('instagram-mp4', message.reelUrl, message.reelTitle).then(sendResponse);
+    return true;
+  }
+
+  if (message?.type === 'download-twitter-mp3') {
+    startTwitterDownload('twitter-mp3', message.tweetUrl, message.tweetTitle).then(sendResponse);
+    return true;
+  }
+
+  if (message?.type === 'download-twitter-mp4') {
+    startTwitterDownload('twitter-mp4', message.tweetUrl, message.tweetTitle).then(sendResponse);
     return true;
   }
 
@@ -513,6 +611,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       if (previous.type === 'instagram-mp4') {
         const res = await startInstagramDownload('instagram-mp4', previous.sourceUrl, previous.title || previous.fileName);
+        sendResponse(res);
+        return;
+      }
+
+      if (previous.type === 'twitter-mp3') {
+        const res = await startTwitterDownload('twitter-mp3', previous.sourceUrl, previous.title || previous.fileName);
+        sendResponse(res);
+        return;
+      }
+
+      if (previous.type === 'twitter-mp4') {
+        const res = await startTwitterDownload('twitter-mp4', previous.sourceUrl, previous.title || previous.fileName);
         sendResponse(res);
         return;
       }

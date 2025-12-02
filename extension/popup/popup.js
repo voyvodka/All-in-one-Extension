@@ -28,6 +28,8 @@ const subTabViews = Array.from(document.querySelectorAll('.download-group'));
 const SUBTAB_KEY = 'aioPopupDownloadsTab';
 const defaultSubTab = 'active';
 
+let expandedJobId = null;
+
 let current = await getSettings();
 let downloads = await getDownloadsState();
 renderFeatures(current);
@@ -146,6 +148,11 @@ function renderFeatures(settings) {
 }
 
 function renderDownloads(state) {
+  const allIds = new Set([...state.active, ...state.history].map((item) => item.id));
+  if (expandedJobId && !allIds.has(expandedJobId)) {
+    expandedJobId = null;
+  }
+
   renderDownloadList(downloadActiveEl, state.active, true);
   renderDownloadList(downloadHistoryEl, state.history, false);
 }
@@ -163,7 +170,7 @@ function renderDownloadList(rootEl, items, allowCancel) {
   items.forEach((job) => {
     const card = document.createElement('div');
     card.className = 'download-card';
-    card.dataset.expanded = 'false';
+    card.dataset.expanded = expandedJobId === job.id ? 'true' : 'false';
 
     const displayError = job.error && /USER_CANCELED/i.test(job.error) ? 'İndirme kabul edilmedi' : job.error;
     const fallbackFromUrl = (() => {
@@ -187,6 +194,7 @@ function renderDownloadList(rootEl, items, allowCancel) {
     const progressValue = typeof job.progress === 'number' ? job.progress : 0;
     const normalizedProgress = progressValue > 100 ? Math.round((progressValue / 1000) * 100) : progressValue;
     const progress = Math.min(100, Math.max(0, normalizedProgress));
+    const statusLabel = `${statusInfo.label}${progress > 0 && progress < 100 ? ` (${progress}%)` : ''}`;
     const updatedAt = job.updatedAt || job.createdAt;
     const dateText = updatedAt ? new Date(updatedAt).toLocaleString('tr-TR') : '';
 
@@ -229,7 +237,7 @@ function renderDownloadList(rootEl, items, allowCancel) {
     const details = document.createElement('div');
     details.className = 'download-details';
     details.innerHTML = `
-      <p class="download-meta">${statusInfo.label}</p>
+      <p class="download-meta">${statusLabel}</p>
       <div class="progress"><span style="width:${progress}%"></span></div>
       <p class="download-meta small">Tarih: ${dateText || '-'}</p>
       <p class="download-meta small">Tür: ${job.type || '-'}</p>
@@ -241,10 +249,8 @@ function renderDownloadList(rootEl, items, allowCancel) {
 
     const toggle = () => {
       const expanded = card.dataset.expanded === 'true';
-      rootEl.querySelectorAll('.download-card[data-expanded="true"]').forEach((el) => {
-        if (el !== card) el.dataset.expanded = 'false';
-      });
-      card.dataset.expanded = expanded ? 'false' : 'true';
+      expandedJobId = expanded ? null : job.id;
+      renderDownloads(downloads);
     };
 
     header.addEventListener('click', toggle);
