@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "All-in-One Toolkit",
-  "description": "Local-only Chrome extension scaffold with injected UI, popup controls, and per-site feature toggles.",
+  "description": "Extension scaffold with injected UI, popup controls, and per-site feature toggles.",
   "version": "0.1.0",
   "action": {
     "default_popup": "popup/popup.html",
@@ -15,7 +15,14 @@
     "downloads"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "https://*.youtube.com/*",
+    "https://youtu.be/*",
+    "https://*.youtube-nocookie.com/*",
+    "https://*.instagram.com/*",
+    "https://*.twitter.com/*",
+    "https://twitter.com/*",
+    "https://*.x.com/*",
+    "https://x.com/*"
   ],
   "background": {
     "service_worker": "background.js",
@@ -24,8 +31,14 @@
   "content_scripts": [
     {
       "matches": [
-        "https://*/*",
-        "http://*/*"
+        "https://*.youtube.com/*",
+        "https://youtu.be/*",
+        "https://*.youtube-nocookie.com/*",
+        "https://*.instagram.com/*",
+        "https://*.twitter.com/*",
+        "https://twitter.com/*",
+        "https://*.x.com/*",
+        "https://x.com/*"
       ],
       "js": [
         "content.js"
