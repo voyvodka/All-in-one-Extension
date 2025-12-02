@@ -1,11 +1,6 @@
 import { featureModulePaths } from '../features/index.js';
-import {
-  getSettings,
-  setEnabled,
-  upsertFeatureState,
-  getDownloadsState,
-  onDownloadsChanged
-} from '../shared/storage.js';
+import { getSettings, upsertFeatureState, getDownloadsState, onDownloadsChanged, setLanguage } from '../shared/storage.js';
+import { t, getLocale, setLocale, resolveLocale, translateFeature } from '../shared/i18n.js';
 
 const featureModules = await Promise.all(
   featureModulePaths.map(path => import(`../${path}`))
@@ -13,7 +8,9 @@ const featureModules = await Promise.all(
 const features = featureModules.map(module => module.default);
 
 const listEl = document.getElementById('feature-list');
-const globalToggle = document.getElementById('global-toggle');
+const bugBtn = document.getElementById('bug-btn');
+const donateBtn = document.getElementById('donate-btn');
+const languageSelect = document.getElementById('language-select');
 const downloadActiveEl = document.getElementById('download-active');
 const downloadHistoryEl = document.getElementById('download-history');
 const refreshDownloadsBtn = document.getElementById('refresh-downloads');
@@ -31,7 +28,19 @@ const defaultSubTab = 'active';
 let expandedJobId = null;
 
 let current = await getSettings();
+if (!current.enabled) {
+  current.enabled = true;
+  await chrome.storage.local.set({ enabled: true });
+}
+if (!current.language) {
+  const resolved = resolveLocale();
+  current.language = resolved;
+  await setLanguage(resolved);
+}
+setLocale(current.language);
 let downloads = await getDownloadsState();
+applyStaticTranslations();
+hydrateLanguageSelect(current.language);
 renderFeatures(current);
 renderDownloads(downloads);
 
@@ -93,6 +102,15 @@ subTabs.forEach((tab) => {
   });
 });
 
+languageSelect?.addEventListener('change', async () => {
+  const value = languageSelect.value;
+  current.language = value;
+  setLocale(value);
+  await setLanguage(value);
+  applyStaticTranslations();
+  renderDownloads(downloads);
+});
+
 refreshDownloadsBtn.addEventListener('click', async () => {
   downloads = await getDownloadsState();
   renderDownloads(downloads);
@@ -102,16 +120,19 @@ clearHistoryBtn.addEventListener('click', async () => {
   await chrome.runtime.sendMessage({ type: 'clear-download-history' });
 });
 
-globalToggle.addEventListener('change', async () => {
-  current.enabled = globalToggle.checked;
-  await setEnabled(current.enabled);
-  renderFeatures(current);
-});
+// placeholders for future actions
+bugBtn?.addEventListener('click', () => {});
+donateBtn?.addEventListener('click', () => {});
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  if (changes.enabled) current.enabled = changes.enabled.newValue;
   if (changes.features) current.features = changes.features.newValue;
+  if (changes.language) {
+    current.language = changes.language.newValue;
+    setLocale(current.language);
+    hydrateLanguageSelect(current.language);
+    applyStaticTranslations();
+  }
   renderFeatures(current);
 });
 
@@ -121,16 +142,16 @@ onDownloadsChanged((next) => {
 });
 
 function renderFeatures(settings) {
-  globalToggle.checked = settings.enabled;
   listEl.innerHTML = '';
 
   for (const feature of features) {
+    const localized = translateFeature(feature);
     const card = document.createElement('article');
     card.className = 'feature-card';
-    card.title = feature.description;
+    card.title = localized.description;
     card.innerHTML = `
       <div>
-        <h3>${feature.label}</h3>
+        <h3>${localized.label}</h3>
       </div>
       <label class="switch">
         <input type="checkbox" data-id="${feature.id}" />
@@ -139,7 +160,6 @@ function renderFeatures(settings) {
     `;
     const input = card.querySelector('input');
     input.checked = settings.features[feature.id] ?? true;
-    input.disabled = !settings.enabled;
     input.addEventListener('change', async (ev) => {
       await upsertFeatureState(ev.target.dataset.id, ev.target.checked);
     });
@@ -162,7 +182,7 @@ function renderDownloadList(rootEl, items, allowCancel) {
   if (!items.length) {
     const empty = document.createElement('p');
     empty.className = 'download-meta';
-    empty.textContent = 'Kayıt yok.';
+    empty.textContent = t('noRecords');
     rootEl.appendChild(empty);
     return;
   }
@@ -172,7 +192,7 @@ function renderDownloadList(rootEl, items, allowCancel) {
     card.className = 'download-card';
     card.dataset.expanded = expandedJobId === job.id ? 'true' : 'false';
 
-    const displayError = job.error && /USER_CANCELED/i.test(job.error) ? 'İndirme kabul edilmedi' : job.error;
+    const displayError = job.error && /USER_CANCELED/i.test(job.error) ? t('statusUserCancelled') : job.error;
     const fallbackFromUrl = (() => {
       if (!job.sourceUrl) return '';
       try {
@@ -182,13 +202,13 @@ function renderDownloadList(rootEl, items, allowCancel) {
         return '';
       }
     })();
-    const displayName = job.fileName || job.title || fallbackFromUrl || 'İndirme';
+    const displayName = job.fileName || job.title || fallbackFromUrl || t('downloadFallback');
     const statusMap = {
-      preparing: { icon: '⏳', label: 'Hazırlanıyor' },
-      downloading: { icon: '⬇️', label: 'İndiriliyor' },
-      completed: { icon: '✅', label: 'Tamamlandı' },
-      failed: { icon: '⚠️', label: displayError ? `Hata: ${displayError}` : 'Hata' },
-      cancelled: { icon: '⚠️', label: 'İptal edildi' }
+      preparing: { icon: '⏳', label: t('statusPreparing') },
+      downloading: { icon: '⬇️', label: t('statusDownloading') },
+      completed: { icon: '✅', label: t('statusCompleted') },
+      failed: { icon: '⚠️', label: displayError ? `${t('errorLabel')}: ${displayError}` : t('statusFailed') },
+      cancelled: { icon: '⚠️', label: t('statusCancelled') }
     };
     const statusInfo = statusMap[job.status] || statusMap.preparing;
     const progressValue = typeof job.progress === 'number' ? job.progress : 0;
@@ -196,7 +216,8 @@ function renderDownloadList(rootEl, items, allowCancel) {
     const progress = Math.min(100, Math.max(0, normalizedProgress));
     const statusLabel = `${statusInfo.label}${progress > 0 && progress < 100 ? ` (${progress}%)` : ''}`;
     const updatedAt = job.updatedAt || job.createdAt;
-    const dateText = updatedAt ? new Date(updatedAt).toLocaleString('tr-TR') : '';
+    const localeCode = getLocale();
+    const dateText = updatedAt ? new Date(updatedAt).toLocaleString(localeCode.startsWith('tr') ? 'tr-TR' : undefined) : '';
 
     const header = document.createElement('div');
     header.className = 'download-row';
@@ -210,14 +231,14 @@ function renderDownloadList(rootEl, items, allowCancel) {
       </div>
       </div>
       <div class="download-actions-inline"></div>
-      <button class="chevron" aria-label="Detayları aç/kapat">▾</button>
+      <button class="chevron" aria-label="${t('toggleDetails')}">▾</button>
     `;
 
     const inlineActions = header.querySelector('.download-actions-inline');
     if (allowCancel && (job.status === 'preparing' || job.status === 'downloading')) {
       const cancelBtn = document.createElement('button');
       cancelBtn.className = 'link-btn';
-      cancelBtn.textContent = 'İptal';
+      cancelBtn.textContent = t('cancel');
       cancelBtn.addEventListener('click', async (ev) => {
         ev.stopPropagation();
         await chrome.runtime.sendMessage({ type: 'cancel-download', jobId: job.id, downloadId: job.downloadId });
@@ -226,7 +247,7 @@ function renderDownloadList(rootEl, items, allowCancel) {
     } else if (!allowCancel) {
       const retryBtn = document.createElement('button');
       retryBtn.className = 'link-btn';
-      retryBtn.textContent = 'İndir';
+      retryBtn.textContent = t('retry');
       retryBtn.addEventListener('click', async (ev) => {
         ev.stopPropagation();
         await chrome.runtime.sendMessage({ type: 'retry-download', jobId: job.id });
@@ -239,12 +260,12 @@ function renderDownloadList(rootEl, items, allowCancel) {
     details.innerHTML = `
       <p class="download-meta">${statusLabel}</p>
       <div class="progress"><span style="width:${progress}%"></span></div>
-      <p class="download-meta small">Tarih: ${dateText || '-'}</p>
-      <p class="download-meta small">Tür: ${job.type || '-'}</p>
-      <p class="download-meta small">Dosya adı: ${job.fileName || '-'}</p>
-      <p class="download-meta small">Kaynak: ${job.sourceUrl || '-'}</p>
-      <p class="download-meta small">Durum: ${job.status || '-'}</p>
-      ${displayError ? `<p class="download-meta small error">Hata: ${displayError}</p>` : ''}
+      <p class="download-meta small">${t('dateLabel')}: ${dateText || '-'}</p>
+      <p class="download-meta small">${t('typeLabel')}: ${job.type || '-'}</p>
+      <p class="download-meta small">${t('fileNameLabel')}: ${job.fileName || '-'}</p>
+      <p class="download-meta small">${t('sourceLabel')}: ${job.sourceUrl || '-'}</p>
+      <p class="download-meta small">${t('statusLabel')}: ${job.status || '-'}</p>
+      ${displayError ? `<p class="download-meta small error">${t('errorLabel')}: ${displayError}</p>` : ''}
     `;
 
     const toggle = () => {
@@ -258,4 +279,35 @@ function renderDownloadList(rootEl, items, allowCancel) {
     card.appendChild(details);
     rootEl.appendChild(card);
   });
+}
+
+function applyStaticTranslations() {
+  const featuresTab = tabs.find((tab) => tab.dataset.tab === 'features');
+  const downloadsTab = tabs.find((tab) => tab.dataset.tab === 'downloads');
+  const activeSubTab = subTabs.find((tab) => tab.dataset.subtab === 'active');
+  const historySubTab = subTabs.find((tab) => tab.dataset.subtab === 'history');
+
+  if (featuresTab) featuresTab.textContent = t('tabFeatures');
+  if (downloadsTab) downloadsTab.textContent = t('tabDownloads');
+  if (activeSubTab) activeSubTab.textContent = t('subtabActive');
+  if (historySubTab) historySubTab.textContent = t('subtabHistory');
+
+  if (refreshDownloadsBtn) refreshDownloadsBtn.title = t('refresh');
+  if (clearHistoryBtn) clearHistoryBtn.title = t('clearHistory');
+  if (bugBtn) bugBtn.title = t('bugTitle');
+  if (donateBtn) donateBtn.title = t('donateTitle');
+
+  hydrateLanguageSelect(current.language);
+}
+
+function hydrateLanguageSelect(langValue) {
+  if (!languageSelect) return;
+  const effective = resolveLocale(langValue || current.language);
+  languageSelect.value = effective;
+
+  const optionTr = languageSelect.querySelector('option[value="tr"]');
+  const optionEn = languageSelect.querySelector('option[value="en"]');
+  if (optionTr) optionTr.textContent = t('languageTr');
+  if (optionEn) optionEn.textContent = t('languageEn');
+  languageSelect.title = t('language');
 }

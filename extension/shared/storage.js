@@ -1,6 +1,7 @@
 const DEFAULT_SETTINGS = {
   enabled: true,
-  features: {}
+  features: {},
+  language: null // null => use browser language
 };
 
 const DEFAULT_DOWNLOADS = {
@@ -27,6 +28,11 @@ export async function setEnabled(enabled) {
   return enabled;
 }
 
+export async function setLanguage(language) {
+  await new Promise((resolve) => chrome.storage.local.set({ language: language || null }, resolve));
+  return language || null;
+}
+
 export async function upsertFeatureState(featureId, nextState) {
   const current = await getSettings();
   const currentValue = Boolean(current.features?.[featureId]);
@@ -47,7 +53,8 @@ export function onSettingsChanged(callback) {
     if (area !== 'local') return;
     const next = {
       enabled: changes.enabled?.newValue ?? undefined,
-      features: changes.features?.newValue ?? undefined
+      features: changes.features?.newValue ?? undefined,
+      language: changes.language?.newValue ?? undefined
     };
     callback(next);
   });
