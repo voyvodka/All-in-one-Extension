@@ -2,11 +2,51 @@
   box-sizing: border-box;
 }
 
+:root {
+  --bg: #f8fafc;
+  --card: #fff;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --muted: #475569;
+  --muted-2: #64748b;
+  --accent: #2563eb;
+  --accent-contrast: #fff;
+  --note-bg: #ecfeff;
+  --note-border: #38bdf8;
+  --pill-border: #e2e8f0;
+  --link-bg: #e9f0ff;
+  --link-border: #c7d7ff;
+  --link-text: #1d4ed8;
+  --error: #b91c1c;
+  --progress-bg: #e2e8f0;
+  --shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+[data-theme="dark"] {
+  --bg: #0b1220;
+  --card: #0f172a;
+  --border: #1f2937;
+  --text: #e2e8f0;
+  --muted: #cbd5e1;
+  --muted-2: #94a3b8;
+  --accent: #3b82f6;
+  --accent-contrast: #0b1220;
+  --note-bg: #0f172a;
+  --note-border: #38bdf8;
+  --pill-border: #1f2937;
+  --link-bg: #1e293b;
+  --link-border: #334155;
+  --link-text: #cbd5e1;
+  --error: #f87171;
+  --progress-bg: #1f2937;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
 body {
   margin: 0;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-  color: #0f172a;
-  background: #f8fafc;
+  color: var(--text);
+  background: var(--bg);
   min-width: 360px;
   width: 360px;
   min-height: 400px;
@@ -33,24 +73,26 @@ header {
 .lang-select {
   height: 32px;
   border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--card);
   padding: 0 10px;
   font-size: 12px;
+  color: var(--text);
 }
 
 .icon-btn {
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--card);
   cursor: pointer;
   font-size: 16px;
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: var(--text);
 }
 
 .tabs {
@@ -63,17 +105,17 @@ header {
   flex: 1;
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--card);
   cursor: pointer;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text);
 }
 
 .tab.active {
-  background: #2563eb;
-  color: #fff;
-  border-color: #2563eb;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
 }
 
 .tab-view {
@@ -88,7 +130,7 @@ header {
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #475569;
+  color: var(--muted);
 }
 
 h1 {
@@ -98,7 +140,7 @@ h1 {
 
 p {
   margin: 0;
-  color: #475569;
+  color: var(--muted);
   font-size: 13px;
 }
 
@@ -115,7 +157,7 @@ p {
   appearance: none;
   width: 34px;
   height: 18px;
-  background: #e2e8f0;
+  background: var(--border);
   border-radius: 999px;
   position: relative;
   transition: background 0.16s ease;
@@ -127,7 +169,7 @@ p {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--card);
   top: 2px;
   left: 2px;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
@@ -135,7 +177,7 @@ p {
 }
 
 .switch input:checked {
-  background: #2563eb;
+  background: var(--accent);
 }
 
 .switch input:checked::after {
@@ -143,8 +185,8 @@ p {
 }
 
 .feature-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 10px 12px;
   margin-bottom: 6px;
@@ -160,11 +202,11 @@ p {
 }
 
 .note {
-  background: #ecfeff;
-  color: #0f172a;
+  background: var(--note-bg);
+  color: var(--text);
   padding: 10px;
   border-radius: 10px;
-  border: 1px dashed #38bdf8;
+  border: 1px dashed var(--note-border);
   font-size: 12px;
 }
 
@@ -188,6 +230,7 @@ p {
 .icon-btn svg {
   width: 18px;
   height: 18px;
+  color: inherit;
 }
 
 .sort-icon .sort-arrow {
@@ -210,8 +253,8 @@ p {
 }
 
 .download-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0;
   margin-bottom: 8px;
@@ -237,7 +280,7 @@ p {
 .download-title {
   font-size: 13px;
   margin: 0;
-  color: #0f172a;
+  color: var(--text);
   max-width: 180px;
   white-space: nowrap;
   overflow: hidden;
@@ -246,7 +289,7 @@ p {
 
 .download-meta {
   font-size: 11px;
-  color: #475569;
+  color: var(--muted);
   margin: 0 0 4px;
 }
 
@@ -257,21 +300,21 @@ p {
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--pill-border);
   white-space: nowrap;
 }
 
 .pill.mp3 {
-  color: #0f172a;
+  color: var(--text);
 }
 
 .pill.mp4 {
-  color: #0f172a;
+  color: var(--text);
 }
 
 .status {
   font-size: 11px;
-  color: #334155;
+  color: var(--muted-2);
 }
 
 .download-main {
@@ -318,17 +361,17 @@ p {
   flex: 1;
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--card);
   cursor: pointer;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text);
 }
 
 .subtab.active {
-  background: #2563eb;
-  color: #fff;
-  border-color: #2563eb;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
 }
 
 .download-group {
@@ -343,9 +386,9 @@ p {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #e9f0ff;
-  border: 1px solid #c7d7ff;
-  color: #1d4ed8;
+  background: var(--link-bg);
+  border: 1px solid var(--link-border);
+  color: var(--link-text);
   font-weight: 600;
   font-size: 12px;
   cursor: pointer;
@@ -357,8 +400,8 @@ p {
 }
 
 .chevron {
-  border: 1px solid #e2e8f0;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--card);
   border-radius: 8px;
   padding: 4px 6px;
   cursor: pointer;
@@ -367,22 +410,22 @@ p {
 
 .download-details {
   padding: 6px 12px 8px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--border);
   display: grid;
   gap: 4px;
 }
 
 .download-details .small {
-  color: #64748b;
+  color: var(--muted-2);
 }
 
 .download-details .error {
-  color: #b91c1c;
+  color: var(--error);
 }
 
 .progress {
   position: relative;
-  background: #e2e8f0;
+  background: var(--progress-bg);
   border-radius: 8px;
   height: 8px;
   overflow: hidden;
@@ -393,7 +436,7 @@ p {
   left: 0;
   top: 0;
   bottom: 0;
-  background: #2563eb;
+  background: var(--accent);
   width: 0%;
   transition: width 0.2s ease;
 }
@@ -408,12 +451,12 @@ p {
 .card-actions button {
   padding: 6px 8px;
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--card);
   font-size: 11px;
   cursor: pointer;
 }
 
 .card-actions button:hover {
-  border-color: #2563eb;
+  border-color: var(--accent);
 }

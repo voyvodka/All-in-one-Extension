@@ -1,5 +1,5 @@
 import { featureModulePaths } from '../features/index.js';
-import { getSettings, upsertFeatureState, getDownloadsState, onDownloadsChanged, setLanguage } from '../shared/storage.js';
+import { getSettings, upsertFeatureState, getDownloadsState, onDownloadsChanged, setLanguage, setTheme } from '../shared/storage.js';
 import { t, getLocale, setLocale, resolveLocale, translateFeature } from '../shared/i18n.js';
 
 const featureModules = await Promise.all(
@@ -11,6 +11,7 @@ const listEl = document.getElementById('feature-list');
 const bugBtn = document.getElementById('bug-btn');
 const donateBtn = document.getElementById('donate-btn');
 const languageSelect = document.getElementById('language-select');
+const themeSelect = document.getElementById('theme-select');
 const downloadActiveEl = document.getElementById('download-active');
 const downloadHistoryEl = document.getElementById('download-history');
 const sortDownloadsBtn = document.getElementById('sort-downloads');
@@ -25,6 +26,8 @@ const subTabViews = Array.from(document.querySelectorAll('.download-group'));
 const SUBTAB_KEY = 'aioPopupDownloadsTab';
 const defaultSubTab = 'active';
 const SORT_KEY = 'aioPopupSortAsc';
+const prefersDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+let systemThemeHandler = null;
 
 let expandedJobId = null;
 const savedSortAsc = (() => {
@@ -47,10 +50,15 @@ if (!current.language) {
   current.language = resolved;
   await setLanguage(resolved);
 }
+if (!current.theme) {
+  current.theme = 'system';
+}
 setLocale(current.language);
 let downloads = await getDownloadsState();
 applyStaticTranslations();
 hydrateLanguageSelect(current.language);
+hydrateThemeSelect(current.theme);
+applyTheme(current.theme);
 renderFeatures(current);
 renderDownloads(downloads);
 if (sortDownloadsBtn) {
@@ -124,6 +132,13 @@ languageSelect?.addEventListener('change', async () => {
   renderDownloads(downloads);
 });
 
+themeSelect?.addEventListener('change', async () => {
+  const value = themeSelect.value;
+  current.theme = value;
+  await setTheme(value);
+  applyTheme(value);
+});
+
 sortDownloadsBtn?.addEventListener('click', () => {
   sortAscending = !sortAscending;
   try {
@@ -151,6 +166,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
     setLocale(current.language);
     hydrateLanguageSelect(current.language);
     applyStaticTranslations();
+  }
+  if (changes.theme) {
+    current.theme = changes.theme.newValue;
+    hydrateThemeSelect(current.theme);
+    applyTheme(current.theme);
   }
   renderFeatures(current);
 });
@@ -332,8 +352,10 @@ function applyStaticTranslations() {
   if (bugBtn) bugBtn.title = t('bugTitle');
   if (donateBtn) donateBtn.title = t('donateTitle');
   if (sortDownloadsBtn) sortDownloadsBtn.title = t('sort');
+  if (themeSelect) themeSelect.title = t('theme');
 
   hydrateLanguageSelect(current.language);
+  hydrateThemeSelect(current.theme);
 }
 
 function hydrateLanguageSelect(langValue) {
@@ -346,4 +368,41 @@ function hydrateLanguageSelect(langValue) {
   if (optionTr) optionTr.textContent = t('languageTr');
   if (optionEn) optionEn.textContent = t('languageEn');
   languageSelect.title = t('language');
+}
+
+function hydrateThemeSelect(themeValue) {
+  if (!themeSelect) return;
+  const effective = themeValue || current.theme || 'system';
+  themeSelect.value = effective;
+  const optionSystem = themeSelect.querySelector('option[value=\"system\"]');
+  const optionLight = themeSelect.querySelector('option[value=\"light\"]');
+  const optionDark = themeSelect.querySelector('option[value=\"dark\"]');
+  if (optionSystem) optionSystem.textContent = t('themeSystem');
+  if (optionLight) optionLight.textContent = t('themeLight');
+  if (optionDark) optionDark.textContent = t('themeDark');
+  themeSelect.title = t('theme');
+}
+
+function resolveTheme(theme) {
+  if (theme === 'light' || theme === 'dark') return theme;
+  return prefersDark?.matches ? 'dark' : 'light';
+}
+
+function applyTheme(themeValue) {
+  const chosen = themeValue || current.theme || 'system';
+  const effective = resolveTheme(chosen);
+  document.body.dataset.theme = effective;
+  if (prefersDark) {
+    if (systemThemeHandler) {
+      prefersDark.removeEventListener?.('change', systemThemeHandler);
+    }
+    if (chosen === 'system') {
+      systemThemeHandler = () => {
+        document.body.dataset.theme = resolveTheme('system');
+      };
+      prefersDark.addEventListener?.('change', systemThemeHandler);
+    } else {
+      systemThemeHandler = null;
+    }
+  }
 }

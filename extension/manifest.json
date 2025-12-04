@@ -53,15 +53,18 @@
     {
       "resources": [
         "ui/panel.css",
-        "features/index.js",
-        "shared/storage.js",
         "ui/panel.js",
+        "shared/storage.js",
+        "shared/i18n.js",
+        "features/index.js",
         "features/youtube-mp3-download/index.js",
         "features/youtube-mp4-download/index.js",
         "features/youtube-shared.js",
         "features/instagram-reels-mp3/index.js",
         "features/instagram-reels-mp4/index.js",
         "features/instagram-shared.js",
+        "ui/onboarding.js",
+        "ui/onboarding.css",
         "features/twitter-shared.js",
         "features/twitter-mp3-download/index.js",
         "features/twitter-mp4-download/index.js"

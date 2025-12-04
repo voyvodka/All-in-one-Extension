@@ -28,7 +28,15 @@ const messages = {
     languageTr: 'Türkçe',
     languageEn: 'İngilizce',
     bugTitle: 'Hata bildir',
-    donateTitle: 'Destekle'
+    donateTitle: 'Destekle',
+    onboardingTitle: 'All-in-One kurulumu',
+    onboardingDescription: 'Kullanmak istediğin özellikleri seç ve dili ayarla.',
+    onboardingContinue: 'Devam',
+    onboardingLanguage: 'Dil',
+    theme: 'Tema',
+    themeSystem: 'Sistem',
+    themeLight: 'Açık',
+    themeDark: 'Koyu'
   },
   en: {
     tabFeatures: 'Features',
@@ -59,7 +67,15 @@ const messages = {
     retry: 'Download',
     toggleDetails: 'Toggle details',
     bugTitle: 'Report a bug',
-    donateTitle: 'Support'
+    donateTitle: 'Support',
+    onboardingTitle: 'All-in-One setup',
+    onboardingDescription: 'Pick the features you want and set your language.',
+    onboardingContinue: 'Continue',
+    onboardingLanguage: 'Language',
+    theme: 'Theme',
+    themeSystem: 'System',
+    themeLight: 'Light',
+    themeDark: 'Dark'
   }
 };
 

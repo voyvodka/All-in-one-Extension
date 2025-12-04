@@ -1,7 +1,9 @@
 const DEFAULT_SETTINGS = {
   enabled: true,
   features: {},
-  language: null // null => use browser language
+  language: null, // null => use browser language
+  onboardingCompleted: false,
+  theme: 'system'
 };
 
 const DEFAULT_DOWNLOADS = {
@@ -33,6 +35,12 @@ export async function setLanguage(language) {
   return language || null;
 }
 
+export async function setTheme(theme) {
+  const normalized = theme === 'dark' || theme === 'light' ? theme : 'system';
+  await new Promise((resolve) => chrome.storage.local.set({ theme: normalized }, resolve));
+  return normalized;
+}
+
 export async function upsertFeatureState(featureId, nextState) {
   const current = await getSettings();
   const currentValue = Boolean(current.features?.[featureId]);
@@ -54,7 +62,9 @@ export function onSettingsChanged(callback) {
     const next = {
       enabled: changes.enabled?.newValue ?? undefined,
       features: changes.features?.newValue ?? undefined,
-      language: changes.language?.newValue ?? undefined
+      language: changes.language?.newValue ?? undefined,
+      onboardingCompleted: changes.onboardingCompleted?.newValue ?? undefined,
+      theme: changes.theme?.newValue ?? undefined
     };
     callback(next);
   });
