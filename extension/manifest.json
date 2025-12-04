@@ -1,11 +1,22 @@
 {
   "manifest_version": 3,
-  "name": "All-in-One Toolkit",
-  "description": "Extension scaffold with injected UI, popup controls, and per-site feature toggles.",
+  "name": "__MSG_extName__",
+  "description": "__MSG_extDescription__",
+  "default_locale": "en",
   "version": "0.1.1",
+  "icons": {
+    "16": "icons/icon_16.png",
+    "32": "icons/icon_32.png",
+    "48": "icons/icon_48.png",
+    "128": "icons/icon_128.png"
+  },
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "All-in-One Toolkit"
+    "default_title": "__MSG_extName__",
+    "default_icon": {
+      "16": "icons/icon_16.png",
+      "32": "icons/icon_32.png"
+    }
   },
   "permissions": [
     "storage",
