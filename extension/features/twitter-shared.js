@@ -93,3 +93,18 @@ export function createTwitterOption(template, { attr, label, onClick }) {
 
   return wrapper;
 }
+
+export async function safeSendMessage(payload) {
+  if (!chrome?.runtime?.id) {
+    throw new Error('Extension context invalidated');
+  }
+  try {
+    return await chrome.runtime.sendMessage(payload);
+  } catch (err) {
+    const msg = err?.message || '';
+    if (typeof msg === 'string' && msg.toLowerCase().includes('context invalidated')) {
+      throw new Error('Extension context invalidated');
+    }
+    throw err;
+  }
+}

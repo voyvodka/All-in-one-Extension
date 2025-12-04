@@ -3,7 +3,8 @@ import {
   getTweetUrl,
   getTweetTitle,
   findShareButton,
-  createTwitterOption
+  createTwitterOption,
+  safeSendMessage
 } from '../twitter-shared.js';
 
 const MP4_ATTR = 'data-aio-twitter-mp4-download';
@@ -64,7 +65,7 @@ export default {
         if (!tweetUrl) throw new Error('Tweet URL bulunamadı.');
         const tweetTitle = getTweetTitle();
 
-        const response = await chrome.runtime.sendMessage({
+        const response = await safeSendMessage({
           type: 'download-twitter-mp4',
           tweetUrl,
           tweetTitle

@@ -1,25 +1,77 @@
 export const isInstagram = (url) => {
   try {
-    const { hostname, pathname } = new URL(url);
+    const { hostname } = new URL(url);
+    // Paylaşım paneli ana sayfa/profilde de açılabildiği için sadece alan adına bak.
     const hostMatch = hostname.endsWith('instagram.com') || hostname === 'www.instagram.com';
-    const pathMatch = pathname.includes('/reel/') || pathname.includes('/reels/') || pathname.includes('/p/');
-    return hostMatch && pathMatch;
+    return hostMatch;
   } catch {
     return false;
   }
 };
 
+function normalizeReelUrl(href) {
+  if (!href) return null;
+  try {
+    const url = new URL(href, 'https://www.instagram.com');
+    const segments = url.pathname.split('/').filter(Boolean);
+    if (segments[0] === 'reels') {
+      segments[0] = 'reel';
+    }
+    url.pathname = segments.length ? `/${segments.join('/')}/` : '/';
+    url.search = '';
+    url.hash = '';
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
 export function getReelUrl() {
-  const og = document.querySelector('meta[property="og:url"]')?.getAttribute('content');
+  const absolutize = (href) => normalizeReelUrl(href);
+
+  const fromDialogOrArticle = (() => {
+    const dialog = document.querySelector('div[role="dialog"]');
+    const focusArticle = document.activeElement?.closest?.('article') || null;
+    const dialogArticle = dialog?.querySelector('article') || dialog?.closest('article') || null;
+    const pageArticle = document.querySelector('article');
+    const scopes = [focusArticle, dialogArticle, pageArticle, document];
+    for (const scope of scopes) {
+      if (!scope) continue;
+      const link =
+        scope.querySelector('a[href*="/reel/"]') ||
+        scope.querySelector('a[href*="/p/"]');
+      const candidate = absolutize(link?.getAttribute('href'));
+      if (candidate) return candidate;
+    }
+    return null;
+  })();
+  if (fromDialogOrArticle) return fromDialogOrArticle;
+
+  const og = normalizeReelUrl(document.querySelector('meta[property="og:url"]')?.getAttribute('content'));
   if (og) return og;
 
-  const canonical = document.querySelector('link[rel="canonical"]')?.href;
+  const canonical = normalizeReelUrl(document.querySelector('link[rel="canonical"]')?.href);
   if (canonical) return canonical;
 
-  return location.href;
+  return normalizeReelUrl(location.href) || location.href;
 }
 
 export function getReelTitle() {
+  const titleFromDialog = (() => {
+    const dialog = document.querySelector('div[role="dialog"]');
+    const article = dialog?.closest('article') || dialog?.querySelector('article') || document.querySelector('article');
+    if (!article) return null;
+
+    const caption = article.querySelector('h1, h2, h3, [data-testid="post-comment-root"] span[dir]')?.textContent;
+    if (caption) return caption.trim();
+
+    const altText = article.querySelector('img[alt]')?.getAttribute('alt');
+    if (altText) return altText.trim();
+
+    return null;
+  })();
+  if (titleFromDialog) return titleFromDialog;
+
   const ogTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content');
   if (ogTitle) return ogTitle.trim();
 

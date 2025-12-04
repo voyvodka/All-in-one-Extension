@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "All-in-One Toolkit",
   "description": "Extension scaffold with injected UI, popup controls, and per-site feature toggles.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "action": {
     "default_popup": "popup/popup.html",
     "default_title": "All-in-One Toolkit"
@@ -22,7 +22,9 @@
     "https://*.twitter.com/*",
     "https://twitter.com/*",
     "https://*.x.com/*",
-    "https://x.com/*"
+    "https://x.com/*",
+    "https://loader.to/*",
+    "https://*.loader.to/*"
   ],
   "background": {
     "service_worker": "background.js",

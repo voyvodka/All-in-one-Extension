@@ -13,7 +13,7 @@ const donateBtn = document.getElementById('donate-btn');
 const languageSelect = document.getElementById('language-select');
 const downloadActiveEl = document.getElementById('download-active');
 const downloadHistoryEl = document.getElementById('download-history');
-const refreshDownloadsBtn = document.getElementById('refresh-downloads');
+const sortDownloadsBtn = document.getElementById('sort-downloads');
 const clearHistoryBtn = document.getElementById('clear-history');
 const tabs = Array.from(document.querySelectorAll('.tab'));
 const tabViews = Array.from(document.querySelectorAll('.tab-view'));
@@ -24,8 +24,18 @@ const subTabs = Array.from(document.querySelectorAll('.subtab'));
 const subTabViews = Array.from(document.querySelectorAll('.download-group'));
 const SUBTAB_KEY = 'aioPopupDownloadsTab';
 const defaultSubTab = 'active';
+const SORT_KEY = 'aioPopupSortAsc';
 
 let expandedJobId = null;
+const savedSortAsc = (() => {
+  try {
+    const raw = localStorage.getItem(SORT_KEY);
+    return raw === null ? null : raw === 'true';
+  } catch {
+    return null;
+  }
+})();
+let sortAscending = savedSortAsc ?? false;
 
 let current = await getSettings();
 if (!current.enabled) {
@@ -43,6 +53,9 @@ applyStaticTranslations();
 hydrateLanguageSelect(current.language);
 renderFeatures(current);
 renderDownloads(downloads);
+if (sortDownloadsBtn) {
+  sortDownloadsBtn.classList.toggle('rotated', sortAscending);
+}
 
 function selectTab(tabName, persist = false) {
   const name = tabName || defaultTab;
@@ -111,8 +124,14 @@ languageSelect?.addEventListener('change', async () => {
   renderDownloads(downloads);
 });
 
-refreshDownloadsBtn.addEventListener('click', async () => {
-  downloads = await getDownloadsState();
+sortDownloadsBtn?.addEventListener('click', () => {
+  sortAscending = !sortAscending;
+  try {
+    localStorage.setItem(SORT_KEY, String(sortAscending));
+  } catch (err) {
+    console.warn('Sort persist failed', err);
+  }
+  sortDownloadsBtn.classList.toggle('rotated', sortAscending);
   renderDownloads(downloads);
 });
 
@@ -121,8 +140,8 @@ clearHistoryBtn.addEventListener('click', async () => {
 });
 
 // placeholders for future actions
-bugBtn?.addEventListener('click', () => {});
-donateBtn?.addEventListener('click', () => {});
+bugBtn?.addEventListener('click', () => { });
+donateBtn?.addEventListener('click', () => { });
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
@@ -168,13 +187,25 @@ function renderFeatures(settings) {
 }
 
 function renderDownloads(state) {
+  const sortedActive = sortByDate(state.active || []);
+  const sortedHistory = sortByDate(state.history || []);
+
   const allIds = new Set([...state.active, ...state.history].map((item) => item.id));
   if (expandedJobId && !allIds.has(expandedJobId)) {
     expandedJobId = null;
   }
 
-  renderDownloadList(downloadActiveEl, state.active, true);
-  renderDownloadList(downloadHistoryEl, state.history, false);
+  renderDownloadList(downloadActiveEl, sortedActive, true);
+  renderDownloadList(downloadHistoryEl, sortedHistory, false);
+}
+
+function sortByDate(list) {
+  const safe = Array.isArray(list) ? [...list] : [];
+  return safe.sort((a, b) => {
+    const aTime = a?.updatedAt || a?.createdAt || 0;
+    const bTime = b?.updatedAt || b?.createdAt || 0;
+    return sortAscending ? aTime - bTime : bTime - aTime;
+  });
 }
 
 function renderDownloadList(rootEl, items, allowCancel) {
@@ -193,6 +224,11 @@ function renderDownloadList(rootEl, items, allowCancel) {
     card.dataset.expanded = expandedJobId === job.id ? 'true' : 'false';
 
     const displayError = job.error && /USER_CANCELED/i.test(job.error) ? t('statusUserCancelled') : job.error;
+    const normalizedError = (() => {
+      if (!displayError) return '';
+      if (/unsupported\s+url/i.test(displayError)) return t('errorUnsupportedUrl');
+      return displayError;
+    })();
     const fallbackFromUrl = (() => {
       if (!job.sourceUrl) return '';
       try {
@@ -207,7 +243,7 @@ function renderDownloadList(rootEl, items, allowCancel) {
       preparing: { icon: '⏳', label: t('statusPreparing') },
       downloading: { icon: '⬇️', label: t('statusDownloading') },
       completed: { icon: '✅', label: t('statusCompleted') },
-      failed: { icon: '⚠️', label: displayError ? `${t('errorLabel')}: ${displayError}` : t('statusFailed') },
+      failed: { icon: '⚠️', label: normalizedError ? `${t('errorLabel')}: ${normalizedError}` : t('statusFailed') },
       cancelled: { icon: '⚠️', label: t('statusCancelled') }
     };
     const statusInfo = statusMap[job.status] || statusMap.preparing;
@@ -292,10 +328,10 @@ function applyStaticTranslations() {
   if (activeSubTab) activeSubTab.textContent = t('subtabActive');
   if (historySubTab) historySubTab.textContent = t('subtabHistory');
 
-  if (refreshDownloadsBtn) refreshDownloadsBtn.title = t('refresh');
   if (clearHistoryBtn) clearHistoryBtn.title = t('clearHistory');
   if (bugBtn) bugBtn.title = t('bugTitle');
   if (donateBtn) donateBtn.title = t('donateTitle');
+  if (sortDownloadsBtn) sortDownloadsBtn.title = t('sort');
 
   hydrateLanguageSelect(current.language);
 }

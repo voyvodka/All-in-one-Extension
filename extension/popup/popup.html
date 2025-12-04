@@ -40,7 +40,12 @@
         <button class="subtab active" data-subtab="active">Aktif</button>
         <button class="subtab" data-subtab="history">Geçmiş</button>
         <div class="download-actions">
-          <button id="refresh-downloads" class="icon-btn" title="Yenile">⟳</button>
+          <button id="sort-downloads" class="icon-btn rotate" title="Sırala" aria-label="Sırala">
+            <svg class="sort-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path class="sort-arrow" d="M7 3.5L3.5 8H6v12h2V8h2.5L7 3.5z" />
+              <path class="sort-lines" d="M12 8h8M12 12h6M12 16h4" />
+            </svg>
+          </button>
           <button id="clear-history" class="icon-btn" title="Geçmişi temizle">🗑</button>
         </div>
       </div>

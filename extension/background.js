@@ -30,19 +30,24 @@ const LOADER_BASE_URL = 'https://loader.to';
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const downloadIdToJobId = new Map();
 
-function sanitizeTitle(title, maxLen = 30, identifier) {
-  const base = (title || 'download')
-    .replace(/[<>:"/\\|?*]+/g, '_')
-    .replace(/\s+/g, '');
+function getPlatformPrefix(kind) {
+  if (!kind) return 'dl';
+  if (kind.includes('youtube')) return 'yt';
+  if (kind.includes('instagram')) return 'ig';
+  if (kind.includes('twitter')) return 'x';
+  return 'dl';
+}
 
-  let suffix = '';
-  if (identifier) {
-    const cleanId = String(identifier).replace(/[^a-zA-Z0-9_-]+/g, '');
-    if (cleanId) suffix = `_${cleanId.slice(0, 8)}`;
-  }
+function buildTimestampBase(kind, ts = Date.now()) {
+  const prefix = getPlatformPrefix(kind);
+  return `${prefix}_${ts}`;
+}
 
-  const combined = (base + suffix).slice(0, maxLen);
-  return combined || 'download';
+function buildTimestampFile(kind, ext, ts = Date.now(), suffix) {
+  const base = buildTimestampBase(kind, ts);
+  const cleanExt = (ext || '').replace(/[^a-z0-9]/gi, '') || 'bin';
+  const cleanSuffix = suffix ? `_${String(suffix).replace(/[^a-z0-9_-]+/gi, '')}` : '';
+  return `${base}${cleanSuffix}.${cleanExt}`;
 }
 
 function getYoutubeIdFromUrl(urlString) {
@@ -88,7 +93,6 @@ async function updateJob(jobId, updater) {
 
     const next = { ...state.active[idx] };
     updater(next);
-    next.updatedAt = Date.now();
 
     const finished = ['completed', 'failed', 'cancelled'].includes(next.status);
     if (finished) {
@@ -126,7 +130,8 @@ async function startYoutubeDownload(kind, videoId, videoTitle) {
   const isMp4 = kind === 'youtube-mp4';
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
   const fileExt = isMp4 ? 'mp4' : 'mp3';
-  const fileName = `${sanitizeTitle(videoTitle, 30, videoId)}.${fileExt}`;
+  const ts = Date.now();
+  const fileName = buildTimestampFile(kind, fileExt, ts);
   const job = createJob({
     type: kind,
     title: videoTitle,
@@ -198,7 +203,8 @@ async function startInstagramDownload(kind, reelUrl, reelTitle) {
   const isMp4 = kind === 'instagram-mp4';
   const ext = isMp4 ? 'mp4' : 'mp3';
   const baseTitle = reelTitle || reelId || 'instagram-reel';
-  const fileName = `${sanitizeTitle(baseTitle, 30, reelId)}.${ext}`;
+  const ts = Date.now();
+  const fileName = buildTimestampFile(kind, ext, ts);
   const job = createJob({
     type: kind,
     title: baseTitle,
@@ -270,7 +276,8 @@ async function startTwitterDownload(kind, tweetUrl, tweetTitle) {
   const isMp4 = kind === 'twitter-mp4';
   const ext = isMp4 ? 'mp4' : 'mp3';
   const baseTitle = tweetTitle || tweetId || 'twitter-video';
-  const fileName = `${sanitizeTitle(baseTitle, 30, tweetId)}.${ext}`;
+  const ts = Date.now();
+  const fileName = buildTimestampFile(kind, ext, ts);
   const job = createJob({
     type: kind,
     title: baseTitle,
@@ -348,6 +355,14 @@ async function fetchLoaderJson(url, context) {
   }
 }
 
+function resolveLoaderError(data, fallback = 'Conversion failed: no file returned') {
+  const msg = (data?.text || data?.message || data?.status || fallback || '').trim();
+  if (/unsupported\s+url/i.test(msg)) {
+    return 'Unsupported URL / Desteklenmeyen bağlantı';
+  }
+  return msg || fallback;
+}
+
 async function getMp3DownloadUrl(videoUrl, onProgress) {
   const startUrl = `${LOADER_BASE_URL}/ajax/download.php?format=mp3&url=${encodeURIComponent(videoUrl)}`;
   const startData = await fetchLoaderJson(startUrl, 'Failed to start conversion');
@@ -378,11 +393,24 @@ async function getMp3DownloadUrl(videoUrl, onProgress) {
     const prog = Number(progressData?.progress);
     if (!Number.isNaN(prog)) {
       onProgress?.({ status: 'preparing', progress: prog });
+
+      // loader.to returns 1000 when it is finished (success or no-file). Stop polling at that point.
+      if (prog >= 1000) {
+        if (progressData?.download_url) {
+          onProgress?.({ status: 'preparing', progress: 100 });
+          return progressData.download_url;
+        }
+        throw new Error(resolveLoaderError(progressData, 'Conversion stopped by server'));
+      }
     }
 
     if (progressData?.download_url) {
       onProgress?.({ status: 'preparing', progress: 100 });
       return progressData.download_url;
+    }
+
+    if (prog > 100) {
+      onProgress?.({ status: 'preparing', progress: 100 });
     }
 
     if (progressData?.status === 'error') {
@@ -425,11 +453,24 @@ async function getMp4DownloadUrl(videoUrl, onProgress) {
     const prog = Number(progressData?.progress);
     if (!Number.isNaN(prog)) {
       onProgress?.({ status: 'preparing', progress: prog });
+
+      // loader.to returns 1000 when it is finished (success or no-file). Stop polling at that point.
+      if (prog >= 1000) {
+        if (progressData?.download_url) {
+          onProgress?.({ status: 'preparing', progress: 100 });
+          return progressData.download_url;
+        }
+        throw new Error(resolveLoaderError(progressData, 'Conversion stopped by server'));
+      }
     }
 
     if (progressData?.download_url) {
       onProgress?.({ status: 'preparing', progress: 100 });
       return progressData.download_url;
+    }
+
+    if (prog > 100) {
+      onProgress?.({ status: 'preparing', progress: 100 });
     }
 
     if (progressData?.status === 'error') {
@@ -466,17 +507,17 @@ chrome.downloads.onChanged.addListener(async (delta) => {
       }
     }
 
-  if (delta.state?.current === 'complete') {
-    job.status = 'completed';
-    job.progress = 100;
-  } else if (delta.state?.current === 'interrupted') {
-    job.status = 'failed';
-    job.error = delta.error?.current || 'Download interrupted';
-  } else {
-    if (job.status === 'preparing') {
-      job.status = 'downloading';
+    if (delta.state?.current === 'complete') {
+      job.status = 'completed';
+      job.progress = 100;
+    } else if (delta.state?.current === 'interrupted') {
+      job.status = 'failed';
+      job.error = delta.error?.current || 'Download interrupted';
+    } else {
+      if (job.status === 'preparing') {
+        job.status = 'downloading';
+      }
     }
-  }
   });
 });
 

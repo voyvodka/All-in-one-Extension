@@ -185,6 +185,30 @@ p {
   font-size: 14px;
 }
 
+.icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.sort-icon .sort-arrow {
+  fill: currentColor;
+}
+
+.sort-icon .sort-lines {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+.icon-btn.rotate {
+  transition: transform 0.2s ease;
+}
+
+.icon-btn.rotate.rotated {
+  transform: rotate(180deg);
+}
+
 .download-card {
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -255,6 +279,7 @@ p {
   align-items: center;
   gap: 8px;
   min-width: 0;
+  flex: 1;
 }
 
 .download-texts {
@@ -262,6 +287,7 @@ p {
   align-items: center;
   gap: 6px;
   min-width: 0;
+  flex: 1;
 }
 
 .status-icon {
@@ -274,6 +300,11 @@ p {
   display: flex;
   gap: 6px;
   align-items: center;
+  margin-left: auto;
+}
+
+.download-texts .pill {
+  margin-left: auto;
 }
 
 .download-subtabs {
