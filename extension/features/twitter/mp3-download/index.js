@@ -5,7 +5,7 @@ import {
   findShareButton,
   createTwitterOption,
   safeSendMessage
-} from '../twitter-shared.js';
+} from '../shared.js';
 
 const MP3_ATTR = 'data-aio-twitter-mp3-download';
 

@@ -5,7 +5,7 @@ import {
   findShareButton,
   createTwitterOption,
   safeSendMessage
-} from '../twitter-shared.js';
+} from '../shared.js';
 
 const MP4_ATTR = 'data-aio-twitter-mp4-download';
 

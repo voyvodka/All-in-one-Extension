@@ -1,4 +1,4 @@
-import { isYoutube, createYoutubeShareTarget } from '../youtube-shared.js';
+import { isYoutube, createYoutubeShareTarget } from '../shared.js';
 
 const MP3_ATTR = 'data-aio-youtube-mp3-download';
 

@@ -1,10 +1,10 @@
 // Import feature modules statically, as Service Workers do not support variable dynamic imports.
-import youtubeMp3Download from './features/youtube-mp3-download/index.js';
-import youtubeMp4Download from './features/youtube-mp4-download/index.js';
-import instagramReelsMp3 from './features/instagram-reels-mp3/index.js';
-import instagramReelsMp4 from './features/instagram-reels-mp4/index.js';
-import twitterMp3Download from './features/twitter-mp3-download/index.js';
-import twitterMp4Download from './features/twitter-mp4-download/index.js';
+import youtubeMp3Download from './features/youtube/mp3-download/index.js';
+import youtubeMp4Download from './features/youtube/mp4-download/index.js';
+import instagramReelsMp3 from './features/instagram/reels-mp3/index.js';
+import instagramReelsMp4 from './features/instagram/reels-mp4/index.js';
+import twitterMp3Download from './features/twitter/mp3-download/index.js';
+import twitterMp4Download from './features/twitter/mp4-download/index.js';
 
 // Import shared utilities
 import {

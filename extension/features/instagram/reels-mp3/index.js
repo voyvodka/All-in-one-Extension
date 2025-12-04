@@ -4,7 +4,7 @@ import {
   getReelTitle,
   findShareOptionTemplate,
   createInstagramOption
-} from '../instagram-shared.js';
+} from '../shared.js';
 
 const MP3_ATTR = 'data-aio-instagram-mp3-download';
 
