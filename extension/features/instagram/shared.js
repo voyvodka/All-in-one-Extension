@@ -10,6 +10,11 @@ export const isInstagram = (url) => {
 };
 
 export const INSTAGRAM_DOWNLOAD_MENU_ATTR = 'data-aio-instagram-download-menu';
+const MENU_MENU_ATTR = `${INSTAGRAM_DOWNLOAD_MENU_ATTR}-menu`;
+const BOUND_FLAG = 'true';
+const menuProviders = new Map();
+let menuObserver = null;
+let openMenu = null;
 
 function normalizeReelUrl(href) {
   if (!href) return null;
@@ -306,6 +311,233 @@ export function createActionBarDownloadButton(templateButton, { attr, label, onC
   });
 
   return button;
+}
+
+export async function safeSendMessage(payload) {
+  return new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage(payload, (response) => {
+        if (chrome.runtime.lastError) {
+          resolve({ success: false, error: chrome.runtime.lastError.message });
+          return;
+        }
+        resolve(response);
+      });
+    } catch (error) {
+      console.error('Instagram message send failed', error);
+      resolve({ success: false, error: error.message });
+    }
+  });
+}
+
+export function registerInstagramMenuProvider(id, buildOptions) {
+  if (!id || typeof buildOptions !== 'function') return () => {};
+  menuProviders.set(id, buildOptions);
+  ensureMenuObserver();
+  injectMenuButtons();
+
+  return () => {
+    menuProviders.delete(id);
+    if (!menuProviders.size) {
+      teardownMenuUi();
+    }
+  };
+}
+
+function ensureMenuObserver() {
+  if (menuObserver || !document?.body) return;
+  menuObserver = new MutationObserver(() => injectMenuButtons());
+  menuObserver.observe(document.body, { childList: true, subtree: true });
+}
+
+function teardownMenuUi() {
+  closeMenu();
+  if (menuObserver) {
+    menuObserver.disconnect();
+    menuObserver = null;
+  }
+  document.querySelectorAll(`[${INSTAGRAM_DOWNLOAD_MENU_ATTR}]`).forEach((node) => node.remove());
+}
+
+function injectMenuButtons() {
+  if (!menuProviders.size) return;
+  const articles = document.querySelectorAll('article');
+  articles.forEach((article) => {
+    const { actionBar, shareButton } = findInstagramActionBar(article);
+    if (!actionBar || !shareButton) return;
+
+    const existing = actionBar.querySelector(`[${INSTAGRAM_DOWNLOAD_MENU_ATTR}]`);
+    if (existing) {
+      if (existing.dataset.aioBound === BOUND_FLAG) return;
+      bindButton(existing);
+      return;
+    }
+
+    const node = createActionBarDownloadButton(shareButton, {
+      attr: INSTAGRAM_DOWNLOAD_MENU_ATTR,
+      label: 'İndir',
+      onClick: handleMenuClick
+    });
+    if (!node) return;
+    bindButton(node);
+    shareButton.parentElement?.insertBefore(node, shareButton.nextSibling || null);
+  });
+}
+
+function bindButton(button) {
+  button.dataset.aioBound = BOUND_FLAG;
+  button.removeEventListener('click', handleMenuClick);
+  button.addEventListener('click', handleMenuClick);
+}
+
+function buildMenuOptions(context) {
+  const options = [];
+  menuProviders.forEach((builder) => {
+    try {
+      const built = builder(context);
+      if (Array.isArray(built)) {
+        options.push(...built);
+      }
+    } catch (error) {
+      console.error('Instagram menu option builder failed', error);
+    }
+  });
+  return options;
+}
+
+function handleMenuClick(event) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const button = event.currentTarget;
+  if (button.dataset?.disabled === 'true') return;
+
+  if (openMenu?.button === button) {
+    closeMenu();
+    return;
+  }
+
+  const reelUrl = getReelUrl();
+  if (!reelUrl) return;
+  const reelTitle = getReelTitle();
+  const activeArticle = button.closest('article') || null;
+  const media = findInstagramMediaSources(activeArticle);
+
+  const options = buildMenuOptions({ reelUrl, reelTitle, activeArticle, media });
+  renderMenu(button, options);
+}
+
+function resolveThemeColors() {
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark = document.body?.dataset?.theme === 'dark' || prefersDark;
+  if (isDark) {
+    return {
+      bg: 'rgba(17,17,17,0.96)',
+      text: 'rgba(255,255,255,0.95)',
+      border: 'rgba(255,255,255,0.08)',
+      hover: 'rgba(255,255,255,0.08)',
+      shadow: '0 10px 30px rgba(0,0,0,0.35)'
+    };
+  }
+  return {
+    bg: 'rgba(255,255,255,0.98)',
+    text: '#111',
+    border: 'rgba(0,0,0,0.12)',
+    hover: 'rgba(0,0,0,0.05)',
+    shadow: '0 12px 32px rgba(0,0,0,0.12)'
+  };
+}
+
+function positionMenu(menu, button) {
+  if (!menu || !button?.isConnected) {
+    closeMenu();
+    return;
+  }
+  const rect = button.getBoundingClientRect();
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+  const menuWidth = menu.offsetWidth || 160;
+  const left = Math.max(8, Math.min(rect.left, viewportWidth - menuWidth - 8));
+  menu.style.top = `${rect.bottom + 6}px`;
+  menu.style.left = `${left}px`;
+}
+
+function renderMenu(button, options) {
+  closeMenu();
+  if (!options.length) return;
+
+  const colors = resolveThemeColors();
+  const menu = document.createElement('div');
+  menu.setAttribute(MENU_MENU_ATTR, 'true');
+  menu.style.position = 'fixed';
+  menu.style.background = colors.bg;
+  menu.style.color = colors.text;
+  menu.style.border = `1px solid ${colors.border}`;
+  menu.style.borderRadius = '10px';
+  menu.style.boxShadow = colors.shadow;
+  menu.style.padding = '6px';
+  menu.style.zIndex = '2147483647';
+  menu.style.minWidth = '140px';
+
+  options.forEach((opt) => {
+    const item = document.createElement('button');
+    item.textContent = opt.label;
+    item.style.display = 'block';
+    item.style.width = '100%';
+    item.style.background = 'transparent';
+    item.style.color = colors.text;
+    item.style.border = 'none';
+    item.style.padding = '8px 10px';
+    item.style.textAlign = 'left';
+    item.style.cursor = 'pointer';
+    item.style.fontSize = '14px';
+    item.style.fontWeight = '500';
+    item.style.borderRadius = '8px';
+    item.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      closeMenu();
+      opt.action();
+    });
+    item.addEventListener('mouseenter', () => {
+      item.style.background = colors.hover;
+    });
+    item.addEventListener('mouseleave', () => {
+      item.style.background = 'transparent';
+    });
+    menu.appendChild(item);
+  });
+
+  const onDoc = (ev) => {
+    if (!menu.contains(ev.target) && ev.target !== button) {
+      closeMenu();
+    }
+  };
+  document.addEventListener('click', onDoc);
+
+  const onScroll = () => positionMenu(menu, button);
+  const onResize = () => positionMenu(menu, button);
+  document.addEventListener('scroll', onScroll, true);
+  window.addEventListener('resize', onResize);
+
+  document.body.appendChild(menu);
+  positionMenu(menu, button);
+  openMenu = { button, menu, onDoc, onScroll, onResize };
+}
+
+function closeMenu() {
+  if (openMenu?.menu && openMenu.menu.parentElement) {
+    openMenu.menu.parentElement.removeChild(openMenu.menu);
+  }
+  if (openMenu?.onDoc) {
+    document.removeEventListener('click', openMenu.onDoc);
+  }
+  if (openMenu?.onScroll) {
+    document.removeEventListener('scroll', openMenu.onScroll, true);
+  }
+  if (openMenu?.onResize) {
+    window.removeEventListener('resize', openMenu.onResize);
+  }
+  openMenu = null;
 }
 
 export function findInstagramMediaSources(targetArticle) {

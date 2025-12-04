@@ -134,6 +134,13 @@ const featureMessages = {
       en: 'Adds an MP4 download shortcut for Instagram Reels.'
     }
   },
+  'instagram-reels-image': {
+    label: { tr: 'Instagram Fotoğraf İndir', en: 'Instagram Photo Download' },
+    description: {
+      tr: 'Instagram Reels için fotoğraf indirme kısayolu ekler.',
+      en: 'Adds a photo download shortcut for Instagram Reels.'
+    }
+  },
   'twitter-mp3-download': {
     label: { tr: 'Twitter MP3 İndir', en: 'Twitter MP3 Download' },
     description: {
