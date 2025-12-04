@@ -312,6 +312,10 @@ p {
   color: var(--text);
 }
 
+.pill.img {
+  color: var(--text);
+}
+
 .status {
   font-size: 11px;
   color: var(--muted-2);

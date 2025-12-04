@@ -259,6 +259,16 @@ function renderDownloadList(rootEl, items, allowCancel) {
       }
     })();
     const displayName = job.fileName || job.title || fallbackFromUrl || t('downloadFallback');
+    const pill = (() => {
+      if (job.type?.includes('mp4')) return { className: 'mp4', label: 'MP4' };
+      if (job.type?.includes('mp3')) return { className: 'mp3', label: 'MP3' };
+      if (job.type?.includes('image')) return { className: 'img', label: 'IMG' };
+
+      const extMatch = (job.fileName || '').match(/\.([a-z0-9]{2,5})$/i);
+      const ext = extMatch?.[1]?.toUpperCase();
+      if (ext) return { className: 'img', label: ext };
+      return { className: 'mp3', label: 'FILE' };
+    })();
     const statusMap = {
       preparing: { icon: '⏳', label: t('statusPreparing') },
       downloading: { icon: '⬇️', label: t('statusDownloading') },
@@ -283,7 +293,7 @@ function renderDownloadList(rootEl, items, allowCancel) {
         <span class="status-icon">${statusInfo.icon}</span>
         <div class="download-texts">
         <p class="download-title" title="${displayName}">${displayName}</p>
-        <span class="pill ${job.type?.includes('mp4') ? 'mp4' : 'mp3'}">${job.type?.includes('mp4') ? 'MP4' : 'MP3'}</span>
+        <span class="pill ${pill.className}">${pill.label}</span>
       </div>
       </div>
       <div class="download-actions-inline"></div>
