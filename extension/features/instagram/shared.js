@@ -15,6 +15,16 @@ const BOUND_FLAG = 'true';
 const menuProviders = new Map();
 let menuObserver = null;
 let openMenu = null;
+const ACTION_ICON_SELECTORS = [
+  'svg[aria-label="Share"]',
+  'svg[aria-label="Share Post"]',
+  'svg[aria-label="Paylaş"]',
+  'svg[aria-label="Like"]',
+  'svg[aria-label="Unlike"]',
+  'svg[aria-label="Beğen"]',
+  'svg[aria-label="Comment"]',
+  'svg[aria-label="Save"]'
+];
 
 function normalizeReelUrl(href) {
   if (!href) return null;
@@ -242,13 +252,41 @@ export function findInstagramActionBar(article) {
     scope.querySelector('svg[aria-label="Share"]') ||
     scope.querySelector('svg[aria-label="Share Post"]') ||
     scope.querySelector('svg[aria-label="Paylaş"]');
-  const shareButton = shareSvg?.closest('[role="button"]');
-  if (!shareButton) return { actionBar: null, shareButton: null };
+
+  let templateButton = shareSvg?.closest('[role="button"]') || null;
+
+  if (!templateButton) {
+    const altSvg = scope.querySelector(
+      'svg[aria-label="Like"], svg[aria-label="Unlike"], svg[aria-label="Beğen"], svg[aria-label="Comment"], svg[aria-label="Save"]'
+    );
+    templateButton = altSvg?.closest('[role="button"]') || null;
+  }
+
+  if (!templateButton) return { actionBar: null, shareButton: null };
   const actionBar =
-    shareButton.closest('section') ||
-    shareButton.parentElement ||
-    shareButton.closest('[class]');
-  return { actionBar, shareButton };
+    templateButton.closest('section') ||
+    templateButton.parentElement ||
+    templateButton.closest('[class]');
+  return { actionBar, shareButton: templateButton };
+}
+
+export function getInstagramActionContainers() {
+  const containers = new Set();
+  document.querySelectorAll('article').forEach((el) => containers.add(el));
+
+  const dialog = document.querySelector('div[role="dialog"]');
+  if (dialog) containers.add(dialog);
+
+  document.querySelectorAll(ACTION_ICON_SELECTORS.join(',')).forEach((svg) => {
+    const candidate =
+      svg.closest('article') ||
+      svg.closest('section') ||
+      svg.closest('[class]') ||
+      svg.parentElement;
+    if (candidate) containers.add(candidate);
+  });
+
+  return Array.from(containers);
 }
 
 export function createActionBarDownloadButton(templateButton, { attr, label, onClick }) {
@@ -313,6 +351,48 @@ export function createActionBarDownloadButton(templateButton, { attr, label, onC
   return button;
 }
 
+export function insertActionButtonNear(templateButton, newButton) {
+  if (!templateButton || !newButton) return;
+  const wrapperSpan = templateButton.closest('span');
+  const parent = (wrapperSpan && wrapperSpan.parentElement) || templateButton.parentElement;
+  if (!parent) return;
+
+  const isWrappedSpan =
+    newButton.parentElement &&
+    newButton.parentElement.tagName === 'SPAN' &&
+    newButton.parentElement.childElementCount === 1 &&
+    newButton.parentElement.firstElementChild === newButton;
+
+  let insertNode = newButton;
+  if (!isWrappedSpan && wrapperSpan && wrapperSpan.tagName === 'SPAN') {
+    const span = wrapperSpan.cloneNode(false);
+    span.className = wrapperSpan.className;
+    span.appendChild(newButton);
+    insertNode = span;
+  } else if (isWrappedSpan) {
+    insertNode = newButton.parentElement;
+  }
+
+  const saveButton = parent.querySelector('svg[aria-label="Save"]');
+  const saveWrapper = saveButton?.closest('span') || saveButton?.closest('[role="button"]') || saveButton?.parentElement;
+  const desiredRef = saveWrapper && saveWrapper.parentElement === parent ? saveWrapper : null;
+
+  const alreadyPlaced =
+    insertNode.parentElement === parent &&
+    ((desiredRef && insertNode.nextSibling === desiredRef) || (!desiredRef && parent.lastElementChild === insertNode));
+  if (alreadyPlaced) return;
+
+  if (insertNode.parentElement && insertNode.parentElement !== parent) {
+    insertNode.parentElement.removeChild(insertNode);
+  }
+
+  if (desiredRef) {
+    parent.insertBefore(insertNode, desiredRef);
+  } else {
+    parent.appendChild(insertNode);
+  }
+}
+
 export async function safeSendMessage(payload) {
   return new Promise((resolve) => {
     try {
@@ -361,15 +441,17 @@ function teardownMenuUi() {
 
 function injectMenuButtons() {
   if (!menuProviders.size) return;
-  const articles = document.querySelectorAll('article');
-  articles.forEach((article) => {
-    const { actionBar, shareButton } = findInstagramActionBar(article);
+  const containers = getInstagramActionContainers();
+  containers.forEach((container) => {
+    const { actionBar, shareButton } = findInstagramActionBar(container);
     if (!actionBar || !shareButton) return;
 
     const existing = actionBar.querySelector(`[${INSTAGRAM_DOWNLOAD_MENU_ATTR}]`);
     if (existing) {
-      if (existing.dataset.aioBound === BOUND_FLAG) return;
-      bindButton(existing);
+      if (existing.dataset.aioBound !== BOUND_FLAG) {
+        bindButton(existing);
+      }
+      insertActionButtonNear(shareButton, existing);
       return;
     }
 
@@ -380,7 +462,7 @@ function injectMenuButtons() {
     });
     if (!node) return;
     bindButton(node);
-    shareButton.parentElement?.insertBefore(node, shareButton.nextSibling || null);
+    insertActionButtonNear(shareButton, node);
   });
 }
 
@@ -420,8 +502,11 @@ function handleMenuClick(event) {
   const reelUrl = getReelUrl();
   if (!reelUrl) return;
   const reelTitle = getReelTitle();
-  const activeArticle = button.closest('article') || null;
-  const media = findInstagramMediaSources(activeArticle);
+  const articleCandidate = button.closest('article') || getActiveInstagramArticle() || null;
+  const activeArticle = articleCandidate || document;
+  const media = findInstagramMediaSources(
+    articleCandidate && articleCandidate.tagName === 'ARTICLE' ? articleCandidate : null
+  );
 
   const options = buildMenuOptions({ reelUrl, reelTitle, activeArticle, media });
   renderMenu(button, options);

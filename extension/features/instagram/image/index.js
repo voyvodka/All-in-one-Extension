@@ -1,4 +1,9 @@
-import { isInstagram, registerInstagramMenuProvider, safeSendMessage, findInstagramMediaSources } from '../shared.js';
+import {
+  isInstagram,
+  registerInstagramMenuProvider,
+  safeSendMessage,
+  findInstagramMediaSources
+} from '../shared.js';
 
 const NAV_LABELS = {
   next: ['Next', 'Sonraki', 'İleri'],
