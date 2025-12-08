@@ -79,6 +79,7 @@ export function registerTwitterMenuProvider(id, buildOptions) {
   if (!id || typeof buildOptions !== 'function') return () => { };
 
   menuProviders.set(id, buildOptions);
+  ensureDownloadHoverStyles();
   ensureMenuObserver();
   injectMenuButtons();
 
@@ -143,12 +144,22 @@ function createActionBarDownloadButton(templateButton, label) {
   button.removeAttribute('rel');
 
   const countSpan = button.querySelector('[data-testid="app-text-transition-container"]');
-  if (countSpan) {
-    countSpan.textContent = '';
+  if (countSpan) countSpan.textContent = '';
+
+  const svg = button.querySelector('svg');
+  if (svg) {
+    const path = svg.querySelector('path');
+    if (path) {
+      path.setAttribute(
+        'd',
+        'M11.99 16l-5.7-5.7L7.7 8.88l3.29 3.3V2.59h2v9.59l3.3-3.3 1.41 1.42-5.71 5.7zM21 15l-.02 3.51c0 1.38-1.12 2.49-2.5 2.49H5.5C4.11 21 3 19.88 3 18.5V15h2v3.5c0 .28.22.5.5.5h12.98c.28 0 .5-.22.5-.5L19 15h2z'
+      );
+    }
   }
 
-  button.replaceWith(button.cloneNode(true));
-  return button;
+  const cloned = button.cloneNode(true);
+  button.replaceWith(cloned);
+  return cloned;
 }
 
 function insertActionButtonNear(anchorButton, newButton) {
@@ -166,7 +177,16 @@ function insertActionButtonNear(anchorButton, newButton) {
   let wrapper = newButton.closest('div.css-175oi2r');
   if (!wrapper) {
     wrapper = document.createElement('div');
-    wrapper.className = row.className;
+
+    const children = Array.from(rowContainer.children).filter(el => el.tagName === 'DIV');
+    const referenceWrapper = children[children.length - 1] || group.closest('div.css-175oi2r');
+
+    if (referenceWrapper) {
+      wrapper.className = referenceWrapper.className;
+    } else {
+      wrapper.className = 'css-175oi2r r-18u37iz r-1h0z5md r-1wron08';
+    }
+
     wrapper.appendChild(newButton);
   }
 
@@ -296,6 +316,83 @@ function resolveTheme() {
   };
 }
 
+function positionMenuRelativeToButton(menu, button) {
+  if (!menu || !button) return;
+
+  const rect = button.getBoundingClientRect();
+  const margin = 8;
+
+  menu.style.visibility = 'hidden';
+  menu.style.top = '0px';
+  menu.style.left = '0px';
+
+  const menuWidth = menu.offsetWidth || 160;
+  const menuHeight = menu.offsetHeight || 40;
+
+  let top = rect.bottom + margin;
+  let left = rect.right - menuWidth;
+
+  // Ekranın dışına taşmasın
+  if (top + menuHeight > window.innerHeight - margin) {
+    top = rect.top - menuHeight - margin;
+  }
+  if (top < margin) top = margin;
+  if (left < margin) left = margin;
+  if (left + menuWidth > window.innerWidth - margin) {
+    left = window.innerWidth - menuWidth - margin;
+  }
+
+  menu.style.top = `${top}px`;
+  menu.style.left = `${left}px`;
+  menu.style.visibility = 'visible';
+}
+
+function ensureDownloadHoverStyles() {
+  if (document.getElementById('aio-twitter-download-style')) return;
+
+  const style = document.createElement('style');
+  style.id = 'aio-twitter-download-style';
+
+  style.textContent = `
+    /* Normal ikon rengi */
+    article[data-testid="tweet"] button[${TWITTER_DOWNLOAD_MENU_ATTR}="true"] div[dir="ltr"] {
+      color: rgb(113, 118, 123) !important;
+      transition: color 0.2s ease-out;
+    }
+
+    /* Dış wrapper: her zaman şeffaf kalsın */
+    article[data-testid="tweet"] button[${TWITTER_DOWNLOAD_MENU_ATTR}="true"] 
+      div.r-xoduu5:not([class*="r-1p0dtai"]) {
+      background-color: transparent !important;
+      border-radius: 9999px !important;
+    }
+
+    /* İç daire (r-1p0dtai içeren): transition tanımla */
+    article[data-testid="tweet"] button[${TWITTER_DOWNLOAD_MENU_ATTR}="true"] 
+      div.r-xoduu5[class*="r-1p0dtai"] {
+      background-color: transparent !important;
+      border-radius: 9999px !important;
+      transition: background-color 0.2s ease-out;
+    }
+
+    /* Hover – ikon mavi olsun */
+    article[data-testid="tweet"] button[${TWITTER_DOWNLOAD_MENU_ATTR}="true"]:hover div[dir="ltr"],
+    article[data-testid="tweet"] button[${TWITTER_DOWNLOAD_MENU_ATTR}="true"]:focus-visible div[dir="ltr"] {
+      color: rgb(29, 155, 240) !important;
+    }
+
+    /* Hover – SADECE içteki daire mavi arka plan alsın */
+    article[data-testid="tweet"] button[${TWITTER_DOWNLOAD_MENU_ATTR}="true"]:hover 
+      div.r-xoduu5[class*="r-1p0dtai"],
+    article[data-testid="tweet"] button[${TWITTER_DOWNLOAD_MENU_ATTR}="true"]:focus-visible 
+      div.r-xoduu5[class*="r-1p0dtai"] {
+      background-color: rgba(29,155,240,0.1) !important;
+    }
+  `;
+
+  document.head.appendChild(style);
+}
+
 function renderMenu(button, options) {
   const theme = resolveTheme();
 
@@ -309,17 +406,22 @@ function renderMenu(button, options) {
   menu.setAttribute('role', 'menu');
 
   Object.assign(menu.style, {
-    position: 'absolute',
-    bottom: '110%',
+    position: 'fixed',
+    top: `0`,
     right: '0',
+
+    display: 'inline-block',
+    width: 'max-content',
+    maxWidth: 'calc(100vw - 20px)',
     minWidth: '160px',
+
     background: theme.bg,
     color: theme.text,
     borderRadius: '12px',
     padding: '4px 0',
     boxShadow: theme.shadow,
     border: `1px solid ${theme.border}`,
-    zIndex: '9999'
+    zIndex: '2147483647'
   });
 
   options.forEach((opt) => {
@@ -355,6 +457,8 @@ function renderMenu(button, options) {
       e.stopPropagation();
       if (opt.disabled) return;
 
+      closeMenu();
+
       try {
         await opt.onClick?.();
       } catch (error) {
@@ -367,9 +471,10 @@ function renderMenu(button, options) {
     menu.appendChild(item);
   });
 
-  (wrapper || button).appendChild(menu);
+  document.body.appendChild(menu);
   button.setAttribute('aria-expanded', 'true');
-  openMenu = { button, menu };
+
+  positionMenuRelativeToButton(menu, button);
 
   const onDocClick = (ev) => {
     if (!menu.contains(ev.target) && ev.target !== button) {
@@ -378,12 +483,34 @@ function renderMenu(button, options) {
     }
   };
   document.addEventListener('click', onDocClick, true);
+
+  const onScrollOrResize = () => {
+    if (!document.body.contains(button) || !document.body.contains(menu)) {
+      closeMenu();
+      return;
+    }
+    positionMenuRelativeToButton(menu, button);
+  };
+
+  window.addEventListener('scroll', onScrollOrResize, true);
+  window.addEventListener('resize', onScrollOrResize);
+
+  openMenu = { button, menu, onDocClick, onScrollOrResize };
 }
 
 function closeMenu() {
   if (!openMenu) return;
   openMenu.button?.setAttribute('aria-expanded', 'false');
   openMenu.menu?.remove();
+
+  if (openMenu.onDocClick)
+    document.removeEventListener('click', openMenu.onDocClick, true);
+
+  if (openMenu.onScrollOrResize) {
+    window.removeEventListener('scroll', openMenu.onScrollOrResize, true);
+    window.removeEventListener('resize', openMenu.onScrollOrResize);
+  }
+
   openMenu = null;
 }
 
