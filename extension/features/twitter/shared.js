@@ -72,6 +72,7 @@ const BOUND_FLAG = 'true';
 
 const menuProviders = new Map(); // id -> (context) => [{label, onClick, ...}]
 let menuObserver = null;
+let injectScheduled = false;
 let openMenu = null;
 let injectingMenuButtons = false;
 
@@ -93,7 +94,37 @@ export function registerTwitterMenuProvider(id, buildOptions) {
 
 function ensureMenuObserver() {
   if (menuObserver || !document?.body) return;
-  menuObserver = new MutationObserver(() => injectMenuButtons());
+
+  menuObserver = new MutationObserver((mutations) => {
+    const hasTweetNode = mutations.some((m) =>
+      Array.from(m.addedNodes).some((node) => {
+        if (node.nodeType !== 1) return false;
+        const el = /** @type {Element} */ (node);
+
+        if (el.matches?.('article[data-testid="tweet"]') ||
+          el.querySelector?.('article[data-testid="tweet"]')) {
+          return true;
+        }
+
+        if (el.closest?.('article[data-testid="tweet"]')) {
+          return true;
+        }
+
+        return false;
+      })
+    );
+
+    if (!hasTweetNode) return;
+
+    if (injectScheduled) return;
+    injectScheduled = true;
+
+    requestAnimationFrame(() => {
+      injectScheduled = false;
+      injectMenuButtons();
+    });
+  });
+
   menuObserver.observe(document.body, { childList: true, subtree: true });
 }
 
@@ -130,6 +161,17 @@ function findTwitterActionBar(container) {
   return { actionBar: row, anchorButton, article };
 }
 
+function tweetHasMedia(article) {
+  if (!article) return false;
+  const hasVideo = !!article.querySelector('video, div[data-testid="videoComponent"]');
+  const hasImage =
+    !!article.querySelector('div[data-testid="tweetPhoto"] img[src], img[src*="twimg.com/media"]') ||
+    !!article.querySelector(
+      'div[data-testid="tweetPhoto"] div[style*="background-image"], div[style*="twimg.com/media"]'
+    );
+  return hasVideo || hasImage;
+}
+
 function createActionBarDownloadButton(templateButton, label) {
   if (!templateButton) return null;
   const button = templateButton.cloneNode(true);
@@ -156,7 +198,6 @@ function createActionBarDownloadButton(templateButton, label) {
       );
     }
   }
-
   const cloned = button.cloneNode(true);
   button.replaceWith(cloned);
   return cloned;
@@ -177,16 +218,7 @@ function insertActionButtonNear(anchorButton, newButton) {
   let wrapper = newButton.closest('div.css-175oi2r');
   if (!wrapper) {
     wrapper = document.createElement('div');
-
-    const children = Array.from(rowContainer.children).filter(el => el.tagName === 'DIV');
-    const referenceWrapper = children[children.length - 1] || group.closest('div.css-175oi2r');
-
-    if (referenceWrapper) {
-      wrapper.className = referenceWrapper.className;
-    } else {
-      wrapper.className = 'css-175oi2r r-18u37iz r-1h0z5md r-1wron08';
-    }
-
+    wrapper.className = 'css-175oi2r r-18u37iz r-1h0z5md r-1wron08';
     wrapper.appendChild(newButton);
   }
 
@@ -206,16 +238,21 @@ function insertActionButtonNear(anchorButton, newButton) {
 function injectMenuButtons() {
   if (!menuProviders.size || !document?.body) return;
   if (injectingMenuButtons) return;
-
   injectingMenuButtons = true;
   try {
     const containers = getTwitterActionContainers();
 
     containers.forEach((container) => {
-      const { actionBar, anchorButton } = findTwitterActionBar(container);
+      const { actionBar, anchorButton, article } = findTwitterActionBar(container);
       if (!actionBar || !anchorButton) return;
-
       const existing = actionBar.querySelector(`button[${TWITTER_DOWNLOAD_MENU_ATTR}]`);
+      const hasMedia = tweetHasMedia(article);
+
+      if (!hasMedia) {
+        if (existing) existing.remove();
+        return;
+      }
+
       if (existing) {
         if (existing.dataset.aioBound !== BOUND_FLAG) {
           bindButton(existing);
@@ -320,7 +357,7 @@ function positionMenuRelativeToButton(menu, button) {
   if (!menu || !button) return;
 
   const rect = button.getBoundingClientRect();
-  const margin = 8;
+  const margin = 5;
 
   menu.style.visibility = 'hidden';
   menu.style.top = '0px';
@@ -407,9 +444,6 @@ function renderMenu(button, options) {
 
   Object.assign(menu.style, {
     position: 'fixed',
-    top: `0`,
-    right: '0',
-
     display: 'inline-block',
     width: 'max-content',
     maxWidth: 'calc(100vw - 20px)',
@@ -512,43 +546,6 @@ function closeMenu() {
   }
 
   openMenu = null;
-}
-
-export function findShareButton(root) {
-  const options = Array.from(
-    root.querySelectorAll('div[role="menuitem"], button[role="menuitem"], a[role="link"]')
-  );
-  return options.find((el) => /copy\s*link|linki\s*kopyala/i.test(el.textContent || '')) || options[0] || null;
-}
-
-export function createTwitterOption(template, { attr, label, onClick }) {
-  if (!template) return null;
-
-  const wrapper = template.cloneNode(true);
-  wrapper.setAttribute(attr, 'true');
-  wrapper.setAttribute('role', 'menuitem');
-  wrapper.tabIndex = 0;
-  wrapper.setAttribute('aria-label', label);
-
-  wrapper.addEventListener('click', onClick);
-  wrapper.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onClick(event);
-    }
-  });
-
-  const labelEl = wrapper.querySelector('span') || wrapper;
-  labelEl.textContent = label;
-
-  const svg = wrapper.querySelector('svg');
-  if (svg) {
-    svg.setAttribute('viewBox', '0 0 24 24');
-    svg.innerHTML =
-      '<path d="M9 3h2v9.528a3.25 3.25 0 1 1-2 2.97V6zm6 3h2v6.528a3.25 3.25 0 1 1-2 2.97V6z" fill="currentColor"/>';
-  }
-
-  return wrapper;
 }
 
 export async function safeSendMessage(payload) {

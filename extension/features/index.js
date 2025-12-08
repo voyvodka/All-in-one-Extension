@@ -5,5 +5,6 @@ export const featureModulePaths = [
   'features/instagram/video/index.js',
   'features/instagram/image/index.js',
   'features/twitter/audio/index.js',
+  'features/twitter/image/index.js',
   'features/twitter/video/index.js'
 ];
