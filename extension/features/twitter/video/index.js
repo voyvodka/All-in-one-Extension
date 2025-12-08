@@ -3,7 +3,7 @@ import { isTwitter, registerTwitterMenuProvider, safeSendMessage } from '../shar
 export default {
   id: 'twitter-mp4-download',
   label: 'Twitter MP4 Download',
-  description: 'Tweet altındaki indirme menüsüne MP4 indir seçeneğini ekler.',
+  description: 'Tweet altındaki indirme menüsüne Video indir seçeneğini ekler.',
   matches: isTwitter,
   apply: () => {
     const cleanup = registerTwitterMenuProvider('twitter-video', ({ tweetUrl, tweetTitle, hasVideo }) => {
@@ -11,7 +11,7 @@ export default {
 
       return [
         {
-          label: 'MP4 indir',
+          label: 'Video indir',
           onClick: async () => {
             await startMp4Download({ tweetUrl, tweetTitle });
           }
@@ -34,9 +34,9 @@ async function startMp4Download({ tweetUrl, tweetTitle }) {
     });
 
     if (!response?.success) {
-      console.error('MP4 download failed:', response?.error);
+      console.error('Video download failed:', response?.error);
     }
   } catch (error) {
-    console.error('Error sending MP4 download message:', error);
+    console.error('Error sending Video download message:', error);
   }
 }

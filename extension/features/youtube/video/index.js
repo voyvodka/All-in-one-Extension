@@ -54,7 +54,7 @@ function getYoutubeVideoTitle() {
 export default {
   id: 'youtube-video',
   label: 'YouTube MP4 Download',
-  description: 'Paylaş panelinin başına MP4 indir kısayolu ekler.',
+  description: 'Paylaş panelinin başına Video İndir kısayolu ekler.',
   matches: isYoutube,
   apply: () => {
     const observer = new MutationObserver(() => injectButtons());
@@ -77,7 +77,7 @@ export default {
         if (container.querySelector(`[${MP4_ATTR}]`)) return;
         const node = createYoutubeShareTarget(container, {
           attr: MP4_ATTR,
-          label: 'MP4 indir',
+          label: 'Video indir',
           color: '#1d4ed8',
           onClick: handleClick
         });
@@ -95,7 +95,7 @@ export default {
 
       const shareTarget = button.closest(`[${MP4_ATTR}]`);
       const titleEl = shareTarget?.querySelector('#title');
-      const originalText = titleEl ? titleEl.textContent : 'MP4 indir';
+      const originalText = titleEl ? titleEl.textContent : 'Video indir';
 
       titleEl.textContent = 'İndiriliyor...';
       button.disabled = true;

@@ -101,12 +101,18 @@ function ensureMenuObserver() {
         if (node.nodeType !== 1) return false;
         const el = /** @type {Element} */ (node);
 
-        if (el.matches?.('article[data-testid="tweet"]') ||
-          el.querySelector?.('article[data-testid="tweet"]')) {
+        if (
+          el.matches?.('article[data-testid="tweet"]') ||
+          el.querySelector?.('article[data-testid="tweet"]') ||
+          el.closest?.('article[data-testid="tweet"]')
+        ) {
           return true;
         }
 
-        if (el.closest?.('article[data-testid="tweet"]')) {
+        if (
+          el.matches?.('div[role="dialog"]') ||
+          el.querySelector?.('div[role="dialog"]')
+        ) {
           return true;
         }
 
@@ -115,10 +121,8 @@ function ensureMenuObserver() {
     );
 
     if (!hasTweetNode) return;
-
     if (injectScheduled) return;
     injectScheduled = true;
-
     requestAnimationFrame(() => {
       injectScheduled = false;
       injectMenuButtons();
@@ -138,27 +142,69 @@ function teardownMenuUi() {
 }
 
 function getTwitterActionContainers() {
-  return Array.from(document.querySelectorAll('article[data-testid="tweet"]'));
+  const articles = Array.from(
+    document.querySelectorAll('article[data-testid="tweet"]')
+  );
+
+  const fullscreenGroups = Array.from(
+    document.querySelectorAll(
+      'div[role="dialog"] div[role="group"] button[data-testid="reply"]'
+    )
+  )
+    .map((btn) => btn.closest('div[role="group"]'))
+    .filter(Boolean);
+
+  const set = new Set();
+  articles.forEach((el) => set.add(el));
+  fullscreenGroups.forEach((el) => set.add(el));
+
+  return Array.from(set);
 }
 
 function findTwitterActionBar(container) {
-  const article = container.closest?.('article[data-testid="tweet"]') || container;
+  const article = container.closest?.('article[data-testid="tweet"]') || null;
+  const scope = article || container;
 
-  const bookmarkBtn = article.querySelector('button[data-testid="bookmark"]');
-  if (!bookmarkBtn) {
-    return { actionBar: null, anchorButton: null, article };
+  if (!scope) {
+    return { actionBar: null, anchorButton: null, article: null };
   }
 
-  const bookmarkGroup = bookmarkBtn.closest('div.css-175oi2r') || bookmarkBtn.parentElement;
-  const row = bookmarkGroup?.parentElement || null;
+  const bookmarkBtn = scope.querySelector('button[data-testid="bookmark"]');
+  if (bookmarkBtn) {
+    const bookmarkGroup = bookmarkBtn.closest('div.css-175oi2r') || bookmarkBtn.parentElement;
+    const row = bookmarkGroup?.parentElement || null;
 
-  const shareBtn =
-    row?.querySelector('button[aria-label*="Gönderiyi paylaş"]') ||
-    row?.querySelector('button[aria-label*="Share"]') ||
-    null;
+    const shareBtn =
+      row?.querySelector('button[aria-label*="Gönderiyi paylaş"]') ||
+      row?.querySelector('button[aria-label*="Share"]') ||
+      null;
 
-  const anchorButton = shareBtn || bookmarkBtn;
-  return { actionBar: row, anchorButton, article };
+    const anchorButton = shareBtn || bookmarkBtn;
+    return { actionBar: row, anchorButton, article: article || container };
+  }
+
+  let row = null;
+  let anchorButton = null;
+
+  const replyBtn = scope.querySelector('button[data-testid="reply"]');
+  const retweetBtn = scope.querySelector('button[data-testid="retweet"]');
+  const likeBtn = scope.querySelector('button[data-testid="like"]');
+
+  const anyActionBtn = replyBtn || retweetBtn || likeBtn;
+
+  if (anyActionBtn) {
+    const group = anyActionBtn.closest('div.css-175oi2r') || anyActionBtn.parentElement;
+    row = group?.parentElement || null;
+
+    const shareBtn =
+      row?.querySelector('button[aria-label*="Gönderiyi paylaş"]') ||
+      row?.querySelector('button[aria-label*="Share"]') ||
+      null;
+
+    anchorButton = shareBtn || anyActionBtn;
+  }
+
+  return { actionBar: row, anchorButton, article: article || container };
 }
 
 function tweetHasMedia(article) {
@@ -246,7 +292,14 @@ function injectMenuButtons() {
       const { actionBar, anchorButton, article } = findTwitterActionBar(container);
       if (!actionBar || !anchorButton) return;
       const existing = actionBar.querySelector(`button[${TWITTER_DOWNLOAD_MENU_ATTR}]`);
-      const hasMedia = tweetHasMedia(article);
+
+      const mediaRoot =
+        (article && article.closest?.('div[role="dialog"]')) ||
+        article ||
+        container.closest?.('div[role="dialog"]') ||
+        container;
+
+      const hasMedia = tweetHasMedia(mediaRoot);
 
       if (!hasMedia) {
         if (existing) existing.remove();
@@ -311,19 +364,23 @@ function handleMenuClick(event) {
 
   closeMenu();
 
-  const article = button.closest('article[data-testid="tweet"]') || document;
-  const tweetUrl = getTweetUrl(article);
+  const root =
+    button.closest('div[role="dialog"]') ||
+    button.closest('article[data-testid="tweet"]') ||
+    document;
+
+  const tweetUrl = getTweetUrl(root);
   if (!tweetUrl || !/\/status\/\d+/.test(tweetUrl)) {
     console.warn('Geçerli tweet URL bulunamadı', tweetUrl);
     return;
   }
 
-  const tweetTitle = getTweetTitle(article);
-  const hasVideo = !!article.querySelector('video, div[data-testid="videoComponent"]');
+  const tweetTitle = getTweetTitle(root);
+  const hasVideo = !!root.querySelector('video, div[data-testid="videoComponent"]');
 
-  const context = { tweetUrl, tweetTitle, article, hasVideo };
+  const context = { tweetUrl, tweetTitle, article: root, hasVideo };
+
   const options = buildMenuOptions(context);
-
   if (!options.length) return;
   renderMenu(button, options);
 }

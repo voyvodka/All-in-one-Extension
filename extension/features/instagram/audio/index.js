@@ -3,7 +3,7 @@ import { isInstagram, registerInstagramMenuProvider, safeSendMessage } from '../
 export default {
   id: 'instagram-reels-mp3',
   label: 'Instagram Reels MP3',
-  description: 'Instagram reels paylaşım paneline MP3 indir kısayolu ekler.',
+  description: 'Instagram reels paylaşım paneline Ses indir kısayolu ekler.',
   matches: isInstagram,
   apply: () => {
     const cleanupProvider = registerInstagramMenuProvider('instagram-audio', ({ reelUrl, reelTitle, media }) => {
@@ -13,7 +13,7 @@ export default {
 
       return [
         {
-          label: 'MP3 indir',
+          label: 'Audio indir',
           action: () => startAudioDownload({ reelUrl, reelTitle, directMedia: bestVideo || null })
         }
       ];
@@ -34,9 +34,9 @@ async function startAudioDownload({ reelUrl, reelTitle, directMedia }) {
       directMedia
     });
     if (!response?.success) {
-      console.error('MP3 download failed:', response?.error);
+      console.error('Audio download failed:', response?.error);
     }
   } catch (error) {
-    console.error('Error sending MP3 download message:', error);
+    console.error('Error sending Audio download message:', error);
   }
 }

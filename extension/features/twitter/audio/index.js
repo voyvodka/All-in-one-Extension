@@ -2,8 +2,8 @@ import { isTwitter, registerTwitterMenuProvider, safeSendMessage } from '../shar
 
 export default {
   id: 'twitter-mp3-download',
-  label: 'Twitter MP3 Download',
-  description: 'Tweet altındaki indirme menüsüne MP3 indir seçeneğini ekler.',
+  label: 'Twitter Audio Download',
+  description: 'Tweet altındaki indirme menüsüne Ses indir seçeneğini ekler.',
   matches: isTwitter,
   apply: () => {
     const cleanup = registerTwitterMenuProvider('twitter-audio', ({ tweetUrl, tweetTitle, hasVideo }) => {
@@ -11,7 +11,7 @@ export default {
 
       return [
         {
-          label: 'MP3 indir',
+          label: 'Ses indir',
           onClick: async () => {
             await startMp3Download({ tweetUrl, tweetTitle });
           }
@@ -34,9 +34,9 @@ async function startMp3Download({ tweetUrl, tweetTitle }) {
     });
 
     if (!response?.success) {
-      console.error('MP3 download failed:', response?.error);
+      console.error('Audio download failed:', response?.error);
     }
   } catch (error) {
-    console.error('Error sending MP3 download message:', error);
+    console.error('Error sending audio download message:', error);
   }
 }

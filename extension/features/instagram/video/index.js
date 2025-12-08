@@ -3,7 +3,7 @@ import { isInstagram, registerInstagramMenuProvider, safeSendMessage } from '../
 export default {
   id: 'instagram-reels-mp4',
   label: 'Instagram Reels MP4',
-  description: 'Instagram reels paylaşım paneline MP4 indir kısayolu ekler.',
+  description: 'Instagram reels paylaşım paneline Video indir kısayolu ekler.',
   matches: isInstagram,
   apply: () => {
     const cleanupProvider = registerInstagramMenuProvider('instagram-video', ({ reelUrl, reelTitle, media }) => {
@@ -13,7 +13,7 @@ export default {
 
       return [
         {
-          label: 'MP4 indir',
+          label: 'Video İndir',
           action: () => startVideoDownload({ reelUrl, reelTitle, directMedia: bestVideo || null })
         }
       ];
@@ -34,9 +34,9 @@ async function startVideoDownload({ reelUrl, reelTitle, directMedia }) {
       directMedia
     });
     if (!response?.success) {
-      console.error('MP4 download failed:', response?.error);
+      console.error('Video download failed:', response?.error);
     }
   } catch (error) {
-    console.error('Error sending MP4 download message:', error);
+    console.error('Error sending Video download message:', error);
   }
 }
