@@ -1,6 +1,6 @@
 import { isYoutube, createYoutubeShareTarget } from '../shared.js';
 
-const MP4_ATTR = 'data-aio-youtube-mp4-download';
+const MP4_ATTR = 'data-aio-youtube-video';
 
 function getYoutubeVideoId() {
   const bySearch = new URLSearchParams(location.search).get('v');
@@ -52,7 +52,7 @@ function getYoutubeVideoTitle() {
 }
 
 export default {
-  id: 'youtube-mp4-download',
+  id: 'youtube-video',
   label: 'YouTube MP4 Download',
   description: 'Paylaş panelinin başına MP4 indir kısayolu ekler.',
   matches: isYoutube,

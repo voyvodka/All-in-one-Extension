@@ -106,14 +106,14 @@ export function t(key) {
 }
 
 const featureMessages = {
-  'youtube-mp3-download': {
+  'youtube-audio': {
     label: { tr: 'YouTube MP3 İndir', en: 'YouTube MP3 Download' },
     description: {
       tr: 'YouTube paylaş paneline MP3 indir kısayolu ekler.',
       en: 'Adds an MP3 download shortcut to the YouTube share panel.'
     }
   },
-  'youtube-mp4-download': {
+  'youtube-video': {
     label: { tr: 'YouTube MP4 İndir', en: 'YouTube MP4 Download' },
     description: {
       tr: 'YouTube paylaş paneline MP4 indir kısayolu ekler.',
@@ -141,14 +141,14 @@ const featureMessages = {
       en: 'Adds a photo download shortcut for Instagram Reels.'
     }
   },
-  'twitter-mp3-download': {
+  'twitter-audio': {
     label: { tr: 'Twitter MP3 İndir', en: 'Twitter MP3 Download' },
     description: {
       tr: 'Twitter/X paylaşım menüsüne MP3 indir kısayolu ekler.',
       en: 'Adds an MP3 download shortcut to the Twitter/X share menu.'
     }
   },
-  'twitter-mp4-download': {
+  'twitter-video': {
     label: { tr: 'Twitter MP4 İndir', en: 'Twitter MP4 Download' },
     description: {
       tr: 'Twitter/X paylaşım menüsüne MP4 indir kısayolu ekler.',

@@ -292,6 +292,9 @@ export function getInstagramActionContainers() {
 export function createActionBarDownloadButton(templateButton, { attr, label, onClick }) {
   if (!templateButton) return null;
   const button = templateButton.cloneNode(true);
+  button.removeAttribute('aria-pressed'); // avoid inheriting liked state styling
+  button.removeAttribute('aria-checked');
+  button.style.color = '';
   button.setAttribute(attr, 'true');
   button.dataset.aioButton = 'true';
   button.setAttribute('role', 'button');
@@ -314,6 +317,8 @@ export function createActionBarDownloadButton(templateButton, { attr, label, onC
     svg.setAttribute('width', '24');
     svg.setAttribute('height', '24');
     svg.removeAttribute('preserveAspectRatio'); // IG ile aynı davranış
+    svg.removeAttribute('color');
+    svg.style.color = 'currentColor';
 
     svg.innerHTML = `
       <title>İndir</title>
