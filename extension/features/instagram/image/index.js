@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n.js';
 import {
   isInstagram,
   registerInstagramMenuProvider,
@@ -12,8 +13,8 @@ const NAV_LABELS = {
 
 export default {
   id: 'instagram-reels-image',
-  label: 'Instagram Fotoğraf',
-  description: 'Instagram reels paylaşım paneline fotoğraf indirme kısayolu ekler.',
+  label: 'Instagram Photo Download',
+  description: 'Adds photo download shortcuts for Instagram Reels.',
   matches: isInstagram,
   apply: () => {
     const cleanupProvider = registerInstagramMenuProvider('instagram-image', ({ reelUrl, reelTitle, activeArticle, media }) => {
@@ -28,13 +29,13 @@ export default {
       const options = [];
       if (primaryImage) {
         options.push({
-          label: 'Fotoğraf indir',
+          label: t('downloadImageSingle'),
           action: () => startSingleImageDownload({ reelUrl, reelTitle, image: primaryImage })
         });
       }
       if (Array.isArray(images) && images.length > 1) {
         options.push({
-          label: 'Tüm fotoğrafları indir (ZIP)',
+          label: t('downloadImageMultiple'),
           action: () => startBulkImageDownload({ article: activeArticle, reelUrl, reelTitle, fallbackImages: images })
         });
       }
@@ -57,7 +58,7 @@ export function createInstagramImageDownloadHandler({
 }) {
   return async function startInstagramImageDownload({ reelUrl, reelTitle, mediaUrl }) {
     if (!mediaUrl) {
-      return { success: false, error: 'Fotoğraf URL bulunamadı' };
+      return { success: false, error: t('instagramPhotoUrlMissing') };
     }
 
     const baseTitle = reelTitle || 'instagram-image';

@@ -36,7 +36,15 @@ const messages = {
     theme: 'Tema',
     themeSystem: 'Sistem',
     themeLight: 'Açık',
-    themeDark: 'Koyu'
+    themeDark: 'Koyu',
+    downloadAction: 'İndir',
+    downloadAudio: 'Ses indir',
+    downloadVideo: 'Video indir',
+    downloadImageSingle: 'Fotoğraf indir',
+    downloadImageMultiple: 'Tüm fotoğrafları indir (ZIP)',
+    twitterUrlNotFound: 'Geçerli tweet URL bulunamadı',
+    instagramDownloadIcon: 'İndir',
+    instagramPhotoUrlMissing: 'Fotoğraf URL bulunamadı'
   },
   en: {
     tabFeatures: 'Features',
@@ -75,7 +83,15 @@ const messages = {
     theme: 'Theme',
     themeSystem: 'System',
     themeLight: 'Light',
-    themeDark: 'Dark'
+    themeDark: 'Dark',
+    downloadAction: 'Download',
+    downloadAudio: 'Download audio',
+    downloadVideo: 'Download video',
+    downloadImageSingle: 'Download photo',
+    downloadImageMultiple: 'Download all photos (ZIP)',
+    twitterUrlNotFound: 'Could not find a valid tweet URL',
+    instagramDownloadIcon: 'Download',
+    instagramPhotoUrlMissing: 'Photo URL not found'
   }
 };
 
@@ -106,32 +122,32 @@ export function t(key) {
 }
 
 const featureMessages = {
-  'youtube-audio': {
-    label: { tr: 'YouTube MP3 İndir', en: 'YouTube MP3 Download' },
+  'youtube-mp3-download': {
+    label: { tr: 'YouTube Ses İndir', en: 'YouTube Audio Download' },
     description: {
-      tr: 'YouTube paylaş paneline MP3 indir kısayolu ekler.',
-      en: 'Adds an MP3 download shortcut to the YouTube share panel.'
+      tr: 'YouTube paylaş paneline Ses indir kısayolu ekler.',
+      en: 'Adds an audio download shortcut to the YouTube share panel.'
     }
   },
   'youtube-video': {
-    label: { tr: 'YouTube MP4 İndir', en: 'YouTube MP4 Download' },
+    label: { tr: 'YouTube Video İndir', en: 'YouTube Video Download' },
     description: {
-      tr: 'YouTube paylaş paneline MP4 indir kısayolu ekler.',
-      en: 'Adds an MP4 download shortcut to the YouTube share panel.'
+      tr: 'YouTube paylaş paneline Video indir kısayolu ekler.',
+      en: 'Adds a video download shortcut to the YouTube share panel.'
     }
   },
   'instagram-reels-mp3': {
-    label: { tr: 'Instagram MP3 İndir', en: 'Reels MP3 Download' },
+    label: { tr: 'Instagram Ses İndir', en: 'Reels Audio Download' },
     description: {
-      tr: 'Instagram Reels için MP3 indir kısayolu ekler.',
-      en: 'Adds an MP3 download shortcut for Instagram Reels.'
+      tr: 'Instagram Reels için Ses indir kısayolu ekler.',
+      en: 'Adds an audio download shortcut for Instagram Reels.'
     }
   },
   'instagram-reels-mp4': {
-    label: { tr: 'Instagram MP4 İndir', en: 'Reels MP4 Download' },
+    label: { tr: 'Instagram Video İndir', en: 'Reels Video Download' },
     description: {
-      tr: 'Instagram Reels için MP4 indir kısayolu ekler.',
-      en: 'Adds an MP4 download shortcut for Instagram Reels.'
+      tr: 'Instagram Reels için Video indir kısayolu ekler.',
+      en: 'Adds a video download shortcut for Instagram Reels.'
     }
   },
   'instagram-reels-image': {
@@ -141,18 +157,25 @@ const featureMessages = {
       en: 'Adds a photo download shortcut for Instagram Reels.'
     }
   },
-  'twitter-audio': {
-    label: { tr: 'Twitter MP3 İndir', en: 'Twitter MP3 Download' },
+  'twitter-mp3-download': {
+    label: { tr: 'Twitter Ses İndir', en: 'Twitter Audio Download' },
     description: {
-      tr: 'Twitter/X paylaşım menüsüne MP3 indir kısayolu ekler.',
-      en: 'Adds an MP3 download shortcut to the Twitter/X share menu.'
+      tr: 'Tweet altındaki indirme menüsüne Ses indir seçeneğini ekler.',
+      en: 'Adds an audio download option to the tweet action menu.'
     }
   },
-  'twitter-video': {
-    label: { tr: 'Twitter MP4 İndir', en: 'Twitter MP4 Download' },
+  'twitter-mp4-download': {
+    label: { tr: 'Twitter Video İndir', en: 'Twitter Video Download' },
     description: {
-      tr: 'Twitter/X paylaşım menüsüne MP4 indir kısayolu ekler.',
-      en: 'Adds an MP4 download shortcut to the Twitter/X share menu.'
+      tr: 'Tweet altındaki indirme menüsüne Video indir seçeneğini ekler.',
+      en: 'Adds a video download option to the tweet action menu.'
+    }
+  },
+  'twitter-image-download': {
+    label: { tr: 'Twitter Fotoğraf İndir', en: 'Twitter Image Download' },
+    description: {
+      tr: 'Tweet altındaki indirme menüsüne fotoğraf indir seçeneğini ekler.',
+      en: 'Adds image download options to the tweet action menu.'
     }
   }
 };

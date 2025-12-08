@@ -1,9 +1,10 @@
+import { t } from '../../../shared/i18n.js';
 import { isInstagram, registerInstagramMenuProvider, safeSendMessage } from '../shared.js';
 
 export default {
   id: 'instagram-reels-mp4',
-  label: 'Instagram Reels MP4',
-  description: 'Instagram reels paylaşım paneline Video indir kısayolu ekler.',
+  label: 'Instagram Reels Video',
+  description: 'Adds a video download shortcut for Instagram Reels.',
   matches: isInstagram,
   apply: () => {
     const cleanupProvider = registerInstagramMenuProvider('instagram-video', ({ reelUrl, reelTitle, media }) => {
@@ -13,7 +14,7 @@ export default {
 
       return [
         {
-          label: 'Video İndir',
+          label: t('downloadVideo'),
           action: () => startVideoDownload({ reelUrl, reelTitle, directMedia: bestVideo || null })
         }
       ];

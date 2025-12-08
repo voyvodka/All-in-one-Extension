@@ -1,9 +1,10 @@
+import { t } from '../../../shared/i18n.js';
 import { isTwitter, registerTwitterMenuProvider, safeSendMessage } from '../shared.js';
 
 export default {
   id: 'twitter-mp4-download',
-  label: 'Twitter MP4 Download',
-  description: 'Tweet altındaki indirme menüsüne Video indir seçeneğini ekler.',
+  label: 'Twitter Video Download',
+  description: 'Adds a video download option to the tweet action menu.',
   matches: isTwitter,
   apply: () => {
     const cleanup = registerTwitterMenuProvider('twitter-video', ({ tweetUrl, tweetTitle, hasVideo }) => {
@@ -11,7 +12,7 @@ export default {
 
       return [
         {
-          label: 'Video indir',
+          label: t('downloadVideo'),
           onClick: async () => {
             await startMp4Download({ tweetUrl, tweetTitle });
           }

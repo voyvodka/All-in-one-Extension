@@ -1,9 +1,10 @@
+import { t } from '../../../shared/i18n.js';
 import { isTwitter, registerTwitterMenuProvider, safeSendMessage } from '../shared.js';
 
 export default {
   id: 'twitter-mp3-download',
   label: 'Twitter Audio Download',
-  description: 'Tweet altındaki indirme menüsüne Ses indir seçeneğini ekler.',
+  description: 'Adds an audio download option to the tweet action menu.',
   matches: isTwitter,
   apply: () => {
     const cleanup = registerTwitterMenuProvider('twitter-audio', ({ tweetUrl, tweetTitle, hasVideo }) => {
@@ -11,7 +12,7 @@ export default {
 
       return [
         {
-          label: 'Ses indir',
+          label: t('downloadAudio'),
           onClick: async () => {
             await startMp3Download({ tweetUrl, tweetTitle });
           }

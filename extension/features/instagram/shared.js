@@ -1,3 +1,5 @@
+import { t } from '../../shared/i18n.js';
+
 export const isInstagram = (url) => {
   try {
     const { hostname } = new URL(url);
@@ -291,6 +293,7 @@ export function getInstagramActionContainers() {
 
 export function createActionBarDownloadButton(templateButton, { attr, label, onClick }) {
   if (!templateButton) return null;
+  const downloadLabel = label || t('instagramDownloadIcon');
   const button = templateButton.cloneNode(true);
   button.removeAttribute('aria-pressed'); // avoid inheriting liked state styling
   button.removeAttribute('aria-checked');
@@ -299,7 +302,7 @@ export function createActionBarDownloadButton(templateButton, { attr, label, onC
   button.dataset.aioButton = 'true';
   button.setAttribute('role', 'button');
   button.tabIndex = 0;
-  button.setAttribute('aria-label', label);
+  button.setAttribute('aria-label', downloadLabel);
   button.removeAttribute('href');
   button.removeAttribute('target');
   button.removeAttribute('rel');
@@ -312,7 +315,7 @@ export function createActionBarDownloadButton(templateButton, { attr, label, onC
 
   const svg = button.querySelector('svg');
   if (svg) {
-    svg.setAttribute('aria-label', 'İndir');
+    svg.setAttribute('aria-label', downloadLabel);
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('width', '24');
     svg.setAttribute('height', '24');
@@ -321,7 +324,7 @@ export function createActionBarDownloadButton(templateButton, { attr, label, onC
     svg.style.color = 'currentColor';
 
     svg.innerHTML = `
-      <title>İndir</title>
+      <title>${downloadLabel}</title>
       <path
         d="M12 3v11
           M7 11l5 5 5-5"
@@ -462,7 +465,7 @@ function injectMenuButtons() {
 
     const node = createActionBarDownloadButton(shareButton, {
       attr: INSTAGRAM_DOWNLOAD_MENU_ATTR,
-      label: 'İndir',
+      label: t('instagramDownloadIcon'),
       onClick: handleMenuClick
     });
     if (!node) return;

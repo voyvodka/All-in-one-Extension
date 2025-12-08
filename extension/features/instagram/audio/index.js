@@ -1,9 +1,10 @@
+import { t } from '../../../shared/i18n.js';
 import { isInstagram, registerInstagramMenuProvider, safeSendMessage } from '../shared.js';
 
 export default {
   id: 'instagram-reels-mp3',
-  label: 'Instagram Reels MP3',
-  description: 'Instagram reels paylaşım paneline Ses indir kısayolu ekler.',
+  label: 'Instagram Reels Audio',
+  description: 'Adds an audio download shortcut for Instagram Reels.',
   matches: isInstagram,
   apply: () => {
     const cleanupProvider = registerInstagramMenuProvider('instagram-audio', ({ reelUrl, reelTitle, media }) => {
@@ -13,7 +14,7 @@ export default {
 
       return [
         {
-          label: 'Audio indir',
+          label: t('downloadAudio'),
           action: () => startAudioDownload({ reelUrl, reelTitle, directMedia: bestVideo || null })
         }
       ];

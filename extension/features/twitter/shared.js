@@ -1,3 +1,5 @@
+import { t } from '../../shared/i18n.js';
+
 export const isTwitter = (url) => {
   try {
     const { hostname, pathname } = new URL(url);
@@ -314,7 +316,7 @@ function injectMenuButtons() {
         return;
       }
 
-      const downloadButton = createActionBarDownloadButton(anchorButton, 'İndir');
+      const downloadButton = createActionBarDownloadButton(anchorButton, t('downloadAction'));
       if (!downloadButton) return;
 
       bindButton(downloadButton);
@@ -371,7 +373,7 @@ function handleMenuClick(event) {
 
   const tweetUrl = getTweetUrl(root);
   if (!tweetUrl || !/\/status\/\d+/.test(tweetUrl)) {
-    console.warn('Geçerli tweet URL bulunamadı', tweetUrl);
+    console.warn(t('twitterUrlNotFound'), tweetUrl);
     return;
   }
 

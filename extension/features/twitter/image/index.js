@@ -1,9 +1,10 @@
+import { t } from '../../../shared/i18n.js';
 import { isTwitter, registerTwitterMenuProvider, safeSendMessage } from '../shared.js';
 
 export default {
   id: 'twitter-image-download',
   label: 'Twitter Image Download',
-  description: 'Tweet altındaki indirme menüsüne resim indir seçeneğini ekler.',
+  description: 'Adds image download options to the tweet action menu.',
   matches: isTwitter,
   apply: () => {
     const cleanup = registerTwitterMenuProvider(
@@ -14,7 +15,7 @@ export default {
         const images = findTweetImages(article);
         if (!images.length) return [];
 
-        const label = images.length > 1 ? 'Resimleri indir' : 'Resmi indir';
+        const label = images.length > 1 ? t('downloadImageMultiple') : t('downloadImageSingle');
 
         return [
           {

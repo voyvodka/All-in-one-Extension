@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n.js';
 import { isYoutube, createYoutubeShareTarget } from '../shared.js';
 
 const MP4_ATTR = 'data-aio-youtube-video';
@@ -53,8 +54,8 @@ function getYoutubeVideoTitle() {
 
 export default {
   id: 'youtube-video',
-  label: 'YouTube MP4 Download',
-  description: 'Paylaş panelinin başına Video İndir kısayolu ekler.',
+  label: 'YouTube Video Download',
+  description: 'Paylaş panelinin başına Video indir kısayolu ekler.',
   matches: isYoutube,
   apply: () => {
     const observer = new MutationObserver(() => injectButtons());
@@ -77,7 +78,7 @@ export default {
         if (container.querySelector(`[${MP4_ATTR}]`)) return;
         const node = createYoutubeShareTarget(container, {
           attr: MP4_ATTR,
-          label: 'Video indir',
+          label: t('downloadVideo'),
           color: '#1d4ed8',
           onClick: handleClick
         });
@@ -95,7 +96,7 @@ export default {
 
       const shareTarget = button.closest(`[${MP4_ATTR}]`);
       const titleEl = shareTarget?.querySelector('#title');
-      const originalText = titleEl ? titleEl.textContent : 'Video indir';
+      const originalText = titleEl ? titleEl.textContent : t('downloadVideo');
 
       titleEl.textContent = 'İndiriliyor...';
       button.disabled = true;
