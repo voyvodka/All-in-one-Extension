@@ -78,9 +78,7 @@
         "features/twitter/shared.js",
         "features/twitter/audio/index.js",
         "features/twitter/image/index.js",
-        "features/twitter/video/index.js",
-        "ui/onboarding.js",
-        "ui/onboarding.css"
+        "features/twitter/video/index.js"
       ],
       "matches": [
         "https://*/*",

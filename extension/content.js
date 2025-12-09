@@ -12,7 +12,6 @@ if (!allowedProtocols.has(location.protocol)) {
     let features = [];
     let storage;
     let ui;
-    let onboardingUi;
     let i18n;
 
     try {
@@ -22,10 +21,9 @@ if (!allowedProtocols.has(location.protocol)) {
       );
       features = featureModules.map(module => module.default);
 
-      [storage, ui, onboardingUi, i18n] = await Promise.all([
+      [storage, ui, i18n] = await Promise.all([
         import(chrome.runtime.getURL('shared/storage.js')),
         import(chrome.runtime.getURL('ui/panel.js')),
-        import(chrome.runtime.getURL('ui/onboarding.js')),
         import(chrome.runtime.getURL('shared/i18n.js'))
       ]);
       console.debug('All-in-One: imports loaded', { features, storage, ui });
@@ -34,16 +32,9 @@ if (!allowedProtocols.has(location.protocol)) {
       return;
     }
 
-    const { getSettings, onSettingsChanged, setEnabled, upsertFeatureState, setSettings } = storage;
+    const { getSettings, onSettingsChanged, setEnabled, upsertFeatureState } = storage;
     const { createPanel } = ui;
-    const { openOnboarding } = onboardingUi;
     const { translateFeature, setLocale, t, resolveLocale } = i18n;
-
-    const prefersDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
-    function resolveTheme(theme) {
-      if (theme === 'dark' || theme === 'light') return theme;
-      return prefersDark?.matches ? 'dark' : 'light';
-    }
 
     function getMatchedFeatures(url) {
       return features.filter((feature) => {
@@ -84,10 +75,6 @@ if (!allowedProtocols.has(location.protocol)) {
         applyFeatures();
       }
     });
-
-    if (!currentSettings.onboardingCompleted) {
-      await runOnboarding(localizedFeatures);
-    }
 
     applyFeatures();
 
@@ -152,105 +139,5 @@ if (!allowedProtocols.has(location.protocol)) {
       }
     }
 
-    async function runOnboarding(allFeatures) {
-      return new Promise((resolve) => {
-        const featureStates = allFeatures.map((feature) => ({
-          id: feature.id,
-          label: translateFeature(feature).label,
-          description: translateFeature(feature).description,
-          enabled: currentSettings.features[feature.id] ?? true
-        }));
-
-        const buildTexts = () => ({
-          title: t('onboardingTitle'),
-          description: t('onboardingDescription'),
-          languageLabel: t('onboardingLanguage'),
-          langTr: t('languageTr'),
-          langEn: t('languageEn'),
-          continue: t('onboardingContinue')
-        });
-        let texts = buildTexts();
-        const initialTheme = resolveTheme(currentSettings.theme);
-
-        const onboarding = openOnboarding({
-          features: featureStates,
-          settings: currentSettings,
-          texts,
-          theme: initialTheme,
-          onSubmit: async ({ language, features: nextFeatures }) => {
-            const next = {
-              ...currentSettings,
-              language: language || resolveLocale(),
-              features: { ...currentSettings.features, ...nextFeatures },
-              onboardingCompleted: true
-            };
-            await setSettings(next);
-            setLocale(next.language);
-            currentSettings = await getSettings();
-            destroy();
-            resolve();
-          },
-          onCancel: () => {
-            destroy();
-            resolve();
-          }
-        });
-        let { destroy, setTheme } = onboarding;
-
-        // live translate onboarding when language select changes
-        const host = document.querySelector('#aio-onboarding-host');
-        const shadow = host?.shadowRoot;
-        const langSelect = shadow?.querySelector('#aio-onboarding-lang');
-        const featureList = shadow?.querySelector('#aio-onboarding-features');
-
-        const updateFeatureLabels = () => {
-          if (!featureList) return;
-          featureList.querySelectorAll('.feature-card').forEach((card) => {
-            const id = card.dataset.id;
-            const base = allFeatures.find((f) => f.id === id);
-            if (!base) return;
-            const localized = translateFeature(base);
-            const h3 = card.querySelector('h3');
-            const p = card.querySelector('p');
-            if (h3) h3.textContent = localized.label;
-            if (p) p.textContent = localized.description || '';
-          });
-        };
-
-        updateFeatureLabels();
-        if (langSelect) {
-          langSelect.addEventListener('change', () => {
-            setLocale(langSelect.value);
-            texts = buildTexts();
-            shadow.querySelector('h2').textContent = texts.title;
-            shadow.querySelector('p.desc').textContent = texts.description;
-            shadow.querySelector('label[for="aio-onboarding-lang"]').textContent = texts.languageLabel;
-            const opts = shadow.querySelectorAll('#aio-onboarding-lang option');
-            if (opts[0]) opts[0].textContent = texts.langTr;
-            if (opts[1]) opts[1].textContent = texts.langEn;
-            const cta = shadow.querySelector('#aio-onboarding-continue');
-            if (cta) cta.textContent = texts.continue;
-            updateFeatureLabels();
-          });
-        }
-
-        let systemThemeHandler = null;
-        const chosenTheme = currentSettings.theme || 'system';
-        if (prefersDark && (chosenTheme === 'system' || !chosenTheme)) {
-          systemThemeHandler = () => {
-            setTheme(resolveTheme('system'));
-          };
-          prefersDark.addEventListener?.('change', systemThemeHandler);
-        }
-
-        const originalDestroy = destroy;
-        destroy = () => {
-          if (systemThemeHandler && prefersDark) {
-            prefersDark.removeEventListener?.('change', systemThemeHandler);
-          }
-          originalDestroy();
-        };
-      });
-    }
   })();
 }

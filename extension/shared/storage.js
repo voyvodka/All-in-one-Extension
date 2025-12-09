@@ -2,7 +2,6 @@ const DEFAULT_SETTINGS = {
   enabled: true,
   features: {},
   language: null, // null => use browser language
-  onboardingCompleted: false,
   theme: 'system'
 };
 
@@ -63,7 +62,6 @@ export function onSettingsChanged(callback) {
       enabled: changes.enabled?.newValue ?? undefined,
       features: changes.features?.newValue ?? undefined,
       language: changes.language?.newValue ?? undefined,
-      onboardingCompleted: changes.onboardingCompleted?.newValue ?? undefined,
       theme: changes.theme?.newValue ?? undefined
     };
     callback(next);
