@@ -9,19 +9,34 @@ export default {
   apply: () => {
     const cleanup = registerTwitterMenuProvider(
       'twitter-image',
-      ({ tweetUrl, tweetTitle, article }) => {
+      ({ tweetUrl, tweetTitle, article, mediaRoot, isFullscreen }) => {
         if (!tweetUrl) return [];
 
-        const images = findTweetImages(article);
+        const scope = mediaRoot || article || document;
+        const images = findTweetImages(scope);
         if (!images.length) return [];
 
-        const label = images.length > 1 ? t('downloadImageMultiple') : t('downloadImageSingle');
+        const label = isFullscreen
+          ? t('downloadImageSingle')
+          : (images.length > 1 ? t('downloadImageMultiple') : t('downloadImageSingle'));
 
         return [
           {
             label,
             onClick: async () => {
               try {
+                if (isFullscreen) {
+                  // 🔹 Tam ekran: sadece açık olan resmi indir
+                  await safeSendMessage({
+                    type: 'download-twitter-image',
+                    tweetUrl,
+                    tweetTitle,
+                    imageUrl: images[0]
+                  });
+                  return;
+                }
+
+                // 🔹 Normal tweet davranışı
                 if (images.length === 1) {
                   await safeSendMessage({
                     type: 'download-twitter-image',

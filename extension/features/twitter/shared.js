@@ -371,6 +371,16 @@ function handleMenuClick(event) {
     button.closest('article[data-testid="tweet"]') ||
     document;
 
+  const dialogEl = button.closest('div[role="dialog"]');
+  let mediaRoot = root;
+
+  if (dialogEl) {
+    mediaRoot =
+      dialogEl.querySelector('div[aria-label="Resim"], div[aria-label="Image"]') ||
+      dialogEl.querySelector('div[aria-label="Fotoğraf"], div[aria-label="Photo"]') ||
+      dialogEl;
+  }
+
   const tweetUrl = getTweetUrl(root);
   if (!tweetUrl || !/\/status\/\d+/.test(tweetUrl)) {
     console.warn(t('twitterUrlNotFound'), tweetUrl);
@@ -378,9 +388,10 @@ function handleMenuClick(event) {
   }
 
   const tweetTitle = getTweetTitle(root);
-  const hasVideo = !!root.querySelector('video, div[data-testid="videoComponent"]');
+  const hasVideo = !!mediaRoot.querySelector('video, div[data-testid="videoComponent"]');
+  const isFullscreen = !!dialogEl;
 
-  const context = { tweetUrl, tweetTitle, article: root, hasVideo };
+  const context = { tweetUrl, tweetTitle, article: root, mediaRoot, hasVideo, isFullscreen };
 
   const options = buildMenuOptions(context);
   if (!options.length) return;
