@@ -291,6 +291,9 @@ p {
   font-size: 11px;
   color: var(--muted);
   margin: 0 0 4px;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .pill {
