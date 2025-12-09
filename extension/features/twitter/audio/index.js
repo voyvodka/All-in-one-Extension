@@ -2,7 +2,7 @@ import { t } from '../../../shared/i18n.js';
 import { isTwitter, registerTwitterMenuProvider, safeSendMessage } from '../shared.js';
 
 export default {
-  id: 'twitter-mp3-download',
+  id: 'x-audio-download',
   label: 'Twitter Audio Download',
   description: 'Adds an audio download option to the tweet action menu.',
   matches: isTwitter,
@@ -29,7 +29,8 @@ export default {
 async function startMp3Download({ tweetUrl, tweetTitle }) {
   try {
     const response = await safeSendMessage({
-      type: 'download-twitter-mp3',
+      type: 'x-audio-download',
+      openPopup: true,
       tweetUrl,
       tweetTitle: tweetTitle || 'twitter-audio'
     });

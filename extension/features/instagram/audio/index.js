@@ -2,7 +2,7 @@ import { t } from '../../../shared/i18n.js';
 import { isInstagram, registerInstagramMenuProvider, safeSendMessage } from '../shared.js';
 
 export default {
-  id: 'instagram-reels-mp3',
+  id: 'ig-audio-download',
   label: 'Instagram Reels Audio',
   description: 'Adds an audio download shortcut for Instagram Reels.',
   matches: isInstagram,
@@ -29,7 +29,8 @@ export default {
 async function startAudioDownload({ reelUrl, reelTitle, directMedia }) {
   try {
     const response = await safeSendMessage({
-      type: 'download-instagram-mp3',
+      type: 'ig-audio-download',
+      openPopup: true,
       reelUrl,
       reelTitle: reelTitle || 'instagram-reel',
       directMedia

@@ -114,56 +114,56 @@ export function t(key) {
 }
 
 const featureMessages = {
-  'youtube-mp3-download': {
+  'yt-audio-download': {
     label: { tr: 'YouTube Ses İndir', en: 'YouTube Audio Download' },
     description: {
       tr: 'YouTube paylaş paneline Ses indir kısayolu ekler.',
       en: 'Adds an audio download shortcut to the YouTube share panel.'
     }
   },
-  'youtube-video': {
+  'yt-video-download': {
     label: { tr: 'YouTube Video İndir', en: 'YouTube Video Download' },
     description: {
       tr: 'YouTube paylaş paneline Video indir kısayolu ekler.',
       en: 'Adds a video download shortcut to the YouTube share panel.'
     }
   },
-  'instagram-reels-mp3': {
+  'ig-audio-download': {
     label: { tr: 'Instagram Ses İndir', en: 'Reels Audio Download' },
     description: {
       tr: 'Instagram Reels için Ses indir kısayolu ekler.',
       en: 'Adds an audio download shortcut for Instagram Reels.'
     }
   },
-  'instagram-reels-mp4': {
+  'ig-video-download': {
     label: { tr: 'Instagram Video İndir', en: 'Reels Video Download' },
     description: {
       tr: 'Instagram Reels için Video indir kısayolu ekler.',
       en: 'Adds a video download shortcut for Instagram Reels.'
     }
   },
-  'instagram-reels-image': {
+  'ig-image-download': {
     label: { tr: 'Instagram Fotoğraf İndir', en: 'Instagram Photo Download' },
     description: {
       tr: 'Instagram Reels için fotoğraf indirme kısayolu ekler.',
       en: 'Adds a photo download shortcut for Instagram Reels.'
     }
   },
-  'twitter-mp3-download': {
+  'x-audio-download': {
     label: { tr: 'Twitter Ses İndir', en: 'Twitter Audio Download' },
     description: {
       tr: 'Tweet altındaki indirme menüsüne Ses indir seçeneğini ekler.',
       en: 'Adds an audio download option to the tweet action menu.'
     }
   },
-  'twitter-mp4-download': {
+  'x-video-download': {
     label: { tr: 'Twitter Video İndir', en: 'Twitter Video Download' },
     description: {
       tr: 'Tweet altındaki indirme menüsüne Video indir seçeneğini ekler.',
       en: 'Adds a video download option to the tweet action menu.'
     }
   },
-  'twitter-image-download': {
+  'x-image-download': {
     label: { tr: 'Twitter Fotoğraf İndir', en: 'Twitter Image Download' },
     description: {
       tr: 'Tweet altındaki indirme menüsüne fotoğraf indir seçeneğini ekler.',

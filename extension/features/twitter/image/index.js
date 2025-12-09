@@ -2,7 +2,7 @@ import { t } from '../../../shared/i18n.js';
 import { isTwitter, registerTwitterMenuProvider, safeSendMessage } from '../shared.js';
 
 export default {
-  id: 'twitter-image-download',
+  id: 'x-image-download',
   label: 'Twitter Image Download',
   description: 'Adds image download options to the tweet action menu.',
   matches: isTwitter,
@@ -28,7 +28,8 @@ export default {
                 if (isFullscreen) {
                   // 🔹 Tam ekran: sadece açık olan resmi indir
                   await safeSendMessage({
-                    type: 'download-twitter-image',
+                    type: 'x-image-download',
+                    openPopup: true,
                     tweetUrl,
                     tweetTitle,
                     imageUrl: images[0]
@@ -39,14 +40,16 @@ export default {
                 // 🔹 Normal tweet davranışı
                 if (images.length === 1) {
                   await safeSendMessage({
-                    type: 'download-twitter-image',
+                    type: 'x-image-download',
+                    openPopup: true,
                     tweetUrl,
                     tweetTitle,
                     imageUrl: images[0]
                   });
                 } else {
                   await safeSendMessage({
-                    type: 'download-twitter-images-zip',
+                    type: 'x-image-zip-download',
+                    openPopup: true,
                     tweetUrl,
                     tweetTitle,
                     imageUrls: images

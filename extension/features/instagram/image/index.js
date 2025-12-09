@@ -12,7 +12,7 @@ const NAV_LABELS = {
 };
 
 export default {
-  id: 'instagram-reels-image',
+  id: 'ig-image-download',
   label: 'Instagram Photo Download',
   description: 'Adds photo download shortcuts for Instagram Reels.',
   matches: isInstagram,
@@ -64,9 +64,9 @@ export function createInstagramImageDownloadHandler({
     const baseTitle = reelTitle || 'instagram-image';
     const ext = inferExtFromUrl(mediaUrl, 'jpg');
     const ts = Date.now();
-    const fileName = buildTimestampFile('instagram-image', ext, ts);
+    const fileName = buildTimestampFile('ig-image-download', ext, ts);
     const job = createJob({
-      type: 'instagram-image',
+      type: 'ig-image-download',
       title: baseTitle,
       fileName,
       sourceUrl: reelUrl,
@@ -122,7 +122,8 @@ async function startSingleImageDownload({ reelUrl, reelTitle, image }) {
   if (!image?.url) return;
   try {
     const response = await safeSendMessage({
-      type: 'download-instagram-image',
+      type: 'ig-image-download',
+      openPopup: true,
       reelUrl,
       reelTitle: reelTitle || 'instagram-image',
       directMedia: {
@@ -155,7 +156,8 @@ async function startBulkImageDownload({ article, reelUrl, reelTitle, fallbackIma
 
   try {
     const response = await safeSendMessage({
-      type: 'download-instagram-images-zip',
+      type: 'ig-image-zip-download',
+      openPopup: true,
       reelUrl,
       reelTitle: reelTitle || 'instagram-reel',
       imageUrls: urls

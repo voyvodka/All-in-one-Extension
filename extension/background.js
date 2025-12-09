@@ -169,6 +169,9 @@ function buildZip(entries) {
 
 function getPlatformPrefix(kind) {
   if (!kind) return 'dl';
+  if (kind.startsWith('yt-')) return 'yt';
+  if (kind.startsWith('ig-')) return 'ig';
+  if (kind.startsWith('x-')) return 'x';
   if (kind.includes('youtube')) return 'yt';
   if (kind.includes('instagram')) return 'ig';
   if (kind.includes('twitter')) return 'x';
@@ -297,7 +300,7 @@ async function loadDownloadMap() {
 loadDownloadMap().catch((err) => console.error('Failed to load download map', err));
 
 async function startYoutubeDownload(kind, videoId, videoTitle) {
-  const isMp4 = kind === 'youtube-mp4';
+  const isMp4 = kind === 'yt-video-download';
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
   const fileExt = isMp4 ? 'mp4' : 'mp3';
   const ts = Date.now();
@@ -370,10 +373,10 @@ async function startInstagramDownload(kind, reelUrl, reelTitle, options = {}) {
   } catch (e) {
     reelId = '';
   }
-  const isMp4 = kind === 'instagram-mp4';
+  const isMp4 = kind === 'ig-video-download';
   const directMedia = options?.directMedia || null;
   const mediaUrl = directMedia?.url || null;
-  const jobType = directMedia?.type === 'image' ? 'instagram-image' : kind;
+  const jobType = directMedia?.type === 'image' ? 'ig-image-download' : kind;
   const defaultExt = directMedia?.type === 'image' ? 'jpg' : isMp4 ? 'mp4' : 'mp3';
   const ext = directMedia?.ext || inferExtFromUrl(mediaUrl, defaultExt);
   const baseTitle = reelTitle || reelId || 'instagram-reel';
@@ -451,9 +454,9 @@ async function startInstagramImagesZip({ reelUrl, reelTitle, imageUrls }) {
 
   const baseTitle = reelTitle || 'instagram-images';
   const ts = Date.now();
-  const fileName = buildTimestampFile('instagram-images-zip', 'zip', ts);
+  const fileName = buildTimestampFile('ig-image-zip-download', 'zip', ts);
   const job = createJob({
-    type: 'instagram-images-zip',
+    type: 'ig-image-zip-download',
     title: baseTitle,
     fileName,
     sourceUrl: reelUrl
@@ -525,7 +528,7 @@ async function startTwitterDownload(kind, tweetUrl, tweetTitle) {
   } catch (e) {
     tweetId = '';
   }
-  const isMp4 = kind === 'twitter-mp4';
+  const isMp4 = kind === 'x-video-download';
   const ext = isMp4 ? 'mp4' : 'mp3';
   const baseTitle = tweetTitle || tweetId || 'twitter-video';
   const ts = Date.now();
@@ -598,10 +601,10 @@ async function startTwitterImageDownload({ tweetUrl, tweetTitle, imageUrl }) {
   const ts = Date.now();
 
   const baseTitle = tweetTitle || 'twitter-image';
-  const fileName = buildTimestampFile('twitter-image', ext, ts);
+  const fileName = buildTimestampFile('x-image-download', ext, ts);
 
   const job = createJob({
-    type: 'twitter-image',
+    type: 'x-image-download',
     title: baseTitle,
     fileName,
     sourceUrl: effectiveTweetUrl,
@@ -653,10 +656,10 @@ async function startTwitterImagesZip({ tweetUrl, tweetTitle, imageUrls }) {
 
   const baseTitle = tweetTitle || 'twitter-images';
   const ts = Date.now();
-  const fileName = buildTimestampFile('twitter-images-zip', 'zip', ts);
+  const fileName = buildTimestampFile('x-image-zip-download', 'zip', ts);
 
   const job = createJob({
-    type: 'twitter-images-zip',
+    type: 'x-image-zip-download',
     title: baseTitle,
     fileName,
     sourceUrl: tweetUrl
@@ -957,31 +960,53 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // keep channel open
   }
 
-  if (message?.type === 'download-mp3') {
-    startYoutubeDownload('youtube-mp3', message.videoId, message.videoTitle).then(sendResponse);
-    return true; // keep channel open for async response
+  const maybeOpenPopup = () => {
+    if (!message?.openPopup || !chrome.action?.openPopup) return;
+    try {
+      chrome.action.openPopup(() => {
+        if (chrome.runtime.lastError) {
+          console.warn('openPopup failed:', chrome.runtime.lastError.message);
+        }
+      });
+    } catch (err) {
+      console.warn('openPopup threw:', err);
+    }
+  };
+
+  if (message?.type === 'yt-audio-download') {
+    maybeOpenPopup();
+
+    startYoutubeDownload('yt-audio-download', message.videoId, message.videoTitle)
+      .then(sendResponse);
+    return true;
   }
 
-  if (message?.type === 'download-mp4') {
-    startYoutubeDownload('youtube-mp4', message.videoId, message.videoTitle).then(sendResponse);
-    return true; // keep channel open for async response
+  if (message?.type === 'yt-video-download') {
+    maybeOpenPopup();
+
+    startYoutubeDownload('yt-video-download', message.videoId, message.videoTitle)
+      .then(sendResponse);
+    return true;
   }
 
-  if (message?.type === 'download-instagram-mp3') {
-    startInstagramDownload('instagram-mp3', message.reelUrl, message.reelTitle, {
+  if (message?.type === 'ig-audio-download') {
+    maybeOpenPopup();
+    startInstagramDownload('ig-audio-download', message.reelUrl, message.reelTitle, {
       directMedia: message.directMedia
     }).then(sendResponse);
     return true;
   }
 
-  if (message?.type === 'download-instagram-mp4') {
-    startInstagramDownload('instagram-mp4', message.reelUrl, message.reelTitle, {
+  if (message?.type === 'ig-video-download') {
+    maybeOpenPopup();
+    startInstagramDownload('ig-video-download', message.reelUrl, message.reelTitle, {
       directMedia: message.directMedia
     }).then(sendResponse);
     return true;
   }
 
-  if (message?.type === 'download-instagram-image') {
+  if (message?.type === 'ig-image-download') {
+    maybeOpenPopup();
     startInstagramImageDownload({
       reelUrl: message.reelUrl,
       reelTitle: message.reelTitle,
@@ -990,7 +1015,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message?.type === 'download-instagram-images-zip') {
+  if (message?.type === 'ig-image-zip-download') {
+    maybeOpenPopup();
     startInstagramImagesZip({
       reelUrl: message.reelUrl,
       reelTitle: message.reelTitle,
@@ -999,17 +1025,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message?.type === 'download-twitter-mp3') {
-    startTwitterDownload('twitter-mp3', message.tweetUrl, message.tweetTitle).then(sendResponse);
+  if (message?.type === 'x-audio-download') {
+    maybeOpenPopup();
+    startTwitterDownload('x-audio-download', message.tweetUrl, message.tweetTitle).then(sendResponse);
     return true;
   }
 
-  if (message?.type === 'download-twitter-mp4') {
-    startTwitterDownload('twitter-mp4', message.tweetUrl, message.tweetTitle).then(sendResponse);
+  if (message?.type === 'x-video-download') {
+    maybeOpenPopup();
+    startTwitterDownload('x-video-download', message.tweetUrl, message.tweetTitle).then(sendResponse);
     return true;
   }
 
-  if (message?.type === 'download-twitter-image') {
+  if (message?.type === 'x-image-download') {
     startTwitterImageDownload({
       tweetUrl: message.tweetUrl,
       tweetTitle: message.tweetTitle,
@@ -1018,7 +1046,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message?.type === 'download-twitter-images-zip') {
+  if (message?.type === 'x-image-zip-download') {
     startTwitterImagesZip({
       tweetUrl: message.tweetUrl,
       tweetTitle: message.tweetTitle,
@@ -1058,7 +1086,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
 
-      if (previous.type === 'youtube-mp3' || previous.type === 'youtube-mp4') {
+      if (previous.type === 'yt-audio-download' || previous.type === 'yt-video-download') {
         const videoId = getYoutubeIdFromUrl(previous.sourceUrl);
         if (!videoId) {
           sendResponse({ success: false, error: 'Video ID bulunamadı' });
@@ -1069,14 +1097,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
 
-      if (previous.type === 'instagram-mp3') {
-        const res = await startInstagramDownload('instagram-mp3', previous.sourceUrl, previous.title || previous.fileName);
+      if (previous.type === 'ig-audio-download') {
+        const res = await startInstagramDownload('ig-audio-download', previous.sourceUrl, previous.title || previous.fileName);
         sendResponse(res);
         return;
       }
 
-      if (previous.type === 'instagram-mp4') {
-        const res = await startInstagramDownload('instagram-mp4', previous.sourceUrl, previous.title || previous.fileName, {
+      if (previous.type === 'ig-video-download') {
+        const res = await startInstagramDownload('ig-video-download', previous.sourceUrl, previous.title || previous.fileName, {
           directMedia: previous.mediaUrl
             ? {
               url: previous.mediaUrl,
@@ -1089,7 +1117,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
 
-      if (previous.type === 'instagram-image') {
+      if (previous.type === 'ig-image-download') {
         const mediaUrl = previous.mediaUrl || previous.sourceUrl;
         if (!mediaUrl) {
           sendResponse({ success: false, error: 'Kaynak bulunamadı' });
@@ -1104,7 +1132,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
 
-      if (previous.type === 'instagram-images-zip') {
+      if (previous.type === 'ig-image-zip-download') {
         if (!previous.sourceUrl) {
           sendResponse({ success: false, error: 'Kaynak bulunamadı' });
           return;
@@ -1114,14 +1142,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
 
-      if (previous.type === 'twitter-mp3') {
-        const res = await startTwitterDownload('twitter-mp3', previous.sourceUrl, previous.title || previous.fileName);
+      if (previous.type === 'x-audio-download') {
+        const res = await startTwitterDownload('x-audio-download', previous.sourceUrl, previous.title || previous.fileName);
         sendResponse(res);
         return;
       }
 
-      if (previous.type === 'twitter-mp4') {
-        const res = await startTwitterDownload('twitter-mp4', previous.sourceUrl, previous.title || previous.fileName);
+      if (previous.type === 'x-video-download') {
+        const res = await startTwitterDownload('x-video-download', previous.sourceUrl, previous.title || previous.fileName);
         sendResponse(res);
         return;
       }

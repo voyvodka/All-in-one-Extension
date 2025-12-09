@@ -2,7 +2,7 @@ import { t } from '../../../shared/i18n.js';
 import { isTwitter, registerTwitterMenuProvider, safeSendMessage } from '../shared.js';
 
 export default {
-  id: 'twitter-mp4-download',
+  id: 'x-video-download',
   label: 'Twitter Video Download',
   description: 'Adds a video download option to the tweet action menu.',
   matches: isTwitter,
@@ -29,7 +29,8 @@ export default {
 async function startMp4Download({ tweetUrl, tweetTitle }) {
   try {
     const response = await safeSendMessage({
-      type: 'download-twitter-mp4',
+      type: 'x-video-download',
+      openPopup: true,
       tweetUrl,
       tweetTitle: tweetTitle || 'twitter-video'
     });

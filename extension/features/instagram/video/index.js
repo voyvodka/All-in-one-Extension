@@ -2,7 +2,7 @@ import { t } from '../../../shared/i18n.js';
 import { isInstagram, registerInstagramMenuProvider, safeSendMessage } from '../shared.js';
 
 export default {
-  id: 'instagram-reels-mp4',
+  id: 'ig-video-download',
   label: 'Instagram Reels Video',
   description: 'Adds a video download shortcut for Instagram Reels.',
   matches: isInstagram,
@@ -29,7 +29,8 @@ export default {
 async function startVideoDownload({ reelUrl, reelTitle, directMedia }) {
   try {
     const response = await safeSendMessage({
-      type: 'download-instagram-mp4',
+      type: 'ig-video-download',
+      openPopup: true,
       reelUrl,
       reelTitle: reelTitle || 'instagram-reel',
       directMedia
