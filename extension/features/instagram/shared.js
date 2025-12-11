@@ -3,7 +3,6 @@ import { t } from '../../shared/i18n.js';
 export const isInstagram = (url) => {
   try {
     const { hostname } = new URL(url);
-    // Paylaşım paneli ana sayfa/profilde de açılabildiği için sadece alan adına bak.
     const hostMatch = hostname.endsWith('instagram.com') || hostname === 'www.instagram.com';
     return hostMatch;
   } catch {
@@ -226,13 +225,68 @@ function isLikelyAvatar({ url, alt, width }) {
   return false;
 }
 
-export function getActiveInstagramArticle() {
+export const INSTAGRAM_SCOPE_TYPES = {
+  dialog: 'dialog',
+  article: 'article',
+  postPage: 'post-page',
+  page: 'page'
+};
+
+function findPostPageScope(root = document) {
+  const selectors = [
+    'div[role=\"presentation\"] ul._acay',
+    'ul._acay',
+    'div._aagu',
+    'div._aagv',
+    'div._acnb',
+    'div.html-div'
+  ];
+
+  const stopAt =
+    root && root.nodeType === 1 && typeof root.closest === 'function'
+      ? root.closest('main[role=\"main\"]')
+      : null;
+  const pickContainer = (el) => {
+    if (!el) return null;
+    let cur = el.closest('article, section, div') || el;
+    while (cur && cur !== stopAt && cur !== document.body) {
+      const mediaCount = cur.querySelectorAll('img, video, picture').length;
+      if (mediaCount > 0 && mediaCount < 50) return cur;
+      cur = cur.parentElement;
+    }
+    return null;
+  };
+
+  for (const selector of selectors) {
+    const el = root.querySelector(selector);
+    const container = pickContainer(el);
+    if (container) return container;
+  }
+
+  const firstImg = root.querySelector('img');
+  const imgContainer = pickContainer(firstImg);
+  if (imgContainer) return imgContainer;
+
+  return null;
+}
+
+export function detectInstagramScope() {
   const dialog = document.querySelector('div[role="dialog"]');
+  if (dialog) {
+    const dialogPostScope = findPostPageScope(dialog);
+    if (dialogPostScope) {
+      return { scope: dialogPostScope, type: INSTAGRAM_SCOPE_TYPES.dialog };
+    }
+  }
   const dialogArticle = dialog?.querySelector('article') || dialog?.closest('article');
-  if (dialogArticle) return dialogArticle;
+  if (dialogArticle || dialog) {
+    return { scope: dialogArticle || dialog, type: INSTAGRAM_SCOPE_TYPES.dialog };
+  }
 
   const focusArticle = document.activeElement?.closest?.('article');
-  if (focusArticle) return focusArticle;
+  if (focusArticle) {
+    return { scope: focusArticle, type: INSTAGRAM_SCOPE_TYPES.article };
+  }
 
   const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
   const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
@@ -243,9 +297,25 @@ export function getActiveInstagramArticle() {
     return { el, area: visibleWidth * visibleHeight };
   });
   const bestVisible = visibleArticles.sort((a, b) => b.area - a.area)[0];
-  if (bestVisible?.area > 0) return bestVisible.el;
+  if (bestVisible?.area > 0) {
+    return { scope: bestVisible.el, type: INSTAGRAM_SCOPE_TYPES.article };
+  }
 
-  return document.querySelector('article');
+  const main = document.querySelector('main[role="main"]') || document.querySelector('main');
+  const postScope = findPostPageScope(main || document);
+  if (postScope) {
+    return { scope: postScope, type: INSTAGRAM_SCOPE_TYPES.postPage };
+  }
+  if (main) {
+    return { scope: main, type: INSTAGRAM_SCOPE_TYPES.postPage };
+  }
+
+  return { scope: document, type: INSTAGRAM_SCOPE_TYPES.page };
+}
+
+export function getActiveInstagramArticle() {
+  const { scope } = detectInstagramScope();
+  return scope || document;
 }
 
 export function findInstagramActionBar(article) {
@@ -419,7 +489,7 @@ export async function safeSendMessage(payload) {
 }
 
 export function registerInstagramMenuProvider(id, buildOptions) {
-  if (!id || typeof buildOptions !== 'function') return () => {};
+  if (!id || typeof buildOptions !== 'function') return () => { };
   menuProviders.set(id, buildOptions);
   ensureMenuObserver();
   injectMenuButtons();
@@ -634,8 +704,31 @@ function closeMenu() {
 }
 
 export function findInstagramMediaSources(targetArticle) {
-  const article = targetArticle || getActiveInstagramArticle();
-  const scope = article || document;
+  const detection = detectInstagramScope();
+  let scopeType = detection.type;
+  if (targetArticle) {
+    const inDialog = targetArticle.closest && targetArticle.closest('div[role=\"dialog\"]');
+    scopeType = inDialog ? INSTAGRAM_SCOPE_TYPES.dialog : INSTAGRAM_SCOPE_TYPES.article;
+  }
+  const scopeRoot = targetArticle || detection.scope || document;
+  const postScope = findPostPageScope(scopeRoot);
+  let mediaScope = targetArticle || postScope || scopeRoot.querySelector?.('article') || scopeRoot;
+  if (scopeType === INSTAGRAM_SCOPE_TYPES.dialog && postScope) {
+    mediaScope = postScope;
+  }
+
+  if (!targetArticle && scopeType === INSTAGRAM_SCOPE_TYPES.dialog && !postScope) {
+    console.log('AIO: ig media skip dialog (no post scope)', { scopeType, scopeRootTag: scopeRoot?.tagName });
+    return {
+      bestVideo: null,
+      bestImage: null,
+      visibleImage: null,
+      images: [],
+      all: [],
+      hasVideo: false,
+      scopeType
+    };
+  }
 
   const media = [];
   let hasVideoElement = false;
@@ -651,7 +744,7 @@ export function findInstagramMediaSources(targetArticle) {
     });
   };
 
-  scope.querySelectorAll('video').forEach((video) => {
+  mediaScope.querySelectorAll('video').forEach((video) => {
     hasVideoElement = true;
     const src = video.currentSrc || video.getAttribute('src');
     const weight = video.videoWidth || parseInt(video.getAttribute('width'), 10) || parseWidthFromUrl(src) || 0;
@@ -663,7 +756,7 @@ export function findInstagramMediaSources(targetArticle) {
     });
   });
 
-  scope.querySelectorAll('img').forEach((img) => {
+  mediaScope.querySelectorAll('img').forEach((img) => {
     const fromSrcset = pickFromSrcset(img.getAttribute('srcset'));
     const candidate = fromSrcset.url || img.currentSrc || img.getAttribute('src');
     const weight = fromSrcset.width || img.naturalWidth || parseInt(img.getAttribute('width'), 10) || parseWidthFromUrl(candidate) || 0;
@@ -697,13 +790,23 @@ export function findInstagramMediaSources(targetArticle) {
   const visibleImage = (visibleImages.length ? visibleImages : imagePool)
     .sort((a, b) => (b.visibleScore || 0) - (a.visibleScore || 0) || b.weight - a.weight)[0] || null;
 
+  console.log('AIO: ig media collected', {
+    scopeType,
+    scopeRootTag: scopeRoot?.tagName,
+    mediaScopeTag: mediaScope?.tagName,
+    imageCount: images.length,
+    allCount: media.length,
+    hasVideo: hasVideoElement
+  });
+
   return {
     bestVideo,
     bestImage,
     visibleImage,
     images,
     all: media,
-    hasVideo: hasVideoElement
+    hasVideo: hasVideoElement,
+    scopeType
   };
 }
 

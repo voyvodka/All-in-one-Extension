@@ -3,7 +3,8 @@ import {
   isInstagram,
   registerInstagramMenuProvider,
   safeSendMessage,
-  findInstagramMediaSources
+  findInstagramMediaSources,
+  detectInstagramScope
 } from '../shared.js';
 
 const NAV_LABELS = {
@@ -173,8 +174,10 @@ async function startBulkImageDownload({ article, reelUrl, reelTitle, fallbackIma
 async function collectCarouselImages(article) {
   const gathered = [];
   const seen = new Set();
+  const { scope: detectedScope } = detectInstagramScope();
+  const scopeRoot = article || detectedScope || document;
   const addFromState = () => {
-    const { images, visibleImage } = findInstagramMediaSources(article);
+    const { images, visibleImage } = findInstagramMediaSources(scopeRoot);
     const list = [];
     if (visibleImage) list.push(visibleImage);
     if (Array.isArray(images)) list.push(...images);
@@ -186,10 +189,9 @@ async function collectCarouselImages(article) {
     });
   };
 
-  const scope = article || document;
   const findButton = (labels) => {
     const selector = labels.map((lbl) => `button[aria-label*="${lbl}"], div[role="button"][aria-label*="${lbl}"]`).join(',');
-    const roots = [article, scope];
+    const roots = [scopeRoot, document];
     for (const root of roots) {
       if (!root) continue;
       const btn = root.querySelector(selector);
@@ -206,8 +208,8 @@ async function collectCarouselImages(article) {
     });
   };
 
-  if (article?.scrollIntoView) {
-    article.scrollIntoView({ block: 'center', inline: 'center' });
+  if (scopeRoot?.scrollIntoView) {
+    scopeRoot.scrollIntoView({ block: 'center', inline: 'center' });
   }
 
   addFromState();
