@@ -189,15 +189,53 @@ async function collectCarouselImages(article) {
     });
   };
 
-  const findButton = (labels) => {
-    const selector = labels.map((lbl) => `button[aria-label*="${lbl}"], div[role="button"][aria-label*="${lbl}"]`).join(',');
-    const roots = [scopeRoot, document];
-    for (const root of roots) {
-      if (!root) continue;
-      const btn = root.querySelector(selector);
-      if (btn) return btn;
+  const isInStoryTray = (node) => Boolean(node?.closest?.('div[data-pagelet="story_tray"]'));
+  const sameInteractionScope = (btn) => {
+    if (!btn || !btn.closest) return false;
+    const scopeArticle = scopeRoot?.closest?.('article') || null;
+    const btnArticle = btn.closest('article');
+    if (scopeArticle && btnArticle) return scopeArticle === btnArticle;
+
+    const scopeDialog = scopeRoot?.closest?.('div[role="dialog"]') || null;
+    const btnDialog = btn.closest('div[role="dialog"]');
+    if (scopeDialog && btnDialog) return scopeDialog === btnDialog;
+
+    return false;
+  };
+  const distanceToScope = (btn) => {
+    try {
+      const a = scopeRoot.getBoundingClientRect();
+      const b = btn.getBoundingClientRect();
+      const ax = a.left + a.width / 2;
+      const ay = a.top + a.height / 2;
+      const bx = b.left + b.width / 2;
+      const by = b.top + b.height / 2;
+      return Math.hypot(ax - bx, ay - by);
+    } catch {
+      return Number.POSITIVE_INFINITY;
     }
-    return null;
+  };
+  const pickClosest = (buttons) => {
+    const list = (buttons || []).filter(Boolean);
+    if (!list.length) return null;
+    return list.sort((a, b) => distanceToScope(a) - distanceToScope(b))[0] || null;
+  };
+  const findButton = (labels) => {
+    const selector = labels
+      .map((lbl) => `button[aria-label*="${lbl}"], div[role="button"][aria-label*="${lbl}"]`)
+      .join(',');
+
+    const localCandidates = Array.from(scopeRoot?.querySelectorAll?.(selector) || [])
+      .filter((btn) => !isInStoryTray(btn));
+    const local = pickClosest(localCandidates);
+    if (local) return local;
+
+    // Fallback for cases where IG renders nav buttons outside the article/dialog subtree.
+    // Never touch story tray navigation.
+    const globalCandidates = Array.from(document.querySelectorAll(selector))
+      .filter((btn) => !isInStoryTray(btn))
+      .filter((btn) => sameInteractionScope(btn));
+    return pickClosest(globalCandidates);
   };
   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const clickNav = (btn) => {
@@ -216,13 +254,14 @@ async function collectCarouselImages(article) {
 
   // Step 1: go to the first slide
   {
-    const prevButton = findButton(NAV_LABELS.prev);
+    let prevButton = findButton(NAV_LABELS.prev);
     const start = Date.now();
     while (prevButton && prevButton.isConnected && Date.now() - start < 5000) {
       if (prevButton.getAttribute('aria-disabled') === 'true') break;
       clickNav(prevButton);
       await delay(200);
       addFromState();
+      prevButton = findButton(NAV_LABELS.prev);
     }
   }
 

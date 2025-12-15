@@ -472,18 +472,36 @@ export function insertActionButtonNear(templateButton, newButton) {
 }
 
 export async function safeSendMessage(payload) {
-  return new Promise((resolve) => {
+  const normalizeError = (message) => {
+    const msg = String(message || '');
+    if (/context invalidated/i.test(msg)) {
+      return 'Extension was reloaded. Please refresh the page and try again.';
+    }
+    if (/receiving end does not exist/i.test(msg)) {
+      return 'Extension background is not available. Please reload the extension and refresh the page.';
+    }
+    return msg || 'Message failed';
+  };
+
+  if (!chrome?.runtime?.id) {
+    return { success: false, error: normalizeError('Extension context invalidated') };
+  }
+
+  return await new Promise((resolve) => {
     try {
       chrome.runtime.sendMessage(payload, (response) => {
         if (chrome.runtime.lastError) {
-          resolve({ success: false, error: chrome.runtime.lastError.message });
+          resolve({ success: false, error: normalizeError(chrome.runtime.lastError.message) });
           return;
         }
         resolve(response);
       });
     } catch (error) {
-      console.error('Instagram message send failed', error);
-      resolve({ success: false, error: error.message });
+      const normalized = normalizeError(error?.message);
+      if (!/context invalidated/i.test(String(error?.message || ''))) {
+        console.error('Instagram message send failed', error);
+      }
+      resolve({ success: false, error: normalized });
     }
   });
 }

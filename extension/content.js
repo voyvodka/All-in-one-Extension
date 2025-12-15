@@ -11,7 +11,6 @@ if (!allowedProtocols.has(location.protocol)) {
 
     let features = [];
     let storage;
-    let ui;
     let i18n;
 
     try {
@@ -21,19 +20,17 @@ if (!allowedProtocols.has(location.protocol)) {
       );
       features = featureModules.map(module => module.default);
 
-      [storage, ui, i18n] = await Promise.all([
+      [storage, i18n] = await Promise.all([
         import(chrome.runtime.getURL('shared/storage.js')),
-        import(chrome.runtime.getURL('ui/panel.js')),
         import(chrome.runtime.getURL('shared/i18n.js'))
       ]);
-      console.debug('All-in-One: imports loaded', { features, storage, ui });
+      console.debug('All-in-One: imports loaded', { features, storage });
     } catch (err) {
       console.error('All-in-One: import failed', err);
       return;
     }
 
-    const { getSettings, onSettingsChanged, setEnabled, upsertFeatureState } = storage;
-    const { createPanel } = ui;
+    const { getSettings, onSettingsChanged } = storage;
     const { translateFeature, setLocale, t, resolveLocale } = i18n;
 
     function getMatchedFeatures(url) {
@@ -59,31 +56,15 @@ if (!allowedProtocols.has(location.protocol)) {
       const localized = translateFeature(feature);
       return { ...feature, ...localized };
     });
-    const localizedMatchedFeatures = localizedFeatures.filter((feature) => matchedFeatures.find((m) => m.id === feature.id));
-
-    const panel = createPanel({
-      features: localizedMatchedFeatures,
-      initialSettings: currentSettings,
-      onToggle: async (featureId, nextState) => {
-        await upsertFeatureState(featureId, nextState);
-        currentSettings = await getSettings();
-        applyFeatures();
-      },
-      onGlobalToggle: async (nextState) => {
-        await setEnabled(nextState);
-        currentSettings = await getSettings();
-        applyFeatures();
-      }
-    });
 
     applyFeatures();
 
-      chrome.runtime.onMessage.addListener((message) => {
-        if (message?.type === 'feature-toggled' && message.featureId) {
-          console.debug('All-in-One: feature toggled via message', message.featureId);
-          applyFeatures();
-        }
-      });
+    chrome.runtime.onMessage.addListener((message) => {
+      if (message?.type === 'feature-toggled' && message.featureId) {
+        console.debug('All-in-One: feature toggled via message', message.featureId);
+        applyFeatures();
+      }
+    });
 
     onSettingsChanged(() => {
       refreshSettings().then(applyFeatures);
@@ -91,24 +72,21 @@ if (!allowedProtocols.has(location.protocol)) {
 
     async function refreshSettings() {
       currentSettings = await getSettings();
-      panel.update(currentSettings);
     }
 
     function applyFeatures() {
-      panel.update(currentSettings);
-
       if (!currentSettings.enabled) {
         cleanupAll();
         return;
-        }
+      }
 
-        for (const feature of matchedFeatures) {
-          const shouldEnable = currentSettings.features[feature.id] ?? true;
-          const isActive = activeCleanups.has(feature.id);
+      for (const feature of matchedFeatures) {
+        const shouldEnable = currentSettings.features[feature.id] ?? true;
+        const isActive = activeCleanups.has(feature.id);
 
         if (shouldEnable && !isActive) {
           try {
-            const cleanup = feature.apply({ features, settings: currentSettings }) || (() => { });
+            const cleanup = feature.apply({ features: localizedFeatures, settings: currentSettings }) || (() => { });
             activeCleanups.set(feature.id, cleanup);
             console.debug('All-in-One: feature started', feature.id);
           } catch (err) {
