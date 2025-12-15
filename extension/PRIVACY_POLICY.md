@@ -25,3 +25,4 @@ We built this extension to run locally in your browser. We do not operate any se
 
 ## Contact
 For questions or concerns, open an issue on the repository where you got this extension.
+

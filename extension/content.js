@@ -31,7 +31,7 @@ if (!allowedProtocols.has(location.protocol)) {
     }
 
     const { getSettings, onSettingsChanged } = storage;
-    const { translateFeature, setLocale, t, resolveLocale } = i18n;
+    const { setLocale, resolveLocale } = i18n;
 
     function getMatchedFeatures(url) {
       return features.filter((feature) => {
@@ -52,19 +52,7 @@ if (!allowedProtocols.has(location.protocol)) {
     setLocale(currentSettings.language || resolveLocale());
     console.debug('All-in-One: initial settings', currentSettings);
 
-    const localizedFeatures = features.map((feature) => {
-      const localized = translateFeature(feature);
-      return { ...feature, ...localized };
-    });
-
     applyFeatures();
-
-    chrome.runtime.onMessage.addListener((message) => {
-      if (message?.type === 'feature-toggled' && message.featureId) {
-        console.debug('All-in-One: feature toggled via message', message.featureId);
-        applyFeatures();
-      }
-    });
 
     onSettingsChanged(() => {
       refreshSettings().then(applyFeatures);
@@ -75,25 +63,17 @@ if (!allowedProtocols.has(location.protocol)) {
     }
 
     function applyFeatures() {
-      if (!currentSettings.enabled) {
-        cleanupAll();
-        return;
-      }
-
       for (const feature of matchedFeatures) {
-        const shouldEnable = currentSettings.features[feature.id] ?? true;
         const isActive = activeCleanups.has(feature.id);
 
-        if (shouldEnable && !isActive) {
+        if (!isActive) {
           try {
-            const cleanup = feature.apply({ features: localizedFeatures, settings: currentSettings }) || (() => { });
+            const cleanup = feature.apply({ features, settings: currentSettings }) || (() => { });
             activeCleanups.set(feature.id, cleanup);
             console.debug('All-in-One: feature started', feature.id);
           } catch (err) {
             console.error('Failed to start feature', feature.id, err);
           }
-        } else if (!shouldEnable && isActive) {
-          cleanupFeature(feature.id);
         }
       }
     }

@@ -1,13 +1,6 @@
-import { featureModulePaths } from '../features/index.js';
-import { getSettings, upsertFeatureState, getDownloadsState, onDownloadsChanged, setLanguage, setTheme } from '../shared/storage.js';
-import { t, getLocale, setLocale, resolveLocale, translateFeature } from '../shared/i18n.js';
+import { getSettings, getDownloadsState, onDownloadsChanged, setLanguage, setTheme } from '../shared/storage.js';
+import { t, getLocale, setLocale, resolveLocale } from '../shared/i18n.js';
 
-const featureModules = await Promise.all(
-  featureModulePaths.map(path => import(`../${path}`))
-);
-const features = featureModules.map(module => module.default);
-
-const listEl = document.getElementById('feature-list');
 const bugBtn = document.getElementById('bug-btn');
 const donateBtn = document.getElementById('donate-btn');
 const languageSelect = document.getElementById('language-select');
@@ -16,10 +9,6 @@ const downloadActiveEl = document.getElementById('download-active');
 const downloadHistoryEl = document.getElementById('download-history');
 const sortDownloadsBtn = document.getElementById('sort-downloads');
 const clearHistoryBtn = document.getElementById('clear-history');
-const tabs = Array.from(document.querySelectorAll('.tab'));
-const tabViews = Array.from(document.querySelectorAll('.tab-view'));
-const TAB_KEY = 'aioPopupActiveTab';
-const defaultTab = 'features';
 
 const subTabs = Array.from(document.querySelectorAll('.subtab'));
 const subTabViews = Array.from(document.querySelectorAll('.download-group'));
@@ -41,10 +30,6 @@ const savedSortAsc = (() => {
 let sortAscending = savedSortAsc ?? false;
 
 let current = await getSettings();
-if (!current.enabled) {
-  current.enabled = true;
-  await chrome.storage.local.set({ enabled: true });
-}
 if (!current.language) {
   const resolved = resolveLocale();
   current.language = resolved;
@@ -59,40 +44,10 @@ applyStaticTranslations();
 hydrateLanguageSelect(current.language);
 hydrateThemeSelect(current.theme);
 applyTheme(current.theme);
-renderFeatures(current);
 renderDownloads(downloads);
 if (sortDownloadsBtn) {
   sortDownloadsBtn.classList.toggle('rotated', sortAscending);
 }
-
-function selectTab(tabName, persist = false) {
-  const name = tabName || defaultTab;
-  tabs.forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
-  tabViews.forEach((view) => view.classList.toggle('active', view.dataset.tab === name));
-  if (persist) {
-    try {
-      localStorage.setItem(TAB_KEY, name);
-    } catch (err) {
-      console.warn('Tab persist failed', err);
-    }
-  }
-}
-
-const savedTab = (() => {
-  try {
-    return localStorage.getItem(TAB_KEY);
-  } catch {
-    return null;
-  }
-})();
-
-selectTab(savedTab || defaultTab, false);
-
-tabs.forEach((tab) => {
-  tab.addEventListener('click', () => {
-    selectTab(tab.dataset.tab, true);
-  });
-});
 
 function selectSubTab(name, persist = false) {
   const tabName = name || defaultSubTab;
@@ -160,7 +115,6 @@ donateBtn?.addEventListener('click', () => { });
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  if (changes.features) current.features = changes.features.newValue;
   if (changes.language) {
     current.language = changes.language.newValue;
     setLocale(current.language);
@@ -172,39 +126,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
     hydrateThemeSelect(current.theme);
     applyTheme(current.theme);
   }
-  renderFeatures(current);
 });
 
 onDownloadsChanged((next) => {
   downloads = next;
   renderDownloads(downloads);
 });
-
-function renderFeatures(settings) {
-  listEl.innerHTML = '';
-
-  for (const feature of features) {
-    const localized = translateFeature(feature);
-    const card = document.createElement('article');
-    card.className = 'feature-card';
-    card.title = localized.description;
-    card.innerHTML = `
-      <div>
-        <h3>${localized.label}</h3>
-      </div>
-      <label class="switch">
-        <input type="checkbox" data-id="${feature.id}" />
-        <span></span>
-      </label>
-    `;
-    const input = card.querySelector('input');
-    input.checked = settings.features[feature.id] ?? true;
-    input.addEventListener('change', async (ev) => {
-      await upsertFeatureState(ev.target.dataset.id, ev.target.checked);
-    });
-    listEl.appendChild(card);
-  }
-}
 
 function renderDownloads(state) {
   const sortedActive = sortByDate(state.active || []);
@@ -348,13 +275,9 @@ function renderDownloadList(rootEl, items, allowCancel) {
 }
 
 function applyStaticTranslations() {
-  const featuresTab = tabs.find((tab) => tab.dataset.tab === 'features');
-  const downloadsTab = tabs.find((tab) => tab.dataset.tab === 'downloads');
   const activeSubTab = subTabs.find((tab) => tab.dataset.subtab === 'active');
   const historySubTab = subTabs.find((tab) => tab.dataset.subtab === 'history');
 
-  if (featuresTab) featuresTab.textContent = t('tabFeatures');
-  if (downloadsTab) downloadsTab.textContent = t('tabDownloads');
   if (activeSubTab) activeSubTab.textContent = t('subtabActive');
   if (historySubTab) historySubTab.textContent = t('subtabHistory');
 

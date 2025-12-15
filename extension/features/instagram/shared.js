@@ -16,6 +16,12 @@ const BOUND_FLAG = 'true';
 const menuProviders = new Map();
 let menuObserver = null;
 let openMenu = null;
+let injectScheduled = false;
+let injectingMenuButtons = false;
+let lastInjectAt = 0;
+let burstStart = 0;
+let burstCount = 0;
+let resumeObserverTimer = null;
 const ACTION_ICON_SELECTORS = [
   'svg[aria-label="Share"]',
   'svg[aria-label="Share Post"]',
@@ -510,7 +516,7 @@ export function registerInstagramMenuProvider(id, buildOptions) {
   if (!id || typeof buildOptions !== 'function') return () => { };
   menuProviders.set(id, buildOptions);
   ensureMenuObserver();
-  injectMenuButtons();
+  scheduleInjectMenuButtons();
 
   return () => {
     menuProviders.delete(id);
@@ -522,8 +528,26 @@ export function registerInstagramMenuProvider(id, buildOptions) {
 
 function ensureMenuObserver() {
   if (menuObserver || !document?.body) return;
-  menuObserver = new MutationObserver(() => injectMenuButtons());
+  menuObserver = new MutationObserver(() => {
+    if (!menuProviders.size) return;
+    if (injectingMenuButtons) return;
+    scheduleInjectMenuButtons();
+  });
   menuObserver.observe(document.body, { childList: true, subtree: true });
+}
+
+function scheduleInjectMenuButtons() {
+  if (injectScheduled) return;
+  injectScheduled = true;
+  requestAnimationFrame(() => {
+    const now = Date.now();
+    const minGapMs = 120;
+    const delay = Math.max(0, minGapMs - (now - lastInjectAt));
+    setTimeout(() => {
+      injectScheduled = false;
+      injectMenuButtons();
+    }, delay);
+  });
 }
 
 function teardownMenuUi() {
@@ -532,13 +556,46 @@ function teardownMenuUi() {
     menuObserver.disconnect();
     menuObserver = null;
   }
+  if (resumeObserverTimer) {
+    clearTimeout(resumeObserverTimer);
+    resumeObserverTimer = null;
+  }
   document.querySelectorAll(`[${INSTAGRAM_DOWNLOAD_MENU_ATTR}]`).forEach((node) => node.remove());
 }
 
 function injectMenuButtons() {
   if (!menuProviders.size) return;
+  if (injectingMenuButtons) return;
+
+  const now = Date.now();
+  if (!burstStart || now - burstStart > 2000) {
+    burstStart = now;
+    burstCount = 0;
+  }
+  burstCount += 1;
+  if (burstCount > 60) {
+    if (menuObserver) {
+      menuObserver.disconnect();
+      menuObserver = null;
+    }
+    if (!resumeObserverTimer) {
+      console.warn('AIO: instagram injection throttled due to high mutation rate');
+      resumeObserverTimer = setTimeout(() => {
+        resumeObserverTimer = null;
+        ensureMenuObserver();
+        scheduleInjectMenuButtons();
+      }, 5000);
+    }
+    return;
+  }
+
+  injectingMenuButtons = true;
+  lastInjectAt = now;
+
+  try {
   const containers = getInstagramActionContainers();
   containers.forEach((container) => {
+    if (container?.closest?.('div[data-pagelet="story_tray"]')) return;
     const { actionBar, shareButton } = findInstagramActionBar(container);
     if (!actionBar || !shareButton) return;
 
@@ -560,6 +617,9 @@ function injectMenuButtons() {
     bindButton(node);
     insertActionButtonNear(shareButton, node);
   });
+  } finally {
+    injectingMenuButtons = false;
+  }
 }
 
 function bindButton(button) {

@@ -1,20 +1,11 @@
-import { features } from './features.js';
 import { getYoutubeIdFromUrl, inferExtFromUrl } from './utils.js';
-import { getSettings, onSettingsChanged, upsertFeatureState, getDownloadsState } from '../shared/storage.js';
+import { getSettings, getDownloadsState } from '../shared/storage.js';
 import { clearHistory, getJobIdByDownloadId, loadDownloadMap, updateJob } from './downloads/store.js';
 import { startYoutubeDownload } from './handlers/youtube.js';
 import { startInstagramDownload, startInstagramImageDownload, startInstagramImagesZip } from './handlers/instagram.js';
 import { startTwitterDownload, startTwitterImageDownload, startTwitterImagesZip } from './handlers/twitter.js';
 
 loadDownloadMap().catch((err) => console.error('Failed to load download map', err));
-
-chrome.runtime.onInstalled.addListener(() => {
-  registerContextMenus();
-});
-
-chrome.runtime.onStartup.addListener(() => {
-  registerContextMenus();
-});
 
 chrome.downloads.onChanged.addListener(async (delta) => {
   const jobId = getJobIdByDownloadId(delta.id);
@@ -43,51 +34,6 @@ chrome.downloads.onChanged.addListener(async (delta) => {
     }
   });
 });
-
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (!tab?.id || !info.menuItemId) return;
-  const featureId = String(info.menuItemId).replace('feature-', '');
-  const feature = features.find((item) => item.id === featureId);
-  if (!feature) return;
-
-  await upsertFeatureState(featureId, (prev) => !prev);
-  chrome.tabs.sendMessage(tab.id, {
-    type: 'feature-toggled',
-    featureId
-  });
-});
-
-// Keep context menus aligned with feature list
-onSettingsChanged(registerContextMenus);
-
-let registerContextMenusPromise = null;
-async function registerContextMenus() {
-  if (!chrome.contextMenus) return;
-  if (registerContextMenusPromise) return registerContextMenusPromise; // avoid overlapping remove/create
-
-  registerContextMenusPromise = (async () => {
-    const settings = await getSettings();
-    await new Promise((resolve) => chrome.contextMenus.removeAll(resolve));
-
-    for (const feature of features) {
-      try {
-        chrome.contextMenus.create({
-          id: `feature-${feature.id}`,
-          title: feature.label,
-          contexts: ['all'],
-          type: 'checkbox',
-          checked: settings.features[feature.id] ?? true
-        });
-      } catch (error) {
-        console.warn('Context menu create failed', feature.id, error);
-      }
-    }
-  })().finally(() => {
-    registerContextMenusPromise = null;
-  });
-
-  return registerContextMenusPromise;
-}
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'get-settings') {
@@ -292,4 +238,3 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   return undefined;
 });
-
