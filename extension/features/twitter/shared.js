@@ -619,16 +619,33 @@ function closeMenu() {
 }
 
 export async function safeSendMessage(payload) {
-  if (!chrome?.runtime?.id) {
-    throw new Error('Extension context invalidated');
-  }
-  try {
-    return await chrome.runtime.sendMessage(payload);
-  } catch (err) {
-    const msg = err?.message || '';
-    if (typeof msg === 'string' && msg.toLowerCase().includes('context invalidated')) {
-      throw new Error('Extension context invalidated');
+  const normalizeError = (message) => {
+    const msg = String(message || '');
+    if (/context invalidated/i.test(msg)) {
+      return 'Extension was reloaded. Please refresh the page and try again.';
     }
-    throw err;
+    if (/receiving end does not exist/i.test(msg)) {
+      return 'Extension background is not available. Please reload the extension and refresh the page.';
+    }
+    return msg || 'Message failed';
+  };
+
+  if (!chrome?.runtime?.id) {
+    return { success: false, error: normalizeError('Extension context invalidated') };
   }
+
+  return await new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage(payload, (response) => {
+        if (chrome.runtime.lastError) {
+          resolve({ success: false, error: normalizeError(chrome.runtime.lastError.message) });
+          return;
+        }
+        resolve(response);
+      });
+    } catch (error) {
+      const normalized = normalizeError(error?.message);
+      resolve({ success: false, error: normalized });
+    }
+  });
 }
