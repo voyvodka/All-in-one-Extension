@@ -828,10 +828,6 @@ export function findInstagramMediaSources(targetArticle) {
   };
 }
 
-function isElementVisible(el) {
-  return visibilityScore(el) >= 0.1;
-}
-
 function visibilityScore(el) {
   if (!el) return 0;
   const style = window.getComputedStyle ? getComputedStyle(el) : null;

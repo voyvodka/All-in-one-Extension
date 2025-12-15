@@ -36,7 +36,7 @@
     "https://*.loader.to/*"
   ],
   "background": {
-    "service_worker": "background.js",
+    "service_worker": "background/index.js",
     "type": "module"
   },
   "content_scripts": [
