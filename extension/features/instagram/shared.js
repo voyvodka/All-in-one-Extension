@@ -24,14 +24,101 @@ let burstCount = 0;
 let resumeObserverTimer = null;
 const ACTION_ICON_SELECTORS = [
   'svg[aria-label="Share"]',
+  '[role="button"][aria-label="Share"]',
+  'button[aria-label="Share"]',
   'svg[aria-label="Share Post"]',
+  '[role="button"][aria-label="Share Post"]',
+  'button[aria-label="Share Post"]',
   'svg[aria-label="Paylaş"]',
+  '[role="button"][aria-label="Paylaş"]',
+  'button[aria-label="Paylaş"]',
   'svg[aria-label="Like"]',
+  '[role="button"][aria-label="Like"]',
+  'button[aria-label="Like"]',
   'svg[aria-label="Unlike"]',
+  '[role="button"][aria-label="Unlike"]',
+  'button[aria-label="Unlike"]',
   'svg[aria-label="Beğen"]',
+  '[role="button"][aria-label="Beğen"]',
+  'button[aria-label="Beğen"]',
   'svg[aria-label="Comment"]',
-  'svg[aria-label="Save"]'
+  '[role="button"][aria-label="Comment"]',
+  'button[aria-label="Comment"]',
+  'svg[aria-label="Save"]',
+  '[role="button"][aria-label="Save"]',
+  'button[aria-label="Save"]'
 ];
+const SHARE_BUTTON_SELECTORS = [
+  '[role="button"][aria-label="Share"]',
+  'button[aria-label="Share"]',
+  'svg[aria-label="Share"]',
+  '[role="button"][aria-label="Share Post"]',
+  'button[aria-label="Share Post"]',
+  'svg[aria-label="Share Post"]',
+  '[role="button"][aria-label="Paylaş"]',
+  'button[aria-label="Paylaş"]',
+  'svg[aria-label="Paylaş"]'
+];
+
+function findShareButton(scope) {
+  if (!scope) return null;
+  const selector = SHARE_BUTTON_SELECTORS.join(',');
+  const directMatch = scope.matches?.(selector) ? scope : null;
+  const shareEl = directMatch || scope.querySelector?.(selector);
+  if (!shareEl) return null;
+  return shareEl.closest?.('[role="button"], button') || shareEl;
+}
+
+function getUniqueButtonsBySelector(scope, selector) {
+  if (!scope?.querySelectorAll) return [];
+  const buttons = new Set();
+  scope.querySelectorAll(selector).forEach((el) => {
+    const button = el.closest?.('[role="button"], button') || el;
+    if (button) buttons.add(button);
+  });
+  return Array.from(buttons);
+}
+
+function countShareButtons(scope) {
+  const selector = SHARE_BUTTON_SELECTORS.join(',');
+  return getUniqueButtonsBySelector(scope, selector).length;
+}
+
+function countActionIcons(scope) {
+  if (!scope?.querySelectorAll) return 0;
+  return scope.querySelectorAll(ACTION_ICON_SELECTORS.join(',')).length;
+}
+
+function findActionBarContainer(startEl, { requireSingleShare = false, stopAt = null } = {}) {
+  const minIcons = 2;
+  const maxIcons = 30;
+  const limit = stopAt || startEl?.closest?.('article') || null;
+  const search = (stopNode, mustBeSingleShare) => {
+    let node = startEl && startEl.nodeType === 1 ? startEl : startEl?.parentElement || null;
+    while (node && node !== document.body) {
+      const count = countActionIcons(node);
+      if (count >= minIcons && count <= maxIcons) {
+        if (!mustBeSingleShare || countShareButtons(node) === 1) return node;
+      }
+      if (stopNode && node === stopNode) break;
+      node = node.parentElement;
+    }
+    return null;
+  };
+
+  let found = search(limit, requireSingleShare);
+  if (found) return found;
+  if (requireSingleShare) {
+    found = search(limit, false);
+    if (found) return found;
+  }
+  if (limit) {
+    found = search(null, requireSingleShare);
+    if (found) return found;
+    if (requireSingleShare) return search(null, false);
+  }
+  return null;
+}
 
 function normalizeReelUrl(href) {
   if (!href) return null;
@@ -43,10 +130,18 @@ function normalizeReelUrl(href) {
     }
 
     // Keep only canonical media permalink paths.
-    const kind = segments[0];
-    const shortcode = segments[1];
+    let kind = segments[0];
+    let shortcode = segments[1];
+    if (!['reel', 'p', 'tv'].includes(kind) && segments.length > 2) {
+      const altKind = segments[1] === 'reels' ? 'reel' : segments[1];
+      if (['reel', 'p', 'tv'].includes(altKind)) {
+        kind = altKind;
+        shortcode = segments[2];
+      }
+    }
     if (!kind || !shortcode) return null;
     if (!['reel', 'p', 'tv'].includes(kind)) return null;
+    if (kind === 'reel' && shortcode === 'audio') return null;
 
     url.pathname = `/${kind}/${shortcode}/`;
     url.search = '';
@@ -60,17 +155,31 @@ function normalizeReelUrl(href) {
 function findPermalinkInScope(scope) {
   if (!scope?.querySelectorAll) return null;
   const anchors = Array.from(scope.querySelectorAll('a[href]'));
+  let best = null;
+  let bestScore = -1;
+  let firstCandidate = null;
   for (const a of anchors) {
     const href = a.getAttribute('href');
     if (!href) continue;
     if (!href.includes('/reel/') && !href.includes('/reels/') && !href.includes('/p/') && !href.includes('/tv/')) continue;
     const normalized = normalizeReelUrl(href);
-    if (normalized) return normalized;
+    if (!normalized) continue;
+    if (!firstCandidate) firstCandidate = normalized;
+    const container = a.closest('article, section, div') || a;
+    const score = visibilityScore(container);
+    if (score > bestScore) {
+      bestScore = score;
+      best = normalized;
+    }
   }
-  return null;
+  return best || firstCandidate;
 }
 
 export function getReelUrl(scopeHint = null) {
+  if (isReelsFeedPage()) {
+    const fromLocation = normalizeReelUrl(location.href);
+    if (fromLocation) return fromLocation;
+  }
 
   const fromDialogOrArticle = (() => {
     const dialog = document.querySelector('div[role="dialog"]');
@@ -259,7 +368,10 @@ export const INSTAGRAM_SCOPE_TYPES = {
 function isReelsFeedPage() {
   try {
     const segments = String(location?.pathname || '/').split('/').filter(Boolean);
-    return segments[0] === 'reels' && segments.length === 1;
+    if (!segments.length) return false;
+    if (segments[0] === 'reels' || segments[0] === 'reel') return true;
+    if (segments.length > 1 && (segments[1] === 'reels' || segments[1] === 'reel')) return true;
+    return false;
   } catch {
     return false;
   }
@@ -327,7 +439,7 @@ export function detectInstagramScope() {
   if (reelsFeed) {
     const main = document.querySelector('main[role="main"]') || document.querySelector('main');
     const postScope = findPostPageScope(main || document);
-    return { scope: postScope || main || document, type: INSTAGRAM_SCOPE_TYPES.reelsFeed };
+    return { scope: main || postScope || document, type: INSTAGRAM_SCOPE_TYPES.reelsFeed };
   }
 
   const focusArticle = document.activeElement?.closest?.('article');
@@ -367,22 +479,18 @@ export function getActiveInstagramArticle() {
 
 export function findInstagramActionBar(article) {
   const scope = article || getActiveInstagramArticle() || document;
-  const shareSvg =
-    scope.querySelector('svg[aria-label="Share"]') ||
-    scope.querySelector('svg[aria-label="Share Post"]') ||
-    scope.querySelector('svg[aria-label="Paylaş"]');
-
-  let templateButton = shareSvg?.closest('[role="button"]') || null;
+  const shareButton = findShareButton(scope);
+  let templateButton = shareButton;
 
   if (!templateButton) {
-    const altSvg = scope.querySelector(
-      'svg[aria-label="Like"], svg[aria-label="Unlike"], svg[aria-label="Beğen"], svg[aria-label="Comment"], svg[aria-label="Save"]'
-    );
-    templateButton = altSvg?.closest('[role="button"]') || null;
+    const candidate = scope.querySelector?.(ACTION_ICON_SELECTORS.join(','));
+    templateButton = candidate?.closest?.('[role="button"], button') || candidate || null;
   }
 
   if (!templateButton) return { actionBar: null, shareButton: null };
   const actionBar =
+    findActionBarContainer(templateButton, { requireSingleShare: Boolean(shareButton) }) ||
+    findActionBarContainer(templateButton) ||
     templateButton.closest('section') ||
     templateButton.parentElement ||
     templateButton.closest('[class]');
@@ -409,6 +517,33 @@ export function getInstagramActionContainers() {
   });
 
   return Array.from(containers);
+}
+
+function collectInstagramActionBars() {
+  const actionBars = new Map();
+  const shareButtons = getUniqueButtonsBySelector(document, SHARE_BUTTON_SELECTORS.join(','));
+  shareButtons.forEach((shareButton) => {
+    const actionBar =
+      findActionBarContainer(shareButton, { requireSingleShare: true }) ||
+      findActionBarContainer(shareButton);
+    if (!actionBar || actionBars.has(actionBar)) return;
+    actionBars.set(actionBar, shareButton);
+  });
+
+  if (actionBars.size) {
+    return Array.from(actionBars, ([actionBar, shareButton]) => ({ actionBar, shareButton }));
+  }
+
+  const selector = ACTION_ICON_SELECTORS.join(',');
+  document.querySelectorAll(selector).forEach((icon) => {
+    const button = icon.closest?.('[role="button"], button') || icon;
+    const actionBar = findActionBarContainer(button);
+    if (!actionBar || actionBars.has(actionBar)) return;
+    const shareButton = findShareButton(actionBar) || button;
+    if (!shareButton) return;
+    actionBars.set(actionBar, shareButton);
+  });
+  return Array.from(actionBars, ([actionBar, shareButton]) => ({ actionBar, shareButton }));
 }
 
 export function createActionBarDownloadButton(templateButton, { attr, label, onClick }) {
@@ -479,45 +614,55 @@ export function createActionBarDownloadButton(templateButton, { attr, label, onC
   return button;
 }
 
-export function insertActionButtonNear(templateButton, newButton) {
+export function insertActionButtonNear(templateButton, newButton, actionBarHint = null) {
   if (!templateButton || !newButton) return;
-  const wrapperSpan = templateButton.closest('span');
-  const parent = (wrapperSpan && wrapperSpan.parentElement) || templateButton.parentElement;
-  if (!parent) return;
+  const actionBar = actionBarHint || findActionBarContainer(templateButton) || templateButton.parentElement;
+  if (!actionBar) return;
 
-  const isWrappedSpan =
-    newButton.parentElement &&
-    newButton.parentElement.tagName === 'SPAN' &&
-    newButton.parentElement.childElementCount === 1 &&
-    newButton.parentElement.firstElementChild === newButton;
+  const getImmediateChild = (root, node) => {
+    let cur = node;
+    while (cur && cur.parentElement !== root) {
+      cur = cur.parentElement;
+    }
+    return cur && cur.parentElement === root ? cur : null;
+  };
+
+  const templateRoot = getImmediateChild(actionBar, templateButton) || templateButton;
+  const templateWrapper = templateRoot !== templateButton ? templateRoot : null;
+  const existingWrapper = getImmediateChild(actionBar, newButton);
 
   let insertNode = newButton;
-  if (!isWrappedSpan && wrapperSpan && wrapperSpan.tagName === 'SPAN') {
-    const span = wrapperSpan.cloneNode(false);
-    span.className = wrapperSpan.className;
-    span.appendChild(newButton);
-    insertNode = span;
-  } else if (isWrappedSpan) {
-    insertNode = newButton.parentElement;
+  if (templateWrapper) {
+    if (existingWrapper && existingWrapper !== newButton) {
+      insertNode = existingWrapper;
+    } else {
+      const wrapper = templateWrapper.cloneNode(false);
+      wrapper.appendChild(newButton);
+      insertNode = wrapper;
+    }
+  } else if (existingWrapper && existingWrapper !== newButton) {
+    insertNode = existingWrapper;
   }
 
-  const saveButton = parent.querySelector('svg[aria-label="Save"]');
-  const saveWrapper = saveButton?.closest('span') || saveButton?.closest('[role="button"]') || saveButton?.parentElement;
-  const desiredRef = saveWrapper && saveWrapper.parentElement === parent ? saveWrapper : null;
+  const saveButton = actionBar.querySelector(
+    'svg[aria-label="Save"], [role="button"][aria-label="Save"], button[aria-label="Save"]'
+  );
+  const saveRoot = saveButton?.closest?.('[role="button"], button') || saveButton;
+  const desiredRef = saveRoot ? getImmediateChild(actionBar, saveRoot) : null;
 
   const alreadyPlaced =
-    insertNode.parentElement === parent &&
-    ((desiredRef && insertNode.nextSibling === desiredRef) || (!desiredRef && parent.lastElementChild === insertNode));
+    insertNode.parentElement === actionBar &&
+    ((desiredRef && insertNode.nextSibling === desiredRef) || (!desiredRef && actionBar.lastElementChild === insertNode));
   if (alreadyPlaced) return;
 
-  if (insertNode.parentElement && insertNode.parentElement !== parent) {
+  if (insertNode.parentElement && insertNode.parentElement !== actionBar) {
     insertNode.parentElement.removeChild(insertNode);
   }
 
   if (desiredRef) {
-    parent.insertBefore(insertNode, desiredRef);
+    actionBar.insertBefore(insertNode, desiredRef);
   } else {
-    parent.appendChild(insertNode);
+    actionBar.appendChild(insertNode);
   }
 }
 
@@ -637,18 +782,21 @@ function injectMenuButtons() {
   lastInjectAt = now;
 
   try {
-    const containers = getInstagramActionContainers();
-    containers.forEach((container) => {
-      if (container?.closest?.('div[data-pagelet="story_tray"]')) return;
-      const { actionBar, shareButton } = findInstagramActionBar(container);
+    const actionBars = collectInstagramActionBars();
+    const targets = actionBars.length
+      ? actionBars
+      : getInstagramActionContainers().map((container) => findInstagramActionBar(container));
+
+    targets.forEach(({ actionBar, shareButton }) => {
       if (!actionBar || !shareButton) return;
+      if (actionBar?.closest?.('div[data-pagelet="story_tray"]')) return;
 
       const existing = actionBar.querySelector(`[${INSTAGRAM_DOWNLOAD_MENU_ATTR}]`);
       if (existing) {
         if (existing.dataset.aioBound !== BOUND_FLAG) {
           bindButton(existing);
         }
-        insertActionButtonNear(shareButton, existing);
+        insertActionButtonNear(shareButton, existing, actionBar);
         return;
       }
 
@@ -659,7 +807,7 @@ function injectMenuButtons() {
       });
       if (!node) return;
       bindButton(node);
-      insertActionButtonNear(shareButton, node);
+      insertActionButtonNear(shareButton, node, actionBar);
     });
   } finally {
     injectingMenuButtons = false;
@@ -699,7 +847,13 @@ function handleMenuClick(event) {
     return;
   }
 
-  const articleCandidate = button.closest('article') || getActiveInstagramArticle() || null;
+  const actionBar = findActionBarContainer(button);
+  const articleCandidate =
+    button.closest('article') ||
+    actionBar?.closest?.('article') ||
+    actionBar ||
+    getActiveInstagramArticle() ||
+    null;
   const reelUrl = getReelUrl(articleCandidate);
   if (!reelUrl) return;
   const reelTitle = getReelTitle();
@@ -833,12 +987,26 @@ export function findInstagramMediaSources(targetArticle) {
       : (isReelsFeedPage() ? INSTAGRAM_SCOPE_TYPES.reelsFeed : INSTAGRAM_SCOPE_TYPES.article);
   }
   const scopeRoot = targetArticle || detection.scope || document;
+  const articleRoot =
+    targetArticle?.tagName === 'ARTICLE'
+      ? targetArticle
+      : targetArticle?.closest?.('article') || scopeRoot?.closest?.('article') || null;
   const postScope = findPostPageScope(scopeRoot);
   // Prefer the tighter post container when available; on Reels/Feed pages the button container
   // might not include the actual media nodes.
-  let mediaScope = postScope || targetArticle || scopeRoot.querySelector?.('article') || scopeRoot;
-  if (scopeType === INSTAGRAM_SCOPE_TYPES.dialog && postScope) {
+  let mediaScope = articleRoot || targetArticle || scopeRoot.querySelector?.('article') || scopeRoot;
+  if (postScope && (scopeType === INSTAGRAM_SCOPE_TYPES.dialog || scopeType === INSTAGRAM_SCOPE_TYPES.postPage)) {
     mediaScope = postScope;
+  }
+  if (scopeType === INSTAGRAM_SCOPE_TYPES.reelsFeed) {
+    const reelsRoot =
+      (scopeRoot?.nodeType === 1 && scopeRoot.closest?.('main')) ||
+      document.querySelector('main[role="main"]') ||
+      document.querySelector('main') ||
+      scopeRoot;
+    if (reelsRoot) {
+      mediaScope = reelsRoot;
+    }
   }
 
   if (!targetArticle && scopeType === INSTAGRAM_SCOPE_TYPES.dialog && !postScope) {
@@ -856,6 +1024,7 @@ export function findInstagramMediaSources(targetArticle) {
 
   const media = [];
   let hasVideoElement = false;
+  const seenVideos = new Set();
   const addMedia = (rawUrl, type, weight = 0, extra = {}) => {
     const url = normalizeMediaUrl(rawUrl);
     if (!url) return;
@@ -868,17 +1037,28 @@ export function findInstagramMediaSources(targetArticle) {
     });
   };
 
-  mediaScope.querySelectorAll('video').forEach((video) => {
-    hasVideoElement = true;
-    const src = video.currentSrc || video.getAttribute('src');
-    const weight = video.videoWidth || parseInt(video.getAttribute('width'), 10) || parseWidthFromUrl(src) || 0;
-    addMedia(src, 'video', weight);
-    video.querySelectorAll('source[src]').forEach((source) => {
-      const raw = source.getAttribute('src');
-      const res = parseInt(source.getAttribute('res') || source.getAttribute('data-res') || source.getAttribute('size') || '', 10) || parseWidthFromUrl(raw) || 0;
-      addMedia(raw, 'video', res);
+  const collectVideosFromScope = (root) => {
+    if (!root?.querySelectorAll) return;
+    root.querySelectorAll('video').forEach((video) => {
+      if (seenVideos.has(video)) return;
+      seenVideos.add(video);
+      hasVideoElement = true;
+      const visibleScore = visibilityScore(video);
+      const src = video.currentSrc || video.getAttribute('src');
+      const weight = video.videoWidth || parseInt(video.getAttribute('width'), 10) || parseWidthFromUrl(src) || 0;
+      addMedia(src, 'video', weight, { visibleScore });
+      video.querySelectorAll('source[src]').forEach((source) => {
+        const raw = source.getAttribute('src');
+        const res = parseInt(source.getAttribute('res') || source.getAttribute('data-res') || source.getAttribute('size') || '', 10) || parseWidthFromUrl(raw) || 0;
+        addMedia(raw, 'video', res, { visibleScore });
+      });
     });
-  });
+  };
+
+  collectVideosFromScope(mediaScope);
+  if (!seenVideos.size && articleRoot && articleRoot !== mediaScope) {
+    collectVideosFromScope(articleRoot);
+  }
 
   mediaScope.querySelectorAll('img').forEach((img) => {
     const fromSrcset = pickFromSrcset(img.getAttribute('srcset'));
@@ -905,9 +1085,17 @@ export function findInstagramMediaSources(targetArticle) {
       visibleScore: visibilityScore(img.element)
     }))
     .filter((img) => img.visibleScore > 0.05);
-  const bestVideo = media
-    .filter((item) => item.type === 'video')
-    .sort((a, b) => b.weight - a.weight)[0] || null;
+  const videoPool = media.filter((item) => item.type === 'video');
+  let bestVideo = null;
+  if (scopeType === INSTAGRAM_SCOPE_TYPES.reelsFeed) {
+    bestVideo =
+      videoPool
+        .sort((a, b) => (b.visibleScore || 0) - (a.visibleScore || 0) || b.weight - a.weight)[0] || null;
+  } else {
+    bestVideo =
+      videoPool
+        .sort((a, b) => b.weight - a.weight)[0] || null;
+  }
   const imagePool = images.length ? images : imagesAll;
   const bestImage = (imagePool.length ? imagePool : imagesAll)
     .sort((a, b) => b.weight - a.weight)[0] || null;
