@@ -38,10 +38,17 @@ function normalizeReelUrl(href) {
   try {
     const url = new URL(href, 'https://www.instagram.com');
     const segments = url.pathname.split('/').filter(Boolean);
-    if (segments[0] === 'reels') {
+    if (segments[0] === 'reels' && segments.length > 1) {
       segments[0] = 'reel';
     }
-    url.pathname = segments.length ? `/${segments.join('/')}/` : '/';
+
+    // Keep only canonical media permalink paths.
+    const kind = segments[0];
+    const shortcode = segments[1];
+    if (!kind || !shortcode) return null;
+    if (!['reel', 'p', 'tv'].includes(kind)) return null;
+
+    url.pathname = `/${kind}/${shortcode}/`;
     url.search = '';
     url.hash = '';
     return url.href;
@@ -50,21 +57,31 @@ function normalizeReelUrl(href) {
   }
 }
 
-export function getReelUrl() {
-  const absolutize = (href) => normalizeReelUrl(href);
+function findPermalinkInScope(scope) {
+  if (!scope?.querySelectorAll) return null;
+  const anchors = Array.from(scope.querySelectorAll('a[href]'));
+  for (const a of anchors) {
+    const href = a.getAttribute('href');
+    if (!href) continue;
+    if (!href.includes('/reel/') && !href.includes('/reels/') && !href.includes('/p/') && !href.includes('/tv/')) continue;
+    const normalized = normalizeReelUrl(href);
+    if (normalized) return normalized;
+  }
+  return null;
+}
+
+export function getReelUrl(scopeHint = null) {
 
   const fromDialogOrArticle = (() => {
     const dialog = document.querySelector('div[role="dialog"]');
     const focusArticle = document.activeElement?.closest?.('article') || null;
     const dialogArticle = dialog?.querySelector('article') || dialog?.closest('article') || null;
     const pageArticle = document.querySelector('article');
-    const scopes = [focusArticle, dialogArticle, pageArticle, document];
+    const detectedScope = detectInstagramScope?.()?.scope || null;
+    const scopes = [scopeHint, focusArticle, dialogArticle, detectedScope, pageArticle, document];
     for (const scope of scopes) {
       if (!scope) continue;
-      const link =
-        scope.querySelector('a[href*="/reel/"]') ||
-        scope.querySelector('a[href*="/p/"]');
-      const candidate = absolutize(link?.getAttribute('href'));
+      const candidate = findPermalinkInScope(scope);
       if (candidate) return candidate;
     }
     return null;
@@ -77,7 +94,7 @@ export function getReelUrl() {
   const canonical = normalizeReelUrl(document.querySelector('link[rel="canonical"]')?.href);
   if (canonical) return canonical;
 
-  return normalizeReelUrl(location.href) || location.href;
+  return normalizeReelUrl(location.href);
 }
 
 export function getReelTitle() {
@@ -234,9 +251,19 @@ function isLikelyAvatar({ url, alt, width }) {
 export const INSTAGRAM_SCOPE_TYPES = {
   dialog: 'dialog',
   article: 'article',
+  reelsFeed: 'reels-feed',
   postPage: 'post-page',
   page: 'page'
 };
+
+function isReelsFeedPage() {
+  try {
+    const segments = String(location?.pathname || '/').split('/').filter(Boolean);
+    return segments[0] === 'reels' && segments.length === 1;
+  } catch {
+    return false;
+  }
+}
 
 function findPostPageScope(root = document) {
   const selectors = [
@@ -273,10 +300,16 @@ function findPostPageScope(root = document) {
   const imgContainer = pickContainer(firstImg);
   if (imgContainer) return imgContainer;
 
+  const firstVideo = root.querySelector('video');
+  const videoContainer = pickContainer(firstVideo);
+  if (videoContainer) return videoContainer;
+
   return null;
 }
 
 export function detectInstagramScope() {
+  const reelsFeed = isReelsFeedPage();
+
   const dialog = document.querySelector('div[role="dialog"]');
   if (dialog) {
     const dialogPostScope = findPostPageScope(dialog);
@@ -287,6 +320,14 @@ export function detectInstagramScope() {
   const dialogArticle = dialog?.querySelector('article') || dialog?.closest('article');
   if (dialogArticle || dialog) {
     return { scope: dialogArticle || dialog, type: INSTAGRAM_SCOPE_TYPES.dialog };
+  }
+
+  // On the main reels feed page, treat the whole page/main as reels scope even if
+  // stray <article> nodes exist elsewhere in the DOM.
+  if (reelsFeed) {
+    const main = document.querySelector('main[role="main"]') || document.querySelector('main');
+    const postScope = findPostPageScope(main || document);
+    return { scope: postScope || main || document, type: INSTAGRAM_SCOPE_TYPES.reelsFeed };
   }
 
   const focusArticle = document.activeElement?.closest?.('article');
@@ -354,6 +395,9 @@ export function getInstagramActionContainers() {
 
   const dialog = document.querySelector('div[role="dialog"]');
   if (dialog) containers.add(dialog);
+
+  const detected = detectInstagramScope();
+  if (detected?.scope) containers.add(detected.scope);
 
   document.querySelectorAll(ACTION_ICON_SELECTORS.join(',')).forEach((svg) => {
     const candidate =
@@ -593,30 +637,30 @@ function injectMenuButtons() {
   lastInjectAt = now;
 
   try {
-  const containers = getInstagramActionContainers();
-  containers.forEach((container) => {
-    if (container?.closest?.('div[data-pagelet="story_tray"]')) return;
-    const { actionBar, shareButton } = findInstagramActionBar(container);
-    if (!actionBar || !shareButton) return;
+    const containers = getInstagramActionContainers();
+    containers.forEach((container) => {
+      if (container?.closest?.('div[data-pagelet="story_tray"]')) return;
+      const { actionBar, shareButton } = findInstagramActionBar(container);
+      if (!actionBar || !shareButton) return;
 
-    const existing = actionBar.querySelector(`[${INSTAGRAM_DOWNLOAD_MENU_ATTR}]`);
-    if (existing) {
-      if (existing.dataset.aioBound !== BOUND_FLAG) {
-        bindButton(existing);
+      const existing = actionBar.querySelector(`[${INSTAGRAM_DOWNLOAD_MENU_ATTR}]`);
+      if (existing) {
+        if (existing.dataset.aioBound !== BOUND_FLAG) {
+          bindButton(existing);
+        }
+        insertActionButtonNear(shareButton, existing);
+        return;
       }
-      insertActionButtonNear(shareButton, existing);
-      return;
-    }
 
-    const node = createActionBarDownloadButton(shareButton, {
-      attr: INSTAGRAM_DOWNLOAD_MENU_ATTR,
-      label: t('instagramDownloadIcon'),
-      onClick: handleMenuClick
+      const node = createActionBarDownloadButton(shareButton, {
+        attr: INSTAGRAM_DOWNLOAD_MENU_ATTR,
+        label: t('instagramDownloadIcon'),
+        onClick: handleMenuClick
+      });
+      if (!node) return;
+      bindButton(node);
+      insertActionButtonNear(shareButton, node);
     });
-    if (!node) return;
-    bindButton(node);
-    insertActionButtonNear(shareButton, node);
-  });
   } finally {
     injectingMenuButtons = false;
   }
@@ -655,14 +699,12 @@ function handleMenuClick(event) {
     return;
   }
 
-  const reelUrl = getReelUrl();
+  const articleCandidate = button.closest('article') || getActiveInstagramArticle() || null;
+  const reelUrl = getReelUrl(articleCandidate);
   if (!reelUrl) return;
   const reelTitle = getReelTitle();
-  const articleCandidate = button.closest('article') || getActiveInstagramArticle() || null;
   const activeArticle = articleCandidate || document;
-  const media = findInstagramMediaSources(
-    articleCandidate && articleCandidate.tagName === 'ARTICLE' ? articleCandidate : null
-  );
+  const media = findInstagramMediaSources(articleCandidate);
 
   const options = buildMenuOptions({ reelUrl, reelTitle, activeArticle, media });
   renderMenu(button, options);
@@ -786,11 +828,15 @@ export function findInstagramMediaSources(targetArticle) {
   let scopeType = detection.type;
   if (targetArticle) {
     const inDialog = targetArticle.closest && targetArticle.closest('div[role=\"dialog\"]');
-    scopeType = inDialog ? INSTAGRAM_SCOPE_TYPES.dialog : INSTAGRAM_SCOPE_TYPES.article;
+    scopeType = inDialog
+      ? INSTAGRAM_SCOPE_TYPES.dialog
+      : (isReelsFeedPage() ? INSTAGRAM_SCOPE_TYPES.reelsFeed : INSTAGRAM_SCOPE_TYPES.article);
   }
   const scopeRoot = targetArticle || detection.scope || document;
   const postScope = findPostPageScope(scopeRoot);
-  let mediaScope = targetArticle || postScope || scopeRoot.querySelector?.('article') || scopeRoot;
+  // Prefer the tighter post container when available; on Reels/Feed pages the button container
+  // might not include the actual media nodes.
+  let mediaScope = postScope || targetArticle || scopeRoot.querySelector?.('article') || scopeRoot;
   if (scopeType === INSTAGRAM_SCOPE_TYPES.dialog && postScope) {
     mediaScope = postScope;
   }
