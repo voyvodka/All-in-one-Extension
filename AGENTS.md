@@ -5,53 +5,71 @@
 ## Project Overview
 
 Chrome MV3 extension that adds download buttons to YouTube, Instagram, and Twitter/X.
-**Buildless** — no bundler, no transpiler. Pure ES modules served via `chrome.runtime.getURL()`.
+Source is **TypeScript** (`strict: true`). A `tsc` compile step produces runtime JS in `extension-dist/`. Chrome loads `extension-dist/`, not `extension/`.
 
 ## Commands
 
 ```bash
-yarn verify              # Run all checks (manifest + repo hygiene)
+yarn dev                 # Watch mode (tsc --watch + static file watcher)
+yarn build               # One-shot compile TS + copy static assets → extension-dist/
+yarn build:check         # Type-check only (no emit)
+yarn verify              # build:check + validate:manifest + check:repo
 yarn validate:manifest   # Validate manifest.json structure
 yarn check:repo          # Repo hygiene (no .DS_Store, no secrets, etc.)
-yarn package:extension   # Build .zip into artifacts/
+yarn package:extension   # Build + package .zip into artifacts/
 yarn release:verify      # Verify version/tag/changelog alignment
 ```
 
-There is **no linter, formatter, type-checker, or test runner** configured.
-Syntax-check a file manually: `node --check <file>`.
-No single-test command exists — there are no tests.
+TypeScript compiler (`tsc`) is the type-checker. There is no linter, formatter, or test runner.
+Syntax-check a compiled file manually: `node --check extension-dist/<file>`.
 
 ## Architecture
 
 ```
-extension/
-├── manifest.json              # MV3 manifest, version source of truth
-├── content.js                 # Content-script bootstrap (dynamic import per feature)
+extension/                             # TypeScript source
+├── manifest.json                      # MV3 manifest, version source of truth
+├── content.ts                         # Content-script bootstrap (dynamic import per feature)
 ├── background/
-│   ├── index.js               # Service-worker message router (contract-driven)
-│   ├── handlers/              # One handler file per platform (+ instagram-image.js)
-│   ├── downloads/             # Job store, zip builder
-│   ├── providers/             # External API adapters (loaderTo)
-│   └── utils.js
+│   ├── index.ts                       # Service-worker message router (contract-driven)
+│   ├── downloads/                     # Job store, zip builder
+│   ├── providers/                     # External API adapters (loaderTo)
+│   └── utils.ts
 ├── features/
-│   ├── index.js               # Re-exports from central registry
+│   ├── index.ts                       # Re-exports from central registry
 │   ├── youtube/  instagram/  twitter/
-│   │   ├── shared.js          # DOM injection + MutationObserver (FRAGILE — see below)
-│   │   ├── audio/index.js
-│   │   ├── video/index.js
-│   │   └── image/index.js     # (instagram, twitter only)
+│   │   ├── shared.js                  # DOM injection + MutationObserver (FRAGILE — see below)
+│   │   └── shared.d.ts               # TypeScript declarations for the fragile .js
+│   ├── yt-audio-download/content/index.ts
+│   ├── yt-video-download/content/index.ts
+│   ├── youtube-download/background/index.ts
+│   ├── ig-audio-download/content/index.ts
+│   ├── ig-video-download/content/index.ts
+│   ├── ig-image-download/{content,background}/index.ts
+│   ├── instagram-download/background/index.ts
+│   ├── x-audio-download/content/index.ts
+│   ├── x-video-download/content/index.ts
+│   ├── x-image-download/content/index.ts
+│   └── twitter-download/background/index.ts
 ├── popup/
-│   ├── popup.html / popup.js / popup.css
-│   └── model/                 # View-model + theme-model (pure functions)
+│   ├── popup.html / popup.ts / popup.css
+│   └── model/                         # View-model + theme-model (pure functions)
 └── shared/
     ├── contracts/
-    │   ├── message-types.js   # MESSAGE_TYPES — single source of truth
-    │   └── feature-registry.js# featureDescriptors — feature metadata
-    ├── storage.js             # chrome.storage wrapper
-    └── i18n.js                # Inline TR/EN dictionary
-scripts/                       # Node utility scripts (.mjs)
-docs/                          # ARCHITECTURE.md, RELEASE.md, POPUP_REDESIGN.md
+    │   ├── message-types.ts           # MESSAGE_TYPES — single source of truth
+    │   └── feature-registry.ts        # featureDescriptors — feature metadata
+    ├── storage.ts                     # chrome.storage wrapper
+    └── i18n.ts                        # Inline TR/EN dictionary
+
+extension-dist/                        # Compiled output (gitignored) — Chrome loads this
+scripts/                               # Node utility scripts (.mjs)
+docs/                                  # ARCHITECTURE.md, RELEASE.md, POPUP_REDESIGN.md
 ```
+
+### Build Pipeline
+
+1. `tsc` compiles `extension/**/*.ts` → `extension-dist/**/*.js`
+2. `scripts/copy-static.mjs` copies static assets (manifest, HTML, CSS, icons, locales, fragile `.js` files) to `extension-dist/`
+3. Chrome loads `extension-dist/` via "Load unpacked"
 
 ### Fragile Files — Do NOT Modify Without Extreme Care
 
@@ -59,22 +77,23 @@ docs/                          # ARCHITECTURE.md, RELEASE.md, POPUP_REDESIGN.md
 - `extension/features/twitter/shared.js` (~651 lines) — tweet action bar injection
 - `extension/features/youtube/shared.js` (~232 lines) — share panel injection
 
-These files depend on live DOM selectors that break with site updates.
+These files stay as plain JavaScript with `.d.ts` declarations. They depend on live DOM selectors that break with site updates.
 
 ## Code Style
 
 ### Language & Modules
 
-- **Plain JavaScript only** — no TypeScript, no JSX.
+- **TypeScript** for all source files, **strict mode** enabled.
+- **Plain JavaScript** only for the three fragile DOM files (with companion `.d.ts`).
 - **ES Modules everywhere** — `import`/`export`, never `require()`.
-- Always include the `.js` extension in relative imports.
+- Always include the `.js` extension in relative imports (TypeScript resolves `.js` to `.ts` at compile time).
 - Node scripts use `.mjs` extension and `node:` protocol for built-ins (`import fs from 'node:fs'`).
 
 ### Formatting
 
 - **2-space indentation**, no tabs.
 - **Semicolons required** on every statement.
-- **Single quotes** for JS strings; double quotes only in HTML attributes.
+- **Single quotes** for JS/TS strings; double quotes only in HTML attributes.
 - Template literals for interpolation.
 
 ### Naming
@@ -83,9 +102,10 @@ These files depend on live DOM selectors that break with site updates.
 |------------------------|--------------------|----------------------------------|
 | Variables / functions  | `camelCase`        | `safeSendMessage`, `downloadJob` |
 | Constants              | `UPPER_SNAKE_CASE` | `MESSAGE_TYPES`, `DOWNLOAD_HISTORY_LIMIT` |
-| File names             | `kebab-case`       | `message-types.js`, `download-view-model.js` |
+| File names             | `kebab-case`       | `message-types.ts`, `download-view-model.ts` |
 | Feature directories    | `kebab-case`       | `features/youtube/audio/`        |
 | CSS classes            | `kebab-case`       | `.download-card`, `.tab-active`  |
+| Interfaces / Types     | `PascalCase`       | `Settings`, `DownloadJob`, `FeatureDescriptor` |
 
 ### Functions
 
@@ -93,6 +113,14 @@ These files depend on live DOM selectors that break with site updates.
 - `function` declarations for top-level named functions.
 - Feature modules export a default object: `export default { id, label, description, matches, apply }`.
 - Shared/utility modules use named exports.
+
+### TypeScript Specifics
+
+- **No `any`** unless absolutely necessary — prefer `unknown` and narrow.
+- Use `import type` for type-only imports (avoids runtime overhead).
+- Exception: `content.ts` uses `type X = import('...').X` syntax instead of `import type` to avoid `export {}` in compiled output (content scripts cannot have top-level exports).
+- Interfaces for object shapes (`interface Settings { ... }`), type aliases for unions (`type Locale = 'tr' | 'en'`).
+- Prefer `as` casts only at runtime boundaries (message payloads). Add runtime validation alongside casts where possible.
 
 ### Error Handling
 
@@ -103,13 +131,13 @@ These files depend on live DOM selectors that break with site updates.
 
 ### Contracts
 
-- **Never use raw string literals for message types.** Always import from `shared/contracts/message-types.js`:
-  ```js
+- **Never use raw string literals for message types.** Always import from `shared/contracts/message-types.ts`:
+  ```ts
   import { MESSAGE_TYPES } from '../../shared/contracts/message-types.js';
   chrome.runtime.sendMessage({ type: MESSAGE_TYPES.YT_AUDIO_DOWNLOAD, ... });
   ```
-- **Feature metadata lives in `shared/contracts/feature-registry.js`** — `featureDescriptors`, `contentFeatureDescriptors`, `getFeatureDescriptor()`.
-- When adding a new feature: add its message type to `message-types.js`, add its descriptor to `feature-registry.js`, register its handler in `background/index.js`.
+- **Feature metadata lives in `shared/contracts/feature-registry.ts`** — `featureDescriptors`, `contentFeatureDescriptors`, `getFeatureDescriptor()`.
+- When adding a new feature: add its message type to `message-types.ts`, add its descriptor to `feature-registry.ts`, register its handler in `background/index.ts`.
 
 ### Chrome Extension Patterns
 
@@ -135,7 +163,7 @@ Types: `feat`, `fix`, `refactor`, `chore`, `docs`, `ci`.
 
 ## Important Rules
 
-1. **Do not create bundler configs** — this is a buildless extension.
+1. **Always run `yarn build` before testing in Chrome** — Chrome loads `extension-dist/`, not `extension/`.
 2. **Do not reference the `example/` directory** in any runtime code, manifest, or docs. It's gitignored local test data.
 3. **All new web-accessible files** must be added to `web_accessible_resources` in `manifest.json`.
 4. **Use Yarn** (not npm/pnpm) for dependency management and scripts.
@@ -143,5 +171,5 @@ Types: `feat`, `fix`, `refactor`, `chore`, `docs`, `ci`.
 6. **Preserve runtime behavior** — all refactoring must keep the extension functional.
 7. **Manifest version** (`extension/manifest.json`) is the single version source of truth. Bump it for release-worthy changes.
 8. **Update CHANGELOG.md** for user-facing changes.
-9. **i18n**: both `tr` and `en` keys must stay in sync in `shared/i18n.js`.
+9. **i18n**: both `tr` and `en` keys must stay in sync in `shared/i18n.ts`.
 10. **No cross-layer imports** — content features must not import from `background/`, and vice versa. Use message passing.

@@ -2,10 +2,15 @@
 
 Use this checklist before tagging a release or after touching fragile DOM integration files.
 
+## Build
+
+- Run `yarn build` and confirm it succeeds with zero errors
+- Run `yarn verify` and confirm all checks pass
+
 ## Global
 
-- Load the extension in Chrome without manifest errors
-- Confirm the background service worker starts cleanly
+- Load `extension-dist/` in Chrome without manifest errors
+- Confirm the background service worker starts cleanly (no console errors)
 - Open the popup and confirm:
   - language switch works
   - theme switch works

@@ -3,7 +3,7 @@
   "name": "__MSG_extName__",
   "description": "__MSG_extDescription__",
   "default_locale": "en",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "homepage_url": "https://github.com/voyvodka/All-in-one-Extension",
   "icons": {
     "16": "icons/icon_16.png",
@@ -74,17 +74,9 @@
         "features/x-audio-download/content/index.js",
         "features/x-video-download/content/index.js",
         "features/x-image-download/content/index.js",
-        "features/youtube/audio/index.js",
-        "features/youtube/video/index.js",
         "features/youtube/shared.js",
-        "features/instagram/audio/index.js",
-        "features/instagram/video/index.js",
-        "features/instagram/image/index.js",
         "features/instagram/shared.js",
-        "features/twitter/shared.js",
-        "features/twitter/audio/index.js",
-        "features/twitter/image/index.js",
-        "features/twitter/video/index.js"
+        "features/twitter/shared.js"
       ],
       "matches": [
         "https://*.youtube.com/*",

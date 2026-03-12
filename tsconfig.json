@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "exactOptionalPropertyTypes": false,
+    "skipLibCheck": false,
+    "allowJs": false,
+    "declaration": false,
+    "sourceMap": false,
+    "removeComments": false,
+    "outDir": "extension-dist",
+    "rootDir": "extension",
+    "baseUrl": "."
+  },
+  "include": ["extension/**/*.ts", "extension/**/*.d.ts"],
+  "exclude": ["node_modules", "extension-dist", "artifacts", "scripts"]
+}

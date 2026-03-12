@@ -15,11 +15,22 @@
    - any user-facing docs affected by the release
 4. After the release PR is merged, tag the exact `main` commit with `vX.Y.Z`.
 
+## Build pipeline
+
+The project uses a TypeScript compile step:
+
+1. `tsc` compiles `extension/**/*.ts` → `extension-dist/**/*.js`
+2. `scripts/copy-static.mjs` copies static assets → `extension-dist/`
+3. `scripts/package-extension.mjs` packages `extension-dist/` into release zips
+
+All CI workflows run `yarn verify` (which includes `yarn build:check`) before packaging.
+`yarn package:extension` runs `yarn build` first to ensure `extension-dist/` is up to date.
+
 ## CI / CD structure
 
 - `ci.yml`
   - runs on pull requests and non-tag pushes
-  - validates manifest and repo hygiene
+  - validates manifest, type-checks TypeScript, and checks repo hygiene
   - packages the extension as an artifact
 - `delivery.yml`
   - runs on `main`
@@ -33,11 +44,12 @@
 ## Local commands
 
 ```bash
-yarn verify
-yarn package:extension
-yarn package:extension:nested
-yarn package:extension:unpacked
-yarn release:verify
+yarn build                     # compile TS + copy static assets
+yarn verify                    # type-check + manifest + repo hygiene
+yarn package:extension         # build + package both zip variants
+yarn package:extension:nested  # legacy nested zip only
+yarn package:extension:unpacked # user-friendly zip only
+yarn release:verify            # verify version/tag/changelog alignment
 ```
 
 ## Release artifacts
