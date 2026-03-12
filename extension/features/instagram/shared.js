@@ -22,49 +22,41 @@ let lastInjectAt = 0;
 let burstStart = 0;
 let burstCount = 0;
 let resumeObserverTimer = null;
-const ACTION_ICON_SELECTORS = [
-  'svg[aria-label="Share"]',
-  '[role="button"][aria-label="Share"]',
-  'button[aria-label="Share"]',
-  'svg[aria-label="Share Post"]',
-  '[role="button"][aria-label="Share Post"]',
-  'button[aria-label="Share Post"]',
-  'svg[aria-label="Paylaş"]',
-  '[role="button"][aria-label="Paylaş"]',
-  'button[aria-label="Paylaş"]',
-  'svg[aria-label="Like"]',
-  '[role="button"][aria-label="Like"]',
-  'button[aria-label="Like"]',
-  'svg[aria-label="Unlike"]',
-  '[role="button"][aria-label="Unlike"]',
-  'button[aria-label="Unlike"]',
-  'svg[aria-label="Beğen"]',
-  '[role="button"][aria-label="Beğen"]',
-  'button[aria-label="Beğen"]',
-  'svg[aria-label="Comment"]',
-  '[role="button"][aria-label="Comment"]',
-  'button[aria-label="Comment"]',
-  'svg[aria-label="Save"]',
-  '[role="button"][aria-label="Save"]',
-  'button[aria-label="Save"]'
+
+function buildAriaSelectors(labels) {
+  const icons = labels.map((label) => `svg[aria-label="${label}"]`);
+  const buttons = labels.flatMap((label) => [
+    `[role="button"][aria-label="${label}"]`,
+    `button[aria-label="${label}"]`
+  ]);
+  return {
+    labels,
+    icons,
+    buttons,
+    all: [...icons, ...buttons]
+  };
+}
+
+const ACTION_ARIA_LABELS = [
+  'Share',
+  'Share Post',
+  'Paylaş',
+  'Like',
+  'Unlike',
+  'Beğen',
+  'Comment',
+  'Save'
 ];
-const SHARE_BUTTON_SELECTORS = [
-  '[role="button"][aria-label="Share"]',
-  'button[aria-label="Share"]',
-  'svg[aria-label="Share"]',
-  '[role="button"][aria-label="Share Post"]',
-  'button[aria-label="Share Post"]',
-  'svg[aria-label="Share Post"]',
-  '[role="button"][aria-label="Paylaş"]',
-  'button[aria-label="Paylaş"]',
-  'svg[aria-label="Paylaş"]'
-];
+const SHARE_ARIA_LABELS = ['Share', 'Share Post', 'Paylaş'];
+const ACTION_SELECTORS = buildAriaSelectors(ACTION_ARIA_LABELS);
+const SHARE_SELECTORS = buildAriaSelectors(SHARE_ARIA_LABELS);
+const ACTION_SELECTOR = ACTION_SELECTORS.all.join(',');
+const SHARE_SELECTOR = SHARE_SELECTORS.all.join(',');
 
 function findShareButton(scope) {
   if (!scope) return null;
-  const selector = SHARE_BUTTON_SELECTORS.join(',');
-  const directMatch = scope.matches?.(selector) ? scope : null;
-  const shareEl = directMatch || scope.querySelector?.(selector);
+  const directMatch = scope.matches?.(SHARE_SELECTOR) ? scope : null;
+  const shareEl = directMatch || scope.querySelector?.(SHARE_SELECTOR);
   if (!shareEl) return null;
   return shareEl.closest?.('[role="button"], button') || shareEl;
 }
@@ -80,13 +72,11 @@ function getUniqueButtonsBySelector(scope, selector) {
 }
 
 function countShareButtons(scope) {
-  const selector = SHARE_BUTTON_SELECTORS.join(',');
-  return getUniqueButtonsBySelector(scope, selector).length;
+  return getUniqueButtonsBySelector(scope, SHARE_SELECTOR).length;
 }
 
 function countActionIcons(scope) {
-  if (!scope?.querySelectorAll) return 0;
-  return scope.querySelectorAll(ACTION_ICON_SELECTORS.join(',')).length;
+  return getUniqueButtonsBySelector(scope, ACTION_SELECTOR).length;
 }
 
 function findActionBarContainer(startEl, { requireSingleShare = false, stopAt = null } = {}) {
@@ -369,9 +359,26 @@ function isReelsFeedPage() {
   try {
     const segments = String(location?.pathname || '/').split('/').filter(Boolean);
     if (!segments.length) return false;
-    if (segments[0] === 'reels' || segments[0] === 'reel') return true;
-    if (segments.length > 1 && (segments[1] === 'reels' || segments[1] === 'reel')) return true;
+    const idx = segments.findIndex((seg) => seg === 'reels' || seg === 'reel');
+    if (idx === -1) return false;
+    if (segments.length === idx + 1) return true;
+    const main = document.querySelector('main[role="main"]') || document.querySelector('main');
+    const videoCount = (main || document).querySelectorAll('video').length;
+    return videoCount > 1;
+  } catch {
     return false;
+  }
+}
+
+function isPostPermalinkPage() {
+  try {
+    const segments = String(location?.pathname || '/').split('/').filter(Boolean);
+    if (!segments.length) return false;
+    if (isReelsFeedPage()) return false;
+    const idx = segments.findIndex((seg) => seg === 'p' || seg === 'reel' || seg === 'reels' || seg === 'tv');
+    if (idx === -1) return false;
+    if (segments[idx] === 'reels' && segments.length === idx + 1) return false;
+    return segments.length > idx + 1;
   } catch {
     return false;
   }
@@ -421,6 +428,7 @@ function findPostPageScope(root = document) {
 
 export function detectInstagramScope() {
   const reelsFeed = isReelsFeedPage();
+  const postPermalink = isPostPermalinkPage();
 
   const dialog = document.querySelector('div[role="dialog"]');
   if (dialog) {
@@ -440,6 +448,12 @@ export function detectInstagramScope() {
     const main = document.querySelector('main[role="main"]') || document.querySelector('main');
     const postScope = findPostPageScope(main || document);
     return { scope: main || postScope || document, type: INSTAGRAM_SCOPE_TYPES.reelsFeed };
+  }
+
+  if (postPermalink) {
+    const main = document.querySelector('main[role="main"]') || document.querySelector('main');
+    const postScope = findPostPageScope(main || document);
+    return { scope: postScope || main || document, type: INSTAGRAM_SCOPE_TYPES.postPage };
   }
 
   const focusArticle = document.activeElement?.closest?.('article');
@@ -483,7 +497,7 @@ export function findInstagramActionBar(article) {
   let templateButton = shareButton;
 
   if (!templateButton) {
-    const candidate = scope.querySelector?.(ACTION_ICON_SELECTORS.join(','));
+    const candidate = scope.querySelector?.(ACTION_SELECTOR);
     templateButton = candidate?.closest?.('[role="button"], button') || candidate || null;
   }
 
@@ -507,7 +521,7 @@ export function getInstagramActionContainers() {
   const detected = detectInstagramScope();
   if (detected?.scope) containers.add(detected.scope);
 
-  document.querySelectorAll(ACTION_ICON_SELECTORS.join(',')).forEach((svg) => {
+  document.querySelectorAll(ACTION_SELECTOR).forEach((svg) => {
     const candidate =
       svg.closest('article') ||
       svg.closest('section') ||
@@ -521,7 +535,7 @@ export function getInstagramActionContainers() {
 
 function collectInstagramActionBars() {
   const actionBars = new Map();
-  const shareButtons = getUniqueButtonsBySelector(document, SHARE_BUTTON_SELECTORS.join(','));
+  const shareButtons = getUniqueButtonsBySelector(document, SHARE_SELECTOR);
   shareButtons.forEach((shareButton) => {
     const actionBar =
       findActionBarContainer(shareButton, { requireSingleShare: true }) ||
@@ -534,8 +548,7 @@ function collectInstagramActionBars() {
     return Array.from(actionBars, ([actionBar, shareButton]) => ({ actionBar, shareButton }));
   }
 
-  const selector = ACTION_ICON_SELECTORS.join(',');
-  document.querySelectorAll(selector).forEach((icon) => {
+  document.querySelectorAll(ACTION_SELECTOR).forEach((icon) => {
     const button = icon.closest?.('[role="button"], button') || icon;
     const actionBar = findActionBarContainer(button);
     if (!actionBar || actionBars.has(actionBar)) return;
@@ -568,8 +581,8 @@ export function createActionBarDownloadButton(templateButton, { attr, label, onC
     el.removeAttribute?.('rel');
   });
 
-  const svg = button.querySelector('svg');
-  if (svg) {
+  const svgs = button.querySelectorAll('svg');
+  svgs.forEach((svg) => {
     svg.setAttribute('aria-label', downloadLabel);
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('width', '24');
@@ -599,7 +612,7 @@ export function createActionBarDownloadButton(templateButton, { attr, label, onC
         stroke-linejoin="round"
       />
     `;
-  }
+  });
 
 
 
@@ -980,13 +993,14 @@ function closeMenu() {
 export function findInstagramMediaSources(targetArticle) {
   const detection = detectInstagramScope();
   let scopeType = detection.type;
+  const isPermalink = isPostPermalinkPage();
   if (targetArticle) {
     const inDialog = targetArticle.closest && targetArticle.closest('div[role=\"dialog\"]');
     scopeType = inDialog
       ? INSTAGRAM_SCOPE_TYPES.dialog
-      : (isReelsFeedPage() ? INSTAGRAM_SCOPE_TYPES.reelsFeed : INSTAGRAM_SCOPE_TYPES.article);
+      : (isReelsFeedPage() ? INSTAGRAM_SCOPE_TYPES.reelsFeed : (isPermalink ? INSTAGRAM_SCOPE_TYPES.postPage : INSTAGRAM_SCOPE_TYPES.article));
   }
-  const scopeRoot = targetArticle || detection.scope || document;
+  const scopeRoot = isPermalink ? (detection.scope || targetArticle || document) : (targetArticle || detection.scope || document);
   const articleRoot =
     targetArticle?.tagName === 'ARTICLE'
       ? targetArticle
@@ -995,7 +1009,7 @@ export function findInstagramMediaSources(targetArticle) {
   // Prefer the tighter post container when available; on Reels/Feed pages the button container
   // might not include the actual media nodes.
   let mediaScope = articleRoot || targetArticle || scopeRoot.querySelector?.('article') || scopeRoot;
-  if (postScope && (scopeType === INSTAGRAM_SCOPE_TYPES.dialog || scopeType === INSTAGRAM_SCOPE_TYPES.postPage)) {
+  if (postScope && (scopeType === INSTAGRAM_SCOPE_TYPES.dialog || scopeType === INSTAGRAM_SCOPE_TYPES.postPage || isPermalink)) {
     mediaScope = postScope;
   }
   if (scopeType === INSTAGRAM_SCOPE_TYPES.reelsFeed) {
@@ -1059,6 +1073,10 @@ export function findInstagramMediaSources(targetArticle) {
   if (!seenVideos.size && articleRoot && articleRoot !== mediaScope) {
     collectVideosFromScope(articleRoot);
   }
+  if (!seenVideos.size && isPermalink) {
+    const main = document.querySelector('main[role="main"]') || document.querySelector('main');
+    collectVideosFromScope(main || document);
+  }
 
   mediaScope.querySelectorAll('img').forEach((img) => {
     const fromSrcset = pickFromSrcset(img.getAttribute('srcset'));
@@ -1095,6 +1113,10 @@ export function findInstagramMediaSources(targetArticle) {
     bestVideo =
       videoPool
         .sort((a, b) => b.weight - a.weight)[0] || null;
+  }
+  const ogVideoUrl = document.querySelector('meta[property="og:video"], meta[property="og:video:secure_url"]')?.getAttribute('content');
+  if (!hasVideoElement && normalizeMediaUrl(ogVideoUrl)) {
+    hasVideoElement = true;
   }
   const imagePool = images.length ? images : imagesAll;
   const bestImage = (imagePool.length ? imagePool : imagesAll)

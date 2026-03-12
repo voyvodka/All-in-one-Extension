@@ -200,6 +200,13 @@ async function collectCarouselImages(article) {
     const btnDialog = btn.closest('div[role="dialog"]');
     if (scopeDialog && btnDialog) return scopeDialog === btnDialog;
 
+    if (!scopeArticle && !scopeDialog) {
+      const scopeMain = scopeRoot?.closest?.('main') || (scopeRoot === document ? document.querySelector('main') : null);
+      const btnMain = btn.closest('main');
+      if (scopeMain && btnMain) return scopeMain === btnMain;
+      return true;
+    }
+
     return false;
   };
   const distanceToScope = (btn) => {
