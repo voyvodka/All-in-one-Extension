@@ -10,15 +10,20 @@ if (!allowedProtocols.has(location.protocol)) {
     });
 
     let features = [];
+    let featureDescriptors = [];
     let storage;
     let i18n;
 
     try {
       const featureManifestModule = await import(chrome.runtime.getURL('features/index.js'));
+      featureDescriptors = featureManifestModule.contentFeatureDescriptors || featureManifestModule.featureDescriptors || [];
       const featureModules = await Promise.all(
-        featureManifestModule.featureModulePaths.map(path => import(chrome.runtime.getURL(path)))
+        featureDescriptors.map((descriptor) => import(chrome.runtime.getURL(descriptor.modulePath)))
       );
-      features = featureModules.map(module => module.default);
+      features = featureModules.map((module, index) => ({
+        ...module.default,
+        descriptor: featureDescriptors[index] || null
+      }));
 
       [storage, i18n] = await Promise.all([
         import(chrome.runtime.getURL('shared/storage.js')),
@@ -44,6 +49,12 @@ if (!allowedProtocols.has(location.protocol)) {
       });
     }
 
+    function isFeatureEnabled(feature, settings) {
+      if (settings?.enabled === false) return false;
+      const explicitState = settings?.features?.[feature.id];
+      return explicitState !== false;
+    }
+
     const matchedFeatures = getMatchedFeatures(location.href);
     console.debug('All-in-One: matched features', matchedFeatures.map((f) => f.id));
     const activeCleanups = new Map();
@@ -64,16 +75,23 @@ if (!allowedProtocols.has(location.protocol)) {
 
     function applyFeatures() {
       for (const feature of matchedFeatures) {
+        const shouldRun = isFeatureEnabled(feature, currentSettings);
         const isActive = activeCleanups.has(feature.id);
 
-        if (!isActive) {
+        if (shouldRun && !isActive) {
           try {
-            const cleanup = feature.apply({ features, settings: currentSettings }) || (() => { });
+            const cleanup = feature.apply({
+              features,
+              settings: currentSettings,
+              descriptor: feature.descriptor
+            }) || (() => { });
             activeCleanups.set(feature.id, cleanup);
             console.debug('All-in-One: feature started', feature.id);
           } catch (err) {
             console.error('Failed to start feature', feature.id, err);
           }
+        } else if (!shouldRun && isActive) {
+          cleanupFeature(feature.id);
         }
       }
     }

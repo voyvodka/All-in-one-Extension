@@ -8,44 +8,68 @@
 </head>
 
 <body>
-  <main id="app">
-    <header>
-      <div>
-        <h1>All-in-One Toolkit</h1>
+  <main id="app" class="app-shell">
+    <section class="topbar-panel">
+      <div class="topbar-main">
+        <div class="title-block">
+          <h1>All-in-One Toolkit</h1>
+          <p id="popup-subtitle" class="topbar-subtitle"></p>
+        </div>
+        <button id="bug-btn" class="icon-btn bug-btn" title="Hata bildir" type="button" aria-label="Hata bildir">
+          <span class="bug-btn-icon" aria-hidden="true">🐞</span>
+        </button>
       </div>
-      <div class="header-actions">
-        <select id="language-select" class="lang-select" title="Dil">
-          <option value="tr">Türkçe</option>
-          <option value="en">English</option>
-        </select>
-        <select id="theme-select" class="lang-select" title="Tema">
-          <option value="system">System</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
-        <button id="bug-btn" class="icon-btn" title="Hata bildir">🐞</button>
-        <!-- <button id="donate-btn" class="icon-btn" title="Destekle">❤</button> -->
+
+      <div class="control-row">
+        <label class="control-inline" for="language-select">
+          <span id="language-label" class="field-label">Dil</span>
+          <select id="language-select" class="select-field" title="Dil">
+            <option value="tr">Türkçe</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+
+        <label class="control-inline" for="theme-select">
+          <span id="theme-label" class="field-label">Tema</span>
+          <select id="theme-select" class="select-field" title="Tema">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
       </div>
-    </header>
-    <section id="downloads-view">
-      <div class="download-subtabs">
-        <button class="subtab active" data-subtab="active">Aktif</button>
-        <button class="subtab" data-subtab="history">Geçmiş</button>
+    </section>
+
+    <section id="downloads-view" class="downloads-panel">
+      <div class="downloads-toolbar">
+        <div class="download-subtabs">
+          <button class="subtab active" data-subtab="active" type="button">
+            <span class="subtab-label" data-subtab-label="active">Aktif</span>
+            <span id="active-count" class="subtab-count">0</span>
+          </button>
+          <button class="subtab" data-subtab="history" type="button">
+            <span class="subtab-label" data-subtab-label="history">Geçmiş</span>
+            <span id="history-count" class="subtab-count">0</span>
+          </button>
+        </div>
+
         <div class="download-actions">
-          <button id="sort-downloads" class="icon-btn rotate" title="Sırala" aria-label="Sırala">
+          <button id="sort-downloads" class="icon-btn rotate" title="Sırala" aria-label="Sırala" type="button">
             <svg class="sort-icon" viewBox="0 0 24 24" aria-hidden="true">
               <path class="sort-arrow" d="M7 3.5L3.5 8H6v12h2V8h2.5L7 3.5z" />
               <path class="sort-lines" d="M12 8h8M12 12h6M12 16h4" />
             </svg>
           </button>
-          <button id="clear-history" class="icon-btn" title="Geçmişi temizle">🗑</button>
+          <button id="clear-history" class="icon-btn" title="Geçmişi temizle" aria-label="Geçmişi temizle" type="button">🗑</button>
         </div>
       </div>
-      <div class="download-group" data-subtab="active">
-        <div id="download-active"></div>
+
+      <div class="download-group active" data-subtab="active">
+        <div id="download-active" class="download-list" aria-live="polite"></div>
       </div>
+
       <div class="download-group" data-subtab="history">
-        <div id="download-history"></div>
+        <div id="download-history" class="download-list" aria-live="polite"></div>
       </div>
     </section>
   </main>

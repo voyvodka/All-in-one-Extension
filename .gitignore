@@ -1,6 +1,7 @@
 node_modules/
 dist/
 build/
+artifacts/
 .parcel-cache/
 .turbo/
 .cache/

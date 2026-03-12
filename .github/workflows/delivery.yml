@@ -1,0 +1,44 @@
+name: Delivery
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  package-main:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@1.22.22 --activate
+
+      - name: Install
+        run: yarn install --frozen-lockfile --ignore-scripts
+
+      - name: Validate repo
+        run: yarn verify
+
+      - name: Package main artifacts
+        run: |
+          export AIO_PACKAGE_SUFFIX="main-${GITHUB_SHA::7}"
+          yarn package:extension
+
+      - name: Upload main artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-main-${{ github.sha }}
+          path: artifacts/*.zip

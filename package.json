@@ -1,0 +1,14 @@
+{
+  "name": "all-in-one-extension",
+  "private": true,
+  "packageManager": "yarn@1.22.22",
+  "scripts": {
+    "verify": "yarn validate:manifest && yarn check:repo",
+    "check:repo": "node scripts/check-repo.mjs",
+    "validate:manifest": "node scripts/validate-manifest.mjs",
+    "package:extension": "yarn package:extension:nested && yarn package:extension:unpacked",
+    "package:extension:nested": "node scripts/package-extension.mjs",
+    "package:extension:unpacked": "AIO_PACKAGE_LAYOUT=flat node scripts/package-extension.mjs",
+    "release:verify": "node scripts/release-verify.mjs"
+  }
+}
