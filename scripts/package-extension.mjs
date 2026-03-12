@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(scriptDir, '..');
+const sourceDir = process.env.AIO_SOURCE_DIR || 'extension';
 const manifest = JSON.parse(readFileSync(join(rootDir, 'extension/manifest.json'), 'utf8'));
 const version = manifest.version;
 const rawSuffix = process.env.AIO_PACKAGE_SUFFIX || '';
@@ -26,13 +27,14 @@ if (!['nested', 'flat'].includes(layout)) {
   throw new Error(`Unsupported AIO_PACKAGE_LAYOUT: ${layout}`);
 }
 
+const resolvedSourceDir = join(rootDir, sourceDir);
+
 if (layout === 'flat') {
-  const sourceDir = join(rootDir, 'extension');
-  for (const entry of readdirSync(sourceDir)) {
-    cpSync(join(sourceDir, entry), join(stagingRoot, entry), {
+  for (const entry of readdirSync(resolvedSourceDir)) {
+    cpSync(join(resolvedSourceDir, entry), join(stagingRoot, entry), {
       recursive: true,
       force: true,
-      filter: (sourcePath) => !sourcePath.endsWith('.DS_Store')
+      filter: (sourcePath) => !sourcePath.endsWith('.DS_Store') && !sourcePath.endsWith('.ts')
     });
   }
 
@@ -47,10 +49,10 @@ if (layout === 'flat') {
   ].join('\n'));
 } else {
   const stagingExtensionDir = join(stagingRoot, 'extension');
-  cpSync(join(rootDir, 'extension'), stagingExtensionDir, {
+  cpSync(resolvedSourceDir, stagingExtensionDir, {
     recursive: true,
     force: true,
-    filter: (sourcePath) => !sourcePath.endsWith('.DS_Store')
+    filter: (sourcePath) => !sourcePath.endsWith('.DS_Store') && !sourcePath.endsWith('.ts')
   });
 }
 

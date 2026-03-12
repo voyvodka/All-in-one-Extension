@@ -2,7 +2,7 @@
 
 All-in-One Extension is a Chrome Manifest V3 project that adds download actions to YouTube, Instagram, and Twitter/X.
 
-The project stays intentionally buildless in development: plain JavaScript, native ES modules, and runtime loading through `chrome.runtime.getURL()`.
+Source code is written in **TypeScript** (`strict` mode). A lightweight `tsc` compile step produces the runtime JavaScript that Chrome loads from `extension-dist/`.
 
 ## Supported features
 
@@ -16,32 +16,34 @@ The project stays intentionally buildless in development: plain JavaScript, nati
 ## Project structure
 
 ```text
-extension/
-  background/        # download orchestration and compatibility bridges
-  features/          # feature-first content/background entrypoints + platform shared DOM logic
-  popup/             # popup and options UI
-  shared/            # storage, i18n, contracts
-  _locales/          # extension locale metadata
-  icons/             # extension icons
-docs/                # architecture, install, release, smoke checklist
-scripts/             # validation and packaging scripts
+extension/                # TypeScript source (+ fragile .js DOM files)
+  background/             # download orchestration, message router
+  features/               # feature-first content/background entrypoints + platform shared DOM logic
+  popup/                  # popup and options UI
+  shared/                 # storage, i18n, contracts
+  _locales/               # extension locale metadata
+  icons/                  # extension icons
+extension-dist/           # compiled output (gitignored) — Chrome loads this folder
+docs/                     # architecture, install, release, smoke checklist
+scripts/                  # build, validation, packaging, and dev-mode scripts
 ```
 
 ## Architecture summary
 
-- `extension/content.js`
+- `extension/content.ts`
   - boots content-side behavior on supported domains
-  - loads feature modules from `shared/contracts/feature-registry.js`
-- `extension/background/index.js`
+  - loads feature modules from `shared/contracts/feature-registry.ts`
+- `extension/background/index.ts`
   - routes runtime messages through centralized contracts
   - manages downloads, retry, cancel, and job lifecycle
-- `extension/popup/popup.js`
+- `extension/popup/popup.ts`
   - renders settings and download state
   - uses view-model helpers to keep presentation logic separate
 - `extension/features/*-download/*`
   - holds feature-first content and background entrypoints
 - `extension/features/{youtube,instagram,twitter}/shared.js`
   - contains fragile DOM integration logic and should be changed carefully
+  - these files stay as plain JavaScript with `.d.ts` declarations for TypeScript integration
 
 For more detail, see:
 
@@ -53,45 +55,49 @@ For more detail, see:
 
 ## Local development
 
-### Load the extension
+### Prerequisites
+
+- Node.js 20+
+- Yarn 1.x (`corepack enable && corepack prepare yarn@1.22.22 --activate`)
+
+### Build and load
+
+```bash
+yarn install
+yarn build        # compile TS + copy static assets → extension-dist/
+```
 
 1. Open `chrome://extensions`
 2. Enable `Developer mode`
 3. Click `Load unpacked`
-4. Select the `extension/` folder
+4. Select the **`extension-dist/`** folder (not `extension/`)
 
-If you are installing from a release asset instead of the repository, use the unpacked package described in `docs/INSTALL.md`.
+### Watch mode
+
+```bash
+yarn dev          # tsc --watch + static asset watcher in parallel
+```
+
+Edit `.ts` files → `extension-dist/` updates automatically → reload extension in Chrome.
 
 ### Available scripts
 
 ```bash
-yarn verify
-yarn validate:manifest
-yarn check:repo
-yarn package:extension
-yarn package:extension:nested
-yarn package:extension:unpacked
-yarn release:verify
-node --check extension/popup/popup.js
+yarn dev                       # watch mode (tsc --watch + static file watcher)
+yarn build                     # one-shot compile + copy static assets
+yarn build:check               # type-check only (no emit)
+yarn verify                    # build:check + validate:manifest + check:repo
+yarn validate:manifest         # validate manifest.json structure
+yarn check:repo                # repo hygiene (no .DS_Store, no secrets, etc.)
+yarn package:extension         # build + package both zip variants into artifacts/
+yarn package:extension:nested  # legacy nested zip
+yarn package:extension:unpacked # user-friendly zip
+yarn release:verify            # verify version/tag/changelog alignment
 ```
 
-- `yarn verify`
-  - runs manifest validation and repository hygiene checks
-- `yarn validate:manifest`
-  - validates `extension/manifest.json`
-- `yarn check:repo`
-  - checks required files, `.DS_Store`, and basic hygiene rules
-- `yarn package:extension`
-  - builds both release zip variants into `artifacts/`
-- `yarn package:extension:nested`
-  - builds the legacy nested zip where the archive root contains `extension/`
-- `yarn package:extension:unpacked`
-  - builds the user-friendly zip where the archive root contains `manifest.json`
-- `yarn release:verify`
-  - verifies version, tag, and changelog alignment before a release
-
-There is no linter, formatter, type-checker, or automated test runner in this repository.
-If you touch JavaScript files, use `node --check <file>` where needed.
+- `yarn verify` is the main pre-commit / CI gate.
+- `yarn build:check` runs the TypeScript compiler in check-only mode.
+- `yarn package:extension` produces release-ready zip files from `extension-dist/`.
 
 ## Release artifacts
 
@@ -133,7 +139,7 @@ Release flow details live in `docs/RELEASE.md`.
   - fragile tweet action-bar integration
 - `extension/features/youtube/shared.js`
   - fragile share-panel integration
-- `extension/background/providers/loaderTo.js`
+- `extension/background/providers/loaderTo.ts`
   - shared external dependency for multiple download flows
 
 ## Contributing

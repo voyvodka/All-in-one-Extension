@@ -1,0 +1,291 @@
+import { getYoutubeIdFromUrl, inferExtFromUrl } from './utils.js';
+import { getSettings, getDownloadsState } from '../shared/storage.js';
+import { clearHistory, getJobIdByDownloadId, loadDownloadMap, updateJob } from './downloads/store.js';
+import { startYoutubeDownload } from '../features/youtube-download/background/index.js';
+import { startInstagramDownload, startInstagramImagesZip } from '../features/instagram-download/background/index.js';
+import { startInstagramImageDownload } from '../features/ig-image-download/background/index.js';
+import { startTwitterDownload, startTwitterImageDownload, startTwitterImagesZip } from '../features/twitter-download/background/index.js';
+import { MESSAGE_TYPES } from '../shared/contracts/message-types.js';
+
+loadDownloadMap().catch((err) => console.error('Failed to load download map', err));
+
+chrome.downloads.onChanged.addListener(async (delta) => {
+  const jobId = getJobIdByDownloadId(delta.id);
+  if (!jobId) return;
+
+  // @types/chrome uses a legacy DownloadDelta shape; cast to access extended fields
+  const d = delta as unknown as {
+    id: number;
+    bytesReceived?: { current: number };
+    totalBytes?: { current: number };
+    state?: { current: string };
+    error?: { current: string };
+  };
+
+  await updateJob(jobId, (job) => {
+    if (d.bytesReceived?.current != null && d.totalBytes?.current) {
+      const total = d.totalBytes.current || job.totalBytes || 0;
+      const received = d.bytesReceived.current;
+      if (total > 0) {
+        job.totalBytes = total;
+        job.progress = Math.min(100, Math.round((received / total) * 100));
+      }
+    }
+
+    if (d.state?.current === 'complete') {
+      job.status = 'completed';
+      job.progress = 100;
+    } else if (d.state?.current === 'interrupted') {
+      job.status = 'failed';
+      job.error = d.error?.current ?? 'Download interrupted';
+    } else {
+      if (job.status === 'preparing') {
+        job.status = 'downloading';
+      }
+    }
+  });
+});
+
+interface BaseMessage {
+  type?: string;
+  openPopup?: boolean;
+  [key: string]: unknown;
+}
+
+function maybeOpenPopup(message: BaseMessage): void {
+  if (!message?.openPopup || !chrome.action?.openPopup) return;
+
+  try {
+    chrome.action.openPopup(() => {
+      if (chrome.runtime.lastError) {
+        console.warn('openPopup failed:', chrome.runtime.lastError.message);
+      }
+    });
+  } catch (err) {
+    console.warn('openPopup threw:', err);
+  }
+}
+
+interface DownloadResult {
+  success: boolean;
+  error?: string;
+}
+
+async function handleRetryDownload(jobId: string): Promise<DownloadResult> {
+  const state = await getDownloadsState();
+  const previous = state.history.find((job) => job.id === jobId);
+  if (!previous) {
+    return { success: false, error: 'Kayıt bulunamadı' };
+  }
+
+  if (previous.type === MESSAGE_TYPES.YT_AUDIO_DOWNLOAD || previous.type === MESSAGE_TYPES.YT_VIDEO_DOWNLOAD) {
+    const videoId = getYoutubeIdFromUrl(previous.sourceUrl);
+    if (!videoId) {
+      return { success: false, error: 'Video ID bulunamadı' };
+    }
+
+    return startYoutubeDownload(previous.type, videoId, previous.title || previous.fileName);
+  }
+
+  if (previous.type === MESSAGE_TYPES.IG_AUDIO_DOWNLOAD) {
+    return startInstagramDownload(MESSAGE_TYPES.IG_AUDIO_DOWNLOAD, previous.sourceUrl, previous.title || previous.fileName);
+  }
+
+  if (previous.type === MESSAGE_TYPES.IG_VIDEO_DOWNLOAD) {
+    return startInstagramDownload(MESSAGE_TYPES.IG_VIDEO_DOWNLOAD, previous.sourceUrl, previous.title || previous.fileName, {
+      directMedia: previous.mediaUrl
+        ? {
+          url: previous.mediaUrl,
+          type: 'video',
+          ext: inferExtFromUrl(previous.mediaUrl, 'mp4')
+        }
+        : null
+    });
+  }
+
+  if (previous.type === MESSAGE_TYPES.IG_IMAGE_DOWNLOAD) {
+    const mediaUrl = previous.mediaUrl || previous.sourceUrl;
+    if (!mediaUrl) {
+      return { success: false, error: 'Kaynak bulunamadı' };
+    }
+
+    return startInstagramImageDownload({
+      reelUrl: previous.sourceUrl || mediaUrl,
+      reelTitle: previous.title || previous.fileName,
+      mediaUrl
+    });
+  }
+
+  if (previous.type === MESSAGE_TYPES.IG_IMAGE_ZIP_DOWNLOAD) {
+    if (!previous.sourceUrl) {
+      return { success: false, error: 'Kaynak bulunamadı' };
+    }
+
+    return { success: false, error: 'ZIP yeniden indirilemiyor (URL listesi eksik)' };
+  }
+
+  if (previous.type === MESSAGE_TYPES.X_AUDIO_DOWNLOAD) {
+    return startTwitterDownload(MESSAGE_TYPES.X_AUDIO_DOWNLOAD, previous.sourceUrl, previous.title || previous.fileName);
+  }
+
+  if (previous.type === MESSAGE_TYPES.X_VIDEO_DOWNLOAD) {
+    return startTwitterDownload(MESSAGE_TYPES.X_VIDEO_DOWNLOAD, previous.sourceUrl, previous.title || previous.fileName);
+  }
+
+  return { success: false, error: 'Bu tür için yeniden indirme desteklenmiyor' };
+}
+
+type MessageHandler = (message: BaseMessage) => Promise<unknown>;
+
+/** Safely extract a string field from a message payload, falling back to empty string. */
+function str(message: BaseMessage, key: string): string {
+  const v = message?.[key];
+  return typeof v === 'string' ? v : '';
+}
+
+/** Safely extract a string array from a message payload. */
+function strArray(message: BaseMessage, key: string): string[] {
+  const v = message?.[key];
+  return Array.isArray(v) ? v.filter((item): item is string => typeof item === 'string') : [];
+}
+
+/** Safely extract an optional object from a message payload. */
+function optObj(message: BaseMessage, key: string): Record<string, unknown> | null {
+  const v = message?.[key];
+  return v != null && typeof v === 'object' && !Array.isArray(v)
+    ? v as Record<string, unknown>
+    : null;
+}
+
+const messageHandlers: Record<string, MessageHandler> = {
+  [MESSAGE_TYPES.GET_SETTINGS]: async () => getSettings(),
+  [MESSAGE_TYPES.GET_DOWNLOADS]: async () => getDownloadsState(),
+  [MESSAGE_TYPES.YT_AUDIO_DOWNLOAD]: async (message) => {
+    maybeOpenPopup(message);
+    const videoId = str(message, 'videoId');
+    if (!videoId) return { success: false, error: 'Missing videoId' };
+    return startYoutubeDownload(MESSAGE_TYPES.YT_AUDIO_DOWNLOAD, videoId, str(message, 'videoTitle'));
+  },
+  [MESSAGE_TYPES.YT_VIDEO_DOWNLOAD]: async (message) => {
+    maybeOpenPopup(message);
+    const videoId = str(message, 'videoId');
+    if (!videoId) return { success: false, error: 'Missing videoId' };
+    return startYoutubeDownload(MESSAGE_TYPES.YT_VIDEO_DOWNLOAD, videoId, str(message, 'videoTitle'));
+  },
+  [MESSAGE_TYPES.IG_AUDIO_DOWNLOAD]: async (message) => {
+    maybeOpenPopup(message);
+    const reelUrl = str(message, 'reelUrl');
+    if (!reelUrl) return { success: false, error: 'Missing reelUrl' };
+    return startInstagramDownload(MESSAGE_TYPES.IG_AUDIO_DOWNLOAD, reelUrl, str(message, 'reelTitle'), {
+      directMedia: optObj(message, 'directMedia') as { url?: string; type?: string; ext?: string } | null
+    });
+  },
+  [MESSAGE_TYPES.IG_VIDEO_DOWNLOAD]: async (message) => {
+    maybeOpenPopup(message);
+    const reelUrl = str(message, 'reelUrl');
+    if (!reelUrl) return { success: false, error: 'Missing reelUrl' };
+    return startInstagramDownload(MESSAGE_TYPES.IG_VIDEO_DOWNLOAD, reelUrl, str(message, 'reelTitle'), {
+      directMedia: optObj(message, 'directMedia') as { url?: string; type?: string; ext?: string } | null
+    });
+  },
+  [MESSAGE_TYPES.IG_IMAGE_DOWNLOAD]: async (message) => {
+    maybeOpenPopup(message);
+    const reelUrl = str(message, 'reelUrl');
+    if (!reelUrl) return { success: false, error: 'Missing reelUrl' };
+    const directMedia = optObj(message, 'directMedia');
+    const mediaUrl = (directMedia?.['url'] as string) ?? str(message, 'imageUrl');
+    if (!mediaUrl) return { success: false, error: 'Missing image URL' };
+    return startInstagramImageDownload({
+      reelUrl,
+      reelTitle: str(message, 'reelTitle'),
+      mediaUrl
+    });
+  },
+  [MESSAGE_TYPES.IG_IMAGE_ZIP_DOWNLOAD]: async (message) => {
+    maybeOpenPopup(message);
+    const reelUrl = str(message, 'reelUrl');
+    const imageUrls = strArray(message, 'imageUrls');
+    if (!reelUrl || !imageUrls.length) return { success: false, error: 'Missing reelUrl or imageUrls' };
+    return startInstagramImagesZip({
+      reelUrl,
+      reelTitle: str(message, 'reelTitle'),
+      imageUrls
+    });
+  },
+  [MESSAGE_TYPES.X_AUDIO_DOWNLOAD]: async (message) => {
+    maybeOpenPopup(message);
+    const tweetUrl = str(message, 'tweetUrl');
+    if (!tweetUrl) return { success: false, error: 'Missing tweetUrl' };
+    return startTwitterDownload(MESSAGE_TYPES.X_AUDIO_DOWNLOAD, tweetUrl, str(message, 'tweetTitle'));
+  },
+  [MESSAGE_TYPES.X_VIDEO_DOWNLOAD]: async (message) => {
+    maybeOpenPopup(message);
+    const tweetUrl = str(message, 'tweetUrl');
+    if (!tweetUrl) return { success: false, error: 'Missing tweetUrl' };
+    return startTwitterDownload(MESSAGE_TYPES.X_VIDEO_DOWNLOAD, tweetUrl, str(message, 'tweetTitle'));
+  },
+  [MESSAGE_TYPES.X_IMAGE_DOWNLOAD]: async (message) => {
+    maybeOpenPopup(message);
+    const tweetUrl = str(message, 'tweetUrl');
+    const imageUrl = str(message, 'imageUrl');
+    if (!tweetUrl || !imageUrl) return { success: false, error: 'Missing tweetUrl or imageUrl' };
+    return startTwitterImageDownload({
+      tweetUrl,
+      tweetTitle: str(message, 'tweetTitle'),
+      imageUrl
+    });
+  },
+  [MESSAGE_TYPES.X_IMAGE_ZIP_DOWNLOAD]: async (message) => {
+    maybeOpenPopup(message);
+    const tweetUrl = str(message, 'tweetUrl');
+    const imageUrls = strArray(message, 'imageUrls');
+    if (!tweetUrl || !imageUrls.length) return { success: false, error: 'Missing tweetUrl or imageUrls' };
+    return startTwitterImagesZip({
+      tweetUrl,
+      tweetTitle: str(message, 'tweetTitle'),
+      imageUrls
+    });
+  },
+  [MESSAGE_TYPES.CANCEL_DOWNLOAD]: async (message) => {
+    const jobId = str(message, 'jobId');
+    if (!jobId) return { success: false, error: 'Missing jobId' };
+    const downloadId = message['downloadId'];
+    if (typeof downloadId === 'number' && downloadId > 0) {
+      chrome.downloads.cancel(downloadId);
+    }
+
+    await updateJob(jobId, (job) => {
+      job.status = 'cancelled';
+    });
+    return { success: true };
+  },
+  [MESSAGE_TYPES.CLEAR_DOWNLOAD_HISTORY]: async () => {
+    await clearHistory();
+    return { success: true };
+  },
+  [MESSAGE_TYPES.RETRY_DOWNLOAD]: async (message) => {
+    const jobId = str(message, 'jobId');
+    if (!jobId) return { success: false, error: 'Missing jobId' };
+    return handleRetryDownload(jobId);
+  }
+};
+
+chrome.runtime.onMessage.addListener(
+  (
+    message: BaseMessage,
+    _sender: chrome.runtime.MessageSender,
+    sendResponse: (response: unknown) => void
+  ) => {
+    const handler = messageHandlers[message?.['type'] as string];
+    if (!handler) return undefined;
+
+    Promise.resolve(handler(message))
+      .then((result) => sendResponse(result))
+      .catch((error: Error) => {
+        console.error('Background message handler failed:', message?.['type'], error);
+        sendResponse({ success: false, error: error?.message ?? 'Unknown error' });
+      });
+
+    return true;
+  }
+);
