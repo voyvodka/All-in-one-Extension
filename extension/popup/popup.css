@@ -548,11 +548,10 @@ body {
 /* ── Footer ──────────────────────────────────────────────────────── */
 .app-footer {
   flex-shrink: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 3px 8px;
+  gap: 8px;
   padding: 5px 10px;
   background: var(--c-surface);
   border-top: 1px solid var(--c-border);
@@ -560,19 +559,39 @@ body {
 }
 
 .footer-version {
+  flex: 1;
+  min-width: 0;
   font-family: var(--font-mono);
   font-size: 9px;
   color: var(--c-text-3);
   letter-spacing: 0.03em;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .footer-update {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  flex-shrink: 0;
+  max-width: 220px;
 }
 
 .footer-update:empty { display: none; }
+
+.footer-update-main,
+.footer-update-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
 
 .footer-update .update-badge {
   display: inline-flex;
@@ -585,9 +604,12 @@ body {
   font-size: 9px;
   font-weight: 600;
   font-family: var(--font-mono);
+  white-space: nowrap;
 }
 
 .footer-update .update-link {
+  display: inline-flex;
+  align-items: center;
   color: var(--c-accent);
   font-size: 9px;
   font-weight: 600;
@@ -597,6 +619,20 @@ body {
   background: none;
   padding: 0;
   font-family: inherit;
+  white-space: nowrap;
+}
+
+.footer-update .update-link-primary {
+  padding: 1px 6px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-pill);
+  background: var(--c-surface-2);
+  text-decoration: none;
+}
+
+.footer-update .update-link-primary:hover {
+  text-decoration: none;
+  border-color: var(--c-border-strong);
 }
 
 .footer-update .update-link:hover { text-decoration: underline; }

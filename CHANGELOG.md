@@ -2,6 +2,12 @@
 
 All notable changes to this project should be documented in this file.
 
+## 0.3.4
+
+- Refined the popup update footer with a calmer loading state, clearer action grouping, and inline tooltips for download, guide, reload, and manual check actions.
+- Added manual `Check now` and `Reload` actions so unpacked installs can update directly from the popup without opening `chrome://extensions`.
+- Updated the user install guide to describe the new popup-based manual update flow.
+
 ## 0.3.3
 
 - Added a separately branded local development build so live and dev installs are easier to distinguish on the same machine.

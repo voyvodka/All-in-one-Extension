@@ -42,6 +42,7 @@ const BUG_REPORT_URL = 'https://github.com/voyvodka/All-in-one-Extension/issues/
 const GITHUB_RELEASES_API = 'https://api.github.com/repos/voyvodka/All-in-one-Extension/releases/latest';
 const HOW_TO_UPDATE_URL = 'https://github.com/voyvodka/All-in-one-Extension/blob/main/docs/INSTALL.md';
 const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const MIN_UPDATE_LOADING_MS = 700;
 const UPDATE_CACHE_KEY = 'aioUpdateCheck';
 const prefersDark: MediaQueryList | null = window.matchMedia
   ? window.matchMedia('(prefers-color-scheme: dark)')
@@ -52,6 +53,9 @@ let systemThemeHandler: (() => void) | null = null;
 let expandedJobId: string | null = null;
 let isInitializing = true;
 let initError: Error | null = null;
+let footerState: 'loading' | 'latest' | 'error' | 'update' = 'latest';
+let footerLatestTag: string | undefined;
+let footerDownloadUrl: string | undefined;
 let current: { language: Locale; theme: ThemeChoice } = {
   language: resolveLocale(),
   theme: 'system'
@@ -420,7 +424,10 @@ function updateToolbarState(activeCount: number, historyCount: number): void {
 /* ── Static translations ─────────────────────────────────────────── */
 function applyStaticTranslations(): void {
   document.documentElement.lang = getLocale();
-  if (bugBtn) bugBtn.title = t('bugTitle');
+  if (bugBtn) {
+    bugBtn.title = t('bugTitle');
+    bugBtn.setAttribute('aria-label', t('bugTitle'));
+  }
 
   const activeLabelEl = subTabLabelEls['active'];
   const historyLabelEl = subTabLabelEls['history'];
@@ -436,13 +443,21 @@ function applyStaticTranslations(): void {
     sortDownloadsBtn.setAttribute('aria-label', t('sort'));
   }
 
-  if (languageSelect) languageSelect.title = t('language');
-  if (themeSelect) themeSelect.title = t('theme');
+  if (languageSelect) {
+    languageSelect.title = t('language');
+    languageSelect.setAttribute('aria-label', t('language'));
+  }
+  if (themeSelect) {
+    themeSelect.title = t('theme');
+    themeSelect.setAttribute('aria-label', t('theme'));
+  }
 
   // Footer version
   if (footerVersionEl) {
     footerVersionEl.textContent = t('footerVersion').replace('{version}', getCurrentVersion());
   }
+
+  renderFooter(footerState, footerLatestTag, footerDownloadUrl);
 }
 
 /* ── Theme ───────────────────────────────────────────────────────── */
@@ -494,7 +509,58 @@ function setCachedUpdateCheck(entry: UpdateCacheEntry): void {
   try { localStorage.setItem(UPDATE_CACHE_KEY, JSON.stringify(entry)); } catch { /* noop */ }
 }
 
+function createCheckNowButton(): HTMLButtonElement {
+  const checkBtn = el('button', 'update-link', t('updateCheckNow')) as HTMLButtonElement;
+  checkBtn.type = 'button';
+  checkBtn.title = t('updateCheckNowTitle');
+  checkBtn.setAttribute('aria-label', t('updateCheckNowTitle'));
+  checkBtn.addEventListener('click', () => {
+    void checkForUpdates({ force: true });
+  });
+  return checkBtn;
+}
+
+function createDownloadButton(downloadUrl: string): HTMLButtonElement {
+  const dlBtn = el('button', 'update-link update-link-primary', t('updateDownload')) as HTMLButtonElement;
+  dlBtn.type = 'button';
+  dlBtn.title = t('updateDownloadTitle');
+  dlBtn.setAttribute('aria-label', t('updateDownloadTitle'));
+  dlBtn.addEventListener('click', () => {
+    try { chrome.downloads?.download?.({ url: downloadUrl, saveAs: true }); }
+    catch { window.open(downloadUrl, '_blank', 'noopener,noreferrer'); }
+  });
+  return dlBtn;
+}
+
+function createHowToButton(): HTMLButtonElement {
+  const howTo = el('button', 'update-link', t('updateHowTo')) as HTMLButtonElement;
+  howTo.type = 'button';
+  howTo.title = t('updateHowToTitle');
+  howTo.setAttribute('aria-label', t('updateHowToTitle'));
+  howTo.addEventListener('click', () => {
+    try { chrome.tabs?.create?.({ url: HOW_TO_UPDATE_URL }); }
+    catch { window.open(HOW_TO_UPDATE_URL, '_blank', 'noopener,noreferrer'); }
+  });
+  return howTo;
+}
+
+function createReloadButton(): HTMLButtonElement {
+  const reloadBtn = el('button', 'update-link', t('updateReload')) as HTMLButtonElement;
+  reloadBtn.type = 'button';
+  reloadBtn.title = t('updateReloadTitle');
+  reloadBtn.setAttribute('aria-label', t('updateReloadTitle'));
+  reloadBtn.addEventListener('click', () => {
+    try { chrome.runtime.reload(); }
+    catch (err) { console.warn('AIO: reload failed', err); }
+  });
+  return reloadBtn;
+}
+
 function renderFooter(state: 'loading' | 'latest' | 'error' | 'update', latestTag?: string, downloadUrl?: string): void {
+  footerState = state;
+  footerLatestTag = latestTag;
+  footerDownloadUrl = downloadUrl;
+
   const version = getCurrentVersion();
   if (footerVersionEl) footerVersionEl.textContent = t('footerVersion').replace('{version}', version);
   if (!footerUpdateEl) return;
@@ -506,31 +572,30 @@ function renderFooter(state: 'loading' | 'latest' | 'error' | 'update', latestTa
   }
   if (state === 'error') {
     footerUpdateEl.appendChild(el('span', 'footer-error', t('updateError')));
+    footerUpdateEl.appendChild(createCheckNowButton());
     return;
   }
-  if (state === 'latest') return;
+  if (state === 'latest') {
+    footerUpdateEl.appendChild(createCheckNowButton());
+    return;
+  }
 
   if (state === 'update' && latestTag) {
-    const badge = el('span', 'update-badge', t('updateAvailable').replace('{version}', latestTag.replace(/^v/, '')));
-    footerUpdateEl.appendChild(badge);
+    const mainRow = el('div', 'footer-update-main');
+    const secondaryRow = el('div', 'footer-update-secondary');
+
+    mainRow.appendChild(
+      el('span', 'update-badge', t('updateAvailable').replace('{version}', latestTag.replace(/^v/, '')))
+    );
 
     if (downloadUrl) {
-      const dlBtn = el('button', 'update-link', t('updateDownload')) as HTMLButtonElement;
-      dlBtn.type = 'button';
-      dlBtn.addEventListener('click', () => {
-        try { chrome.downloads?.download?.({ url: downloadUrl, saveAs: true }); }
-        catch { window.open(downloadUrl, '_blank', 'noopener,noreferrer'); }
-      });
-      footerUpdateEl.appendChild(dlBtn);
+      mainRow.appendChild(createDownloadButton(downloadUrl));
     }
 
-    const howTo = el('button', 'update-link', t('updateHowTo')) as HTMLButtonElement;
-    howTo.type = 'button';
-    howTo.addEventListener('click', () => {
-      try { chrome.tabs?.create?.({ url: HOW_TO_UPDATE_URL }); }
-      catch { window.open(HOW_TO_UPDATE_URL, '_blank', 'noopener,noreferrer'); }
-    });
-    footerUpdateEl.appendChild(howTo);
+    secondaryRow.appendChild(createHowToButton());
+    secondaryRow.appendChild(createReloadButton());
+    footerUpdateEl.appendChild(mainRow);
+    footerUpdateEl.appendChild(secondaryRow);
   }
 }
 
@@ -549,13 +614,23 @@ async function fetchLatestRelease(): Promise<{ tag: string; downloadUrl: string 
   return { tag, downloadUrl: asset?.browser_download_url ?? null };
 }
 
-async function checkForUpdates(): Promise<void> {
+async function checkForUpdates({ force = false }: { force?: boolean } = {}): Promise<void> {
   const version = getCurrentVersion();
+  const startedAt = Date.now();
   renderFooter('loading');
+
+  const waitForMinimumLoading = async () => {
+    const elapsed = Date.now() - startedAt;
+    const remaining = MIN_UPDATE_LOADING_MS - elapsed;
+    if (remaining > 0) {
+      await new Promise((resolve) => window.setTimeout(resolve, remaining));
+    }
+  };
 
   const cached = getCachedUpdateCheck();
   const now = Date.now();
-  if (cached && (now - cached.checkedAt) < UPDATE_CHECK_INTERVAL_MS && !cached.error) {
+  if (!force && cached && (now - cached.checkedAt) < UPDATE_CHECK_INTERVAL_MS && !cached.error) {
+    await waitForMinimumLoading();
     if (cached.latestTag && compareVersions(cached.latestTag, version) > 0) {
       renderFooter('update', cached.latestTag, cached.downloadUrl ?? undefined);
     } else {
@@ -566,6 +641,7 @@ async function checkForUpdates(): Promise<void> {
 
   try {
     const { tag, downloadUrl } = await fetchLatestRelease();
+    await waitForMinimumLoading();
     setCachedUpdateCheck({ checkedAt: now, latestTag: tag, downloadUrl, error: false });
     if (tag && compareVersions(tag, version) > 0) {
       renderFooter('update', tag, downloadUrl ?? undefined);
@@ -574,6 +650,7 @@ async function checkForUpdates(): Promise<void> {
     }
   } catch (err) {
     console.warn('AIO: update check failed', err);
+    await waitForMinimumLoading();
     setCachedUpdateCheck({ checkedAt: now, latestTag: null, downloadUrl: null, error: true });
     renderFooter('error');
   }

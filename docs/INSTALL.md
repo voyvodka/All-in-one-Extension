@@ -26,12 +26,15 @@ After loading, the extension should appear in Chrome and be ready to use.
 
 When a new version is available:
 
-1. Download the newest `all-in-one-toolkit-unpacked-vX.Y.Z.zip` file.
-2. Extract it over the same `All-in-One Toolkit` folder you used before.
-3. Open `chrome://extensions`.
-4. Click `Reload` on the extension card.
+1. Open the extension popup.
+2. If the footer shows a newer version, click `Download`.
+3. Save the newest `all-in-one-toolkit-unpacked-vX.Y.Z.zip` file.
+4. Extract it over the same `All-in-One Toolkit` folder you used before.
+5. In the popup, click `Reload`.
 
 If your unzip tool asks whether existing files should be replaced, choose to replace them.
+
+If the website buttons do not refresh immediately after reloading, refresh the open tab once.
 
 ## Common mistakes
 

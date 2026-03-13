@@ -16,8 +16,9 @@ type I18nKey =
   | 'downloadAction' | 'downloadAudio' | 'downloadVideo'
   | 'downloadImageSingle' | 'downloadImageMultiple'
   | 'twitterUrlNotFound' | 'instagramDownloadIcon' | 'instagramPhotoUrlMissing'
-  | 'footerVersion' | 'updateAvailable' | 'updateDownload' | 'updateHowTo'
-  | 'updateChecking' | 'updateLatest' | 'updateError';
+  | 'footerVersion' | 'updateAvailable' | 'updateDownload' | 'updateHowTo' | 'updateReload' | 'updateCheckNow'
+  | 'updateChecking' | 'updateLatest' | 'updateError'
+  | 'updateDownloadTitle' | 'updateHowToTitle' | 'updateReloadTitle' | 'updateCheckNowTitle';
 
 type I18nDictionary = Record<I18nKey, string>;
 
@@ -78,9 +79,15 @@ const messages: Record<Locale, I18nDictionary> = {
     updateAvailable: 'Yeni sürüm: v{version}',
     updateDownload: 'İndir',
     updateHowTo: 'Nasıl güncellenir?',
+    updateReload: 'Yeniden yükle',
+    updateCheckNow: 'Kontrol et',
     updateChecking: 'Güncelleme kontrol ediliyor...',
     updateLatest: 'Güncel sürümü kullanıyorsunuz.',
-    updateError: 'Güncelleme kontrol edilemedi.'
+    updateError: 'Güncelleme kontrol edilemedi.',
+    updateDownloadTitle: 'Son sürüm zip paketini indir.',
+    updateHowToTitle: 'Manuel güncelleme adımlarını aç.',
+    updateReloadTitle: 'Dosyaları çıkardıktan sonra uzantıyı yeniden yükle.',
+    updateCheckNowTitle: 'GitHub üzerinden güncellemeyi şimdi tekrar kontrol et.'
   },
   en: {
     subtabActive: 'Active',
@@ -138,9 +145,15 @@ const messages: Record<Locale, I18nDictionary> = {
     updateAvailable: 'New version: v{version}',
     updateDownload: 'Download',
     updateHowTo: 'How to update?',
+    updateReload: 'Reload',
+    updateCheckNow: 'Check now',
     updateChecking: 'Checking for updates...',
     updateLatest: 'You are using the latest version.',
-    updateError: 'Could not check for updates.'
+    updateError: 'Could not check for updates.',
+    updateDownloadTitle: 'Download the latest unpacked zip package.',
+    updateHowToTitle: 'Open the manual update guide.',
+    updateReloadTitle: 'Reload the extension after replacing the files.',
+    updateCheckNowTitle: 'Check GitHub for updates again right now.'
   }
 };
 
