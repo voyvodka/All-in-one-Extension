@@ -395,14 +395,18 @@ body {
   border: 1px solid var(--c-border);
   border-radius: var(--radius-md);
   background: var(--c-surface);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 8px;
+  row-gap: 4px;
+  align-items: start;
 }
 
 .state-icon {
   font-size: 14px;
   line-height: 1;
+  grid-row: 1 / span 3;
+  margin-top: 1px;
 }
 
 .state-title {
@@ -413,6 +417,12 @@ body {
 .state-copy {
   color: var(--c-text-2);
   font-size: 11px;
+}
+
+.state-title,
+.state-copy,
+.state-action {
+  grid-column: 2;
 }
 
 .state-action {

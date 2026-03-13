@@ -2,6 +2,13 @@
 
 All notable changes to this project should be documented in this file.
 
+## 0.4.1
+
+- Hardened loader.to polling so long-running `ProcessingContext` jobs and transient request stalls fail more predictably instead of timing out too early.
+- Serialized download state writes to stop failed jobs from being overwritten by stale progress updates and getting stuck in the active list at 99%.
+- Improved popup behavior by automatically switching to the active downloads tab when a new download starts and tightening the empty-state layout so the icon aligns with the text.
+- Refined Instagram action button injection to better target the real action row across more DOM variants while reducing noisy runtime console output.
+
 ## 0.4.0
 
 - Added the first Instagram Analyzer foundation with account-aware local state storage separated from download history.

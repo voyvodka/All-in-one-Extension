@@ -1,6 +1,8 @@
 import { wait } from '../utils.js';
 
 const LOADER_BASE_URL = 'https://loader.to';
+const LOADER_REQUEST_TIMEOUT_MS = 15000;
+const MAX_CONSECUTIVE_POLL_FAILURES = 6;
 
 interface LoaderResponse {
   id?: string;
@@ -17,26 +19,37 @@ export interface ProgressEvent {
 }
 
 /**
- * Statuses reported by loader.to that indicate the job is still initialising
- * and hasn't started real work yet. We allow extra patience for these.
+ * Statuses reported by loader.to that indicate the job is still legitimately
+ * progressing, even if the final download URL is not ready yet.
  */
-const INIT_STATUSES = new Set([
+const EXTENDED_WAIT_STATUSES = new Set([
   'initialisingcontext',
   'initialising',
+  'processingcontext',
+  'processing',
   'pending',
   'queued',
+  'preparing',
 ]);
 
-function isInitialising(status: string | undefined): boolean {
-  return INIT_STATUSES.has((status ?? '').toLowerCase().trim());
+function allowsExtendedWait(status: string | undefined): boolean {
+  return EXTENDED_WAIT_STATUSES.has((status ?? '').toLowerCase().trim());
 }
 
 async function fetchLoaderJson(url: string, context: string): Promise<LoaderResponse> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LOADER_REQUEST_TIMEOUT_MS);
   let response: Response;
   try {
-    response = await fetch(url);
+    response = await fetch(url, { signal: controller.signal });
   } catch (err) {
-    throw new Error(`${context} - Network error: ${err instanceof Error ? err.message : String(err)}`);
+    const message = err instanceof Error ? err.message : String(err);
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error(`${context} - Request timed out after ${LOADER_REQUEST_TIMEOUT_MS}ms`);
+    }
+    throw new Error(`${context} - Network error: ${message}`);
+  } finally {
+    clearTimeout(timer);
   }
 
   const text = await response.text();
@@ -82,6 +95,7 @@ async function pollForDownloadUrl(
 
   let lastStatus: string | undefined;
   let initBonusUsed = 0;
+  let consecutivePollFailures = 0;
 
   await wait(3000);
 
@@ -96,8 +110,14 @@ async function pollForDownloadUrl(
       progressData = await fetchLoaderJson(progressUrl, 'Failed to poll conversion');
     } catch (err) {
       // Transient network errors during polling — retry silently up to a point
+      consecutivePollFailures += 1;
+      if (consecutivePollFailures >= MAX_CONSECUTIVE_POLL_FAILURES) {
+        throw err instanceof Error ? err : new Error(String(err));
+      }
       continue;
     }
+
+    consecutivePollFailures = 0;
 
     const prog = Number(progressData?.progress);
     if (!Number.isNaN(prog)) {
@@ -124,16 +144,16 @@ async function pollForDownloadUrl(
 
     lastStatus = progressData?.status ?? progressData?.text ?? lastStatus;
 
-    // If we've exhausted normal attempts but server is still initialising, allow bonus
-    if (attempt >= maxNormalAttempts - 1 && isInitialising(lastStatus)) {
+    // If we've exhausted normal attempts but server is still actively working, allow bonus
+    if (attempt >= maxNormalAttempts - 1 && allowsExtendedWait(lastStatus)) {
       if (initBonusUsed < maxInitBonusAttempts) {
         initBonusUsed++;
         continue;
       }
     }
 
-    // If we've used up normal attempts and status isn't init, break
-    if (attempt >= maxNormalAttempts - 1 && !isInitialising(lastStatus)) {
+    // If we've used up normal attempts and status is no longer progressing, break
+    if (attempt >= maxNormalAttempts - 1 && !allowsExtendedWait(lastStatus)) {
       break;
     }
   }

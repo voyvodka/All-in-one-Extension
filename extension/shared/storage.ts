@@ -139,6 +139,7 @@ const DEFAULT_INSTAGRAM_ANALYZER_STATE: InstagramAnalyzerState = {
 };
 
 const DOWNLOAD_HISTORY_LIMIT = 50;
+let downloadsUpdateQueue: Promise<DownloadsState> = Promise.resolve(DEFAULT_DOWNLOADS);
 
 function hasRuntimeContext(): boolean {
   try {
@@ -466,12 +467,21 @@ export async function setDownloadsState(next: DownloadsState): Promise<Downloads
 }
 
 export async function updateDownloads(updater: DownloadsUpdater): Promise<DownloadsState> {
-  const current = await getDownloadsState();
-  const clone: DownloadsState = JSON.parse(JSON.stringify(current));
-  const next = updater(clone) ?? clone;
-  next.active.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  next.history.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  return setDownloadsState(next);
+  const runUpdate = async (): Promise<DownloadsState> => {
+    const current = await getDownloadsState();
+    const clone: DownloadsState = JSON.parse(JSON.stringify(current));
+    const next = updater(clone) ?? clone;
+    next.active.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    next.history.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    return setDownloadsState(next);
+  };
+
+  const nextRun = downloadsUpdateQueue
+    .catch(() => DEFAULT_DOWNLOADS)
+    .then(runUpdate);
+
+  downloadsUpdateQueue = nextRun;
+  return nextRun;
 }
 
 export function onDownloadsChanged(callback: (state: DownloadsState) => void): void {

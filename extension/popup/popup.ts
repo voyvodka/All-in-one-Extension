@@ -67,6 +67,7 @@ let initError: Error | null = null;
 let footerState: 'loading' | 'latest' | 'error' | 'update' = 'latest';
 let footerLatestTag: string | undefined;
 let footerDownloadUrl: string | undefined;
+let currentSubTab = defaultSubTab;
 let current: { language: Locale; theme: ThemeChoice } = {
   language: resolveLocale(),
   theme: 'system'
@@ -149,7 +150,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-onDownloadsChanged((next) => { downloads = next; renderDownloads(downloads); });
+onDownloadsChanged((next) => {
+  const previous = downloads;
+  downloads = next;
+  maybeShowActiveDownloads(previous, next);
+  renderDownloads(downloads);
+});
 onInstagramAnalyzerChanged((next) => { instagramAnalyzer = next; renderInstagramAnalyzer(instagramAnalyzer); });
 
 /* ── Popup init ──────────────────────────────────────────────────── */
@@ -164,6 +170,7 @@ async function initializePopup(): Promise<void> {
       getDownloadsState(),
       getInstagramAnalyzerState()
     ]);
+    maybeShowActiveDownloads(null, downloads);
     initError = null;
   } catch (error) {
     console.error('Popup initialization failed', error);
@@ -199,9 +206,22 @@ function syncControlValues(): void {
 /* ── Sub-tab switching ───────────────────────────────────────────── */
 function selectSubTab(name: string, persist = false): void {
   const tabName = ['active', 'history'].includes(name) ? name : defaultSubTab;
+  currentSubTab = tabName;
   subTabs.forEach((tab) => tab.classList.toggle('active', tab.dataset['subtab'] === tabName));
   subTabViews.forEach((view) => view.classList.toggle('active', view.dataset['subtab'] === tabName));
   if (persist) { try { localStorage.setItem(SUBTAB_KEY, tabName); } catch { /* noop */ } }
+}
+
+function maybeShowActiveDownloads(previous: DownloadsState | null, next: DownloadsState): void {
+  const nextActive = next?.active ?? [];
+  if (!nextActive.length) return;
+
+  const prevActiveIds = new Set((previous?.active ?? []).map((job) => job.id));
+  const hasNewActiveJob = previous === null || nextActive.some((job) => !prevActiveIds.has(job.id));
+  if (!hasNewActiveJob) return;
+  if (currentSubTab === 'active') return;
+
+  selectSubTab('active', true);
 }
 
 /* ── Render downloads ────────────────────────────────────────────── */
