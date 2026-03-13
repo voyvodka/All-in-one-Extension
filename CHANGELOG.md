@@ -2,6 +2,12 @@
 
 All notable changes to this project should be documented in this file.
 
+## 0.3.3
+
+- Added a separately branded local development build so live and dev installs are easier to distinguish on the same machine.
+- Made `yarn dev` write to `extension-dev-dist/` by default, while keeping `yarn dev:prod` for production-like watch output.
+- Added documentation and packaging support for side-by-side dev installs, including a branded dev zip and ignored dev build output.
+
 ## 0.3.2
 
 - Redesigned the popup into a denser layout with a fixed header/footer and a more compact downloads list.

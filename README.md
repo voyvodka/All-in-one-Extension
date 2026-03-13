@@ -86,8 +86,11 @@ Edit `.ts` files → `extension-dist/` updates automatically → reload extensio
 ### Available scripts
 
 ```bash
-yarn dev                       # watch mode (tsc --watch + static file watcher)
+yarn dev                       # recommended watch mode -> extension-dev-dist/ (separately branded dev build)
+yarn dev:dist                  # same as yarn dev
+yarn dev:prod                  # watch mode for production-like output -> extension-dist/
 yarn build                     # one-shot compile + copy static assets
+yarn build:dev                 # build separately branded dev output -> extension-dev-dist/
 yarn build:check               # type-check only (no emit)
 yarn verify                    # build:check + validate:manifest + check:repo
 yarn validate:manifest         # validate manifest.json structure
@@ -95,6 +98,7 @@ yarn check:repo                # repo hygiene (no .DS_Store, no secrets, etc.)
 yarn package:extension         # build + package both zip variants into artifacts/
 yarn package:extension:nested  # legacy nested zip
 yarn package:extension:unpacked # user-friendly zip
+yarn package:extension:unpacked:dev # branded dev zip for side-by-side install
 yarn release:verify            # verify version/tag/changelog alignment
 ```
 
@@ -110,7 +114,7 @@ Tagged releases publish two zip variants:
   - keeps the historical nested layout
 - `all-in-one-toolkit-unpacked-vX.Y.Z.zip`
   - optimized for manual installation
-  - contains `manifest.json` at the archive root and an `INSTALL.txt` helper file
+  - contains a single `All-in-One Toolkit/` folder and an `INSTALL.txt` helper file
 
 Release flow details live in `docs/RELEASE.md`.
 

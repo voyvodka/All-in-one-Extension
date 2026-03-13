@@ -2,6 +2,7 @@ node_modules/
 dist/
 build/
 extension-dist/
+extension-dev-dist/
 artifacts/
 .parcel-cache/
 .turbo/

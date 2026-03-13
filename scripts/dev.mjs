@@ -15,6 +15,8 @@ import { fileURLToPath } from 'node:url';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(scriptDir, '..');
+const destDir = process.env.AIO_DEST_DIR || 'extension-dist';
+const isDevBrand = process.env.AIO_DEV_BRAND === '1';
 
 /** @param {import('node:child_process').ChildProcess} proc */
 function attachExitHandler(proc, name) {
@@ -37,7 +39,7 @@ const tscBin = resolve(rootDir, 'node_modules', '.bin', 'tsc');
 
 const tsc = spawn(
   tscBin,
-  ['--project', 'tsconfig.json', '--watch', '--preserveWatchOutput'],
+  ['--project', 'tsconfig.json', '--outDir', destDir, '--watch', '--preserveWatchOutput'],
   {
     cwd: rootDir,
     stdio: 'inherit',
@@ -54,6 +56,11 @@ const watcher = spawn(
     cwd: rootDir,
     stdio: 'inherit',
     shell: false,
+    env: {
+      ...process.env,
+      AIO_DEST_DIR: destDir,
+      AIO_DEV_BRAND: isDevBrand ? '1' : '0'
+    }
   }
 );
 attachExitHandler(watcher, 'watch-static');
@@ -67,4 +74,4 @@ function shutdown() {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
-console.log('[dev] Started tsc --watch + watch-static. Press Ctrl+C to stop.\n');
+console.log(`[dev] Started tsc --watch + watch-static -> ${destDir}${isDevBrand ? ' (dev brand)' : ''}. Press Ctrl+C to stop.\n`);
