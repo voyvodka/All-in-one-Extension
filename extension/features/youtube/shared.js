@@ -1,16 +1,37 @@
-const MP_ICON_PATHS = `
-  <circle class="aio-mp-icon-bg" cx="12" cy="12" r="10"></circle>
-  <path
-    class="aio-mp-icon-fg"
-    d="M12 6v7.5m0 0-3-3m3 3 3-3M7 17h10"
-    stroke-width="1.8"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    fill="none"
-  />
+/* ── Per-feature icon paths ────────────────────────────────────────── */
+
+/**
+ * Video download icon: play/film style — instantly recognisable as "video".
+ * Filled circle bg + white play-triangle + small down-arrow badge.
+ */
+const VIDEO_ICON_PATHS = `
+  <circle class="aio-icon-bg" cx="12" cy="12" r="11"/>
+  <path class="aio-icon-fg" d="M9.5 7.5v9l7-4.5z" fill="#fff"/>
+  <circle cx="17.5" cy="17.5" r="4.5" fill="#fff"/>
+  <path d="M17.5 15.95v3.1m0 0-1.6-1.6m1.6 1.6 1.6-1.6"
+    stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"
+    fill="none" class="aio-icon-badge"/>
 `;
 
-const iconMarkup = () => MP_ICON_PATHS;
+/**
+ * Audio download icon: music note style — instantly recognisable as "audio".
+ * Filled circle bg + white music note + small down-arrow badge.
+ */
+const AUDIO_ICON_PATHS = `
+  <circle class="aio-icon-bg" cx="12" cy="12" r="11"/>
+  <path class="aio-icon-fg"
+    d="M10 17.5a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm0-2V7l5-1.5v2"
+    stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="17.5" cy="17.5" r="4.5" fill="#fff"/>
+  <path d="M17.5 15.95v3.1m0 0-1.6-1.6m1.6 1.6 1.6-1.6"
+    stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"
+    fill="none" class="aio-icon-badge"/>
+`;
+
+function iconMarkupFor(attr) {
+  if (attr.includes('video') || attr.includes('mp4')) return VIDEO_ICON_PATHS;
+  return AUDIO_ICON_PATHS;
+}
 
 export const isYoutube = (url) => {
   try {
@@ -91,86 +112,133 @@ function ensureYoutubeIconStyles() {
   style.id = 'aio-youtube-icon-style';
 
   style.textContent = `
-    /* Genel ikon görünümü – YouTube'un icon/round stiline yaslan */
-    .aio-mp3-icon .aio-mp-icon-bg {
-      fill: var(--yt-spec-static-brand-red, #f22c1d);
+    /* ── Video download button ────────────────────────────────── */
+    [data-aio-youtube-video] .aio-yt-icon .aio-icon-bg {
+      fill: #cc0000;
     }
-
-    [data-aio-youtube-video] .aio-mp3-icon .aio-mp-icon-bg {
-      fill: var(--yt-spec-brand-button-background, #3ea6ff);
-    }
-
-    [data-aio-youtube-mp3-download] .aio-mp3-icon .aio-mp-icon-bg {
-      fill: var(--yt-spec-brand-button-background, #22c55e);
-    }
-
-    .aio-mp3-icon .aio-mp-icon-fg {
+    [data-aio-youtube-video] .aio-yt-icon .aio-icon-fg {
       stroke: #fff;
     }
+    [data-aio-youtube-video] .aio-yt-icon .aio-icon-badge {
+      stroke: #cc0000;
+    }
 
-    /* Share target başlığı YouTube font/renkleri ile uyumlu kalsın */
-    yt-share-target-renderer[role="button"][data-aio-youtube-video] #title,
-    yt-share-target-renderer[role="button"][data-aio-youtube-mp3-download] #title {
+    /* ── Audio download button ────────────────────────────────── */
+    [data-aio-youtube-mp3-download] .aio-yt-icon .aio-icon-bg {
+      fill: #1db954;
+    }
+    [data-aio-youtube-mp3-download] .aio-yt-icon .aio-icon-fg {
+      stroke: #fff;
+    }
+    [data-aio-youtube-mp3-download] .aio-yt-icon .aio-icon-badge {
+      stroke: #1db954;
+    }
+
+    /* ── Icon wrapper — match YouTube native yt-icon 60px ────── */
+    .aio-yt-icon {
+      width: 60px;
+      height: 60px;
+    }
+    .aio-yt-icon > div {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .aio-yt-icon svg {
+      pointer-events: none;
+      display: inherit;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ── Hover/active feedback ────────────────────────────────── */
+    [data-aio-youtube-video] button:hover .aio-icon-bg,
+    [data-aio-youtube-video] button:active .aio-icon-bg {
+      fill: #e60000;
+    }
+    [data-aio-youtube-mp3-download] button:hover .aio-icon-bg,
+    [data-aio-youtube-mp3-download] button:active .aio-icon-bg {
+      fill: #1ed760;
+    }
+
+    /* ── Title styling to match YouTube native ────────────────── */
+    yt-share-target-renderer[data-aio-youtube-video] #title,
+    yt-share-target-renderer[data-aio-youtube-mp3-download] #title {
       font-size: 12px;
+      line-height: 1.4;
+      margin-top: 8px;
+      max-width: 72px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center;
     }
   `;
 
   document.head.appendChild(style);
 }
 
-function setCustomIcon(node) {
+function setCustomIcon(node, attr) {
   ensureYoutubeIconStyles();
 
-  const paths = iconMarkup();
+  const paths = iconMarkupFor(attr);
 
-  let svg = node.querySelector('.aio-mp3-icon svg');
+  /* ── If our icon already exists, just refresh the SVG paths ────── */
+  let svg = node.querySelector('.aio-yt-icon svg');
   if (svg) {
     svg.innerHTML = paths;
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('aria-hidden', 'true');
     svg.setAttribute('focusable', 'false');
-    svg.style.height = '100%';
     return;
   }
 
+  /* ── Build the wrapper that mirrors YouTube's native yt-icon DOM:
+       <span class="... aio-yt-icon">          ← replaces <yt-icon>
+         <div style="width:100%;height:100%;display:block">
+           <svg viewBox="0 0 24 24" style="pointer-events:none;display:inherit;width:100%;height:100%">
+             ...paths
+           </svg>
+         </div>
+       </span>
+  ─────────────────────────────────────────────────────────────────── */
+  function buildIconWrapper(extraClasses) {
+    const span = document.createElement('span');
+    span.className = (extraClasses ? extraClasses + ' ' : '') +
+      'yt-icon-shape ytSpecIconShapeHost aio-yt-icon';
+
+    const div = document.createElement('div');
+    div.style.cssText = 'width:100%;height:100%;display:block';
+
+    const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svgEl.setAttribute('viewBox', '0 0 24 24');
+    svgEl.setAttribute('aria-hidden', 'true');
+    svgEl.setAttribute('focusable', 'false');
+    svgEl.style.cssText = 'pointer-events:none;display:inherit;width:100%;height:100%';
+    svgEl.innerHTML = paths;
+
+    div.appendChild(svgEl);
+    span.appendChild(div);
+    return span;
+  }
+
+  /* ── Replace the cloned <yt-icon> from the template ───────────── */
   const ytIcon = node.querySelector('yt-icon');
   if (ytIcon) {
-    const wrapper = document.createElement('span');
-
-    wrapper.className =
-      (ytIcon.className || '') +
-      ' yt-icon-shape ytSpecIconShapeHost aio-mp3-icon';
-
-    wrapper.innerHTML = `
-      <svg viewBox="0 0 24 24"
-        height="100%"
-        aria-hidden="true"
-        focusable="false">
-        ${paths}
-      </svg>
-    `;
-
+    const wrapper = buildIconWrapper(ytIcon.className || '');
     ytIcon.replaceWith(wrapper);
     return;
   }
 
+  /* ── Fallback: insert before the title inside the button ──────── */
   const button = node.querySelector('button');
   if (button) {
-    const wrapper = document.createElement('span');
-    wrapper.className = 'yt-icon-shape ytSpecIconShapeHost aio-mp3-icon';
-    wrapper.innerHTML = `
-      <svg viewBox="0 0 24 24"
-        height="100%"
-        aria-hidden="true"
-        focusable="false">
-        ${paths}
-      </svg>
-    `;
+    const wrapper = buildIconWrapper('');
     button.insertBefore(wrapper, button.firstChild);
   }
 }
 
-function buildFallbackTarget(label) {
+function buildFallbackTarget(label, attr) {
   const wrapper = document.createElement('yt-share-target-renderer');
   wrapper.className = 'style-scope yt-third-party-share-target-section-renderer';
   wrapper.setAttribute('role', 'button');
@@ -179,18 +247,30 @@ function buildFallbackTarget(label) {
   button.className = 'style-scope yt-share-target-renderer';
   button.id = 'target';
 
+  /* Mirror YouTube's native icon hierarchy:
+     <span class="... aio-yt-icon">
+       <div style="width:100%;height:100%;display:block">
+         <svg viewBox="0 0 24 24" style="pointer-events:none;display:inherit;width:100%;height:100%">
+           ...paths
+         </svg>
+       </div>
+     </span> */
   const iconWrapper = document.createElement('span');
   iconWrapper.className =
-    'yt-icon-shape style-scope yt-icon ytSpecIconShapeHost aio-mp3-icon';
+    'yt-icon-shape style-scope yt-icon ytSpecIconShapeHost aio-yt-icon';
+
+  const innerDiv = document.createElement('div');
+  innerDiv.style.cssText = 'width:100%;height:100%;display:block';
 
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 24 24');
-  svg.style.height = '100%';
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('focusable', 'false');
-  svg.innerHTML = iconMarkup();
+  svg.style.cssText = 'pointer-events:none;display:inherit;width:100%;height:100%';
+  svg.innerHTML = iconMarkupFor(attr);
 
-  iconWrapper.appendChild(svg);
+  innerDiv.appendChild(svg);
+  iconWrapper.appendChild(innerDiv);
 
   const title = document.createElement('div');
   title.id = 'title';
@@ -207,7 +287,7 @@ function buildFallbackTarget(label) {
 
 export function createYoutubeShareTarget(container, { attr, label, onClick }) {
   const template = container.querySelector('yt-share-target-renderer');
-  const node = template ? template.cloneNode(true) : buildFallbackTarget(label);
+  const node = template ? template.cloneNode(true) : buildFallbackTarget(label, attr);
   if (!node) return null;
 
   node.setAttribute(attr, 'true');
@@ -226,7 +306,7 @@ export function createYoutubeShareTarget(container, { attr, label, onClick }) {
     titleEl.setAttribute('style-target', 'title');
   }
 
-  setCustomIcon(node);
+  setCustomIcon(node, attr);
 
   return node;
 }

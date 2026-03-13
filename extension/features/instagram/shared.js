@@ -990,6 +990,129 @@ function closeMenu() {
   openMenu = null;
 }
 
+/* ── Carousel helpers ──────────────────────────────────────────────── */
+
+/**
+ * Detect carousel within a scope and return info about the active slide.
+ *
+ * Instagram carousels use a `<ul>` with `<li>` children.
+ * - The first `<li>` is a spacer (width: 1px, translateX = totalWidth).
+ * - Only 2-3 real slides are in the DOM at any time (virtual rendering).
+ * - Dot indicators: `._acnb` divs, where `._acnf` marks the active dot.
+ *
+ * IMPORTANT: The DOM only contains ~2-3 `<li>` slides regardless of total
+ * count. We cannot map dot-index to `<li>` array-index. Instead we use
+ * translateX math:
+ *   slideWidth  = spacer.translateX / totalDots
+ *   slideIndex  = Math.round(li.translateX / slideWidth)
+ * and match against the active dot index.
+ *
+ * Returns `null` if no carousel is found.
+ */
+function detectCarousel(scope) {
+  if (!scope?.querySelectorAll) return null;
+
+  // Find the dot indicator container — it contains `._acnb` children
+  const dots = Array.from(scope.querySelectorAll('div._acnb'));
+  if (dots.length < 2) return null; // Not a carousel (0 or 1 dot)
+
+  // Active dot has class `_acnf`
+  let activeIndex = dots.findIndex((d) => d.classList.contains('_acnf'));
+  if (activeIndex < 0) activeIndex = 0; // fallback to first
+
+  // Find the <ul> that contains the carousel slides
+  const ul = scope.querySelector('ul');
+  if (!ul) return null;
+
+  const allLis = Array.from(ul.children).filter((li) => li.tagName === 'LI');
+
+  // Helper: extract translateX pixel value from inline style
+  const getTranslateX = (el) => {
+    const transform = el?.style?.transform || '';
+    const match = transform.match(/translateX\(\s*([-\d.]+)\s*px\s*\)/);
+    return match ? parseFloat(match[1]) : null;
+  };
+
+  // Separate spacer (width:1px) from real slides
+  const spacer = allLis.find((li) => {
+    const w = li.style?.width;
+    return w === '1px' || w === '0px';
+  });
+  const slides = allLis.filter((li) => {
+    const w = li.style?.width;
+    return !(w === '1px' || w === '0px');
+  });
+
+  if (slides.length < 1) return null;
+
+  // Compute slideWidth from the spacer's translateX (= totalSlides × slideWidth)
+  const spacerX = spacer ? getTranslateX(spacer) : null;
+  let slideWidth = 0;
+  if (spacerX !== null && spacerX > 0 && dots.length > 0) {
+    slideWidth = spacerX / dots.length;
+  } else {
+    // Fallback: derive from two consecutive slides
+    const xValues = slides
+      .map((li) => getTranslateX(li))
+      .filter((x) => x !== null)
+      .sort((a, b) => a - b);
+    if (xValues.length >= 2) {
+      slideWidth = xValues[1] - xValues[0];
+    }
+  }
+
+  // Find the active slide by matching translateX-derived index to dot index
+  let activeSlide = slides[0]; // fallback
+
+  if (slideWidth > 0) {
+    let bestDist = Number.POSITIVE_INFINITY;
+    const expectedX = activeIndex * slideWidth;
+
+    slides.forEach((li) => {
+      const x = getTranslateX(li);
+      if (x === null) return;
+      const dist = Math.abs(x - expectedX);
+      if (dist < bestDist) {
+        bestDist = dist;
+        activeSlide = li;
+      }
+    });
+  }
+
+  return {
+    totalSlides: dots.length,
+    activeIndex,
+    activeSlide,
+    slides,
+    dots
+  };
+}
+
+/**
+ * Given a carousel slide element, extract image(s) from it.
+ */
+function extractImagesFromSlide(slide) {
+  if (!slide?.querySelectorAll) return [];
+  const results = [];
+  slide.querySelectorAll('img').forEach((img) => {
+    const fromSrcset = pickFromSrcset(img.getAttribute('srcset'));
+    const candidate = fromSrcset.url || img.currentSrc || img.getAttribute('src');
+    const weight = fromSrcset.width || img.naturalWidth || parseInt(img.getAttribute('width'), 10) || parseWidthFromUrl(candidate) || 0;
+    const isAvatar = isLikelyAvatar({ url: candidate, alt: img.getAttribute('alt'), width: weight });
+    const normalized = normalizeMediaUrl(candidate);
+    if (!normalized) return;
+    results.push({
+      url: normalized,
+      type: 'image',
+      weight: Number.isFinite(weight) ? weight : 0,
+      ext: inferExt(normalized, 'jpg'),
+      isAvatar,
+      element: img
+    });
+  });
+  return results;
+}
+
 export function findInstagramMediaSources(targetArticle) {
   const detection = detectInstagramScope();
   let scopeType = detection.type;
@@ -1032,8 +1155,32 @@ export function findInstagramMediaSources(targetArticle) {
       images: [],
       all: [],
       hasVideo: false,
+      isCarousel: false,
+      carouselTotal: 0,
       scopeType
     };
+  }
+
+  /* ── Detect carousel ──────────────────────────────────────────────── */
+  let carousel = null;
+  const attemptedCarouselScopes = new Set();
+  const tryDetectCarousel = (root) => {
+    if (!root || attemptedCarouselScopes.has(root)) return null;
+    attemptedCarouselScopes.add(root);
+    return detectCarousel(root);
+  };
+
+  carousel = tryDetectCarousel(mediaScope)
+    || tryDetectCarousel(articleRoot)
+    || tryDetectCarousel(scopeRoot);
+
+  if (!carousel && mediaScope?.parentElement) {
+    let walkUp = mediaScope.parentElement;
+    while (walkUp && walkUp !== document.body) {
+      carousel = tryDetectCarousel(walkUp);
+      if (carousel) break;
+      walkUp = walkUp.parentElement;
+    }
   }
 
   const media = [];
@@ -1078,22 +1225,46 @@ export function findInstagramMediaSources(targetArticle) {
     collectVideosFromScope(main || document);
   }
 
-  mediaScope.querySelectorAll('img').forEach((img) => {
-    const fromSrcset = pickFromSrcset(img.getAttribute('srcset'));
-    const candidate = fromSrcset.url || img.currentSrc || img.getAttribute('src');
-    const weight = fromSrcset.width || img.naturalWidth || parseInt(img.getAttribute('width'), 10) || parseWidthFromUrl(candidate) || 0;
-    const isAvatar = isLikelyAvatar({ url: candidate, alt: img.getAttribute('alt'), width: weight });
-    const normalized = normalizeMediaUrl(candidate);
-    if (!normalized) return;
-    media.push({
-      url: normalized,
-      type: 'image',
-      weight: Number.isFinite(weight) ? weight : 0,
-      ext: inferExt(normalized, 'jpg'),
-      isAvatar,
-      element: img
+  /* ── Collect images ───────────────────────────────────────────────── */
+  let activeSlideImage = null;
+
+  if (carousel) {
+    // In a carousel: collect images from ALL slides in DOM but mark
+    // which one is the active slide image.
+    const activeSlideImages = extractImagesFromSlide(carousel.activeSlide)
+      .filter((img) => !img.isAvatar);
+
+    carousel.slides.forEach((slide) => {
+      const slideImages = extractImagesFromSlide(slide);
+      slideImages.forEach((img) => {
+        // Tag images from the active slide
+        const isInActiveSlide = (slide === carousel.activeSlide);
+        media.push({ ...img, isActiveSlide: isInActiveSlide });
+      });
     });
-  });
+
+    // Pick the best image from the active slide
+    activeSlideImage = activeSlideImages
+      .sort((a, b) => b.weight - a.weight)[0] || null;
+  } else {
+    // No carousel — collect all images from the media scope
+    mediaScope.querySelectorAll('img').forEach((img) => {
+      const fromSrcset = pickFromSrcset(img.getAttribute('srcset'));
+      const candidate = fromSrcset.url || img.currentSrc || img.getAttribute('src');
+      const weight = fromSrcset.width || img.naturalWidth || parseInt(img.getAttribute('width'), 10) || parseWidthFromUrl(candidate) || 0;
+      const isAvatar = isLikelyAvatar({ url: candidate, alt: img.getAttribute('alt'), width: weight });
+      const normalized = normalizeMediaUrl(candidate);
+      if (!normalized) return;
+      media.push({
+        url: normalized,
+        type: 'image',
+        weight: Number.isFinite(weight) ? weight : 0,
+        ext: inferExt(normalized, 'jpg'),
+        isAvatar,
+        element: img
+      });
+    });
+  }
 
   const imagesAll = media.filter((item) => item.type === 'image');
   const images = imagesAll.filter((item) => !item.isAvatar);
@@ -1119,10 +1290,24 @@ export function findInstagramMediaSources(targetArticle) {
     hasVideoElement = true;
   }
   const imagePool = images.length ? images : imagesAll;
-  const bestImage = (imagePool.length ? imagePool : imagesAll)
-    .sort((a, b) => b.weight - a.weight)[0] || null;
-  const visibleImage = (visibleImages.length ? visibleImages : imagePool)
-    .sort((a, b) => (b.visibleScore || 0) - (a.visibleScore || 0) || b.weight - a.weight)[0] || null;
+
+  /* ── Pick the primary image ───────────────────────────────────────── */
+  let bestImage;
+  let visibleImage;
+
+  if (carousel && activeSlideImage) {
+    // In carousel mode, the active slide image is always the primary pick.
+    bestImage = activeSlideImage;
+    visibleImage = activeSlideImage;
+  } else {
+    bestImage = (imagePool.length ? imagePool : imagesAll)
+      .sort((a, b) => b.weight - a.weight)[0] || null;
+    visibleImage = (visibleImages.length ? visibleImages : imagePool)
+      .sort((a, b) => (b.visibleScore || 0) - (a.visibleScore || 0) || b.weight - a.weight)[0] || null;
+  }
+
+  const isCarousel = Boolean(carousel);
+  const carouselTotal = carousel ? carousel.totalSlides : 0;
 
   console.log('AIO: ig media collected', {
     scopeType,
@@ -1130,7 +1315,10 @@ export function findInstagramMediaSources(targetArticle) {
     mediaScopeTag: mediaScope?.tagName,
     imageCount: images.length,
     allCount: media.length,
-    hasVideo: hasVideoElement
+    hasVideo: hasVideoElement,
+    isCarousel,
+    carouselTotal,
+    carouselActiveIndex: carousel?.activeIndex ?? -1
   });
 
   return {
@@ -1140,6 +1328,8 @@ export function findInstagramMediaSources(targetArticle) {
     images,
     all: media,
     hasVideo: hasVideoElement,
+    isCarousel,
+    carouselTotal,
     scopeType
   };
 }

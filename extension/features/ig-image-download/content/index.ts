@@ -19,6 +19,8 @@ interface MediaContext {
   images?: ImageInfo[];
   bestVideo?: unknown;
   hasVideo?: boolean;
+  isCarousel?: boolean;
+  carouselTotal?: number;
 }
 
 interface ProviderContext {
@@ -45,6 +47,8 @@ export default {
         const bestImage = media?.bestImage;
         const visibleImage = media?.visibleImage;
         const images = media?.images ?? [];
+        const isCarousel = media?.isCarousel ?? false;
+        const carouselTotal = media?.carouselTotal ?? 0;
         const hasVideoContent = Boolean(media?.bestVideo) || media?.hasVideo;
         const hasPhotos = Boolean(bestImage || visibleImage);
         if (!reelUrl || hasVideoContent || !hasPhotos) return [];
@@ -57,7 +61,10 @@ export default {
             action: () => startSingleImageDownload({ reelUrl, reelTitle, image: primaryImage })
           });
         }
-        if (Array.isArray(images) && images.length > 1) {
+        // Show bulk download when carousel has multiple slides OR when
+        // multiple distinct images are found in the DOM.
+        const showBulk = (isCarousel && carouselTotal > 1) || (Array.isArray(images) && images.length > 1);
+        if (showBulk) {
           options.push({
             label: t('downloadImageMultiple'),
             action: () =>

@@ -16,6 +16,8 @@ export interface InstagramMediaContext {
   visibleImage?: MediaSource | null;
   images?: MediaSource[];
   hasVideo?: boolean;
+  isCarousel?: boolean;
+  carouselTotal?: number;
 }
 
 export interface InstagramMenuProviderContext {
@@ -41,6 +43,8 @@ export interface InstagramMediaSources {
   visibleImage?: MediaSource | null;
   images?: MediaSource[];
   hasVideo?: boolean;
+  isCarousel?: boolean;
+  carouselTotal?: number;
 }
 
 export declare const isInstagram: (url: string) => boolean;

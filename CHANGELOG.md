@@ -2,6 +2,12 @@
 
 All notable changes to this project should be documented in this file.
 
+## 0.3.1
+
+- Improved Instagram image downloads for carousel posts by correctly detecting the active slide on feed and post pages.
+- Added clearer YouTube share-panel download buttons with distinct video and audio icons that better match the native UI.
+- Added a bulk image download action for Instagram carousel posts when multiple photos are available.
+
 ## 0.3.0
 
 - Migrated the entire codebase from plain JavaScript to TypeScript with `strict` mode enabled.
