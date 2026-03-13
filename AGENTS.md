@@ -32,6 +32,9 @@ extension/                             # TypeScript source
 ├── background/
 │   ├── index.ts                       # Service-worker message router (contract-driven)
 │   ├── downloads/                     # Job store, zip builder
+│   ├── instagram-analyzer/            # Scan orchestration, IndexedDB durable storage
+│   │   ├── index.ts                   # Scan job runner, message handlers
+│   │   └── db.ts                      # IndexedDB persistence for large payloads
 │   ├── providers/                     # External API adapters (loaderTo)
 │   └── utils.ts
 ├── features/
@@ -45,6 +48,9 @@ extension/                             # TypeScript source
 │   ├── ig-audio-download/content/index.ts
 │   ├── ig-video-download/content/index.ts
 │   ├── ig-image-download/{content,background}/index.ts
+│   ├── ig-unfollowers/content/
+│   │   ├── index.ts                   # Compact analyzer drawer (launcher, scan, results, whitelist, history)
+│   │   └── dashboard.ts              # Full-screen analytics dashboard (KPI, charts, compare, user list, hover cards)
 │   ├── instagram-download/background/index.ts
 │   ├── x-audio-download/content/index.ts
 │   ├── x-video-download/content/index.ts
@@ -145,6 +151,8 @@ These files stay as plain JavaScript with `.d.ts` declarations. They depend on l
 - Background service worker dispatches messages through a `messageHandlers` map keyed by `MESSAGE_TYPES`.
 - Download flow: content sends message → background handler creates job → calls provider → starts `chrome.downloads.download` → updates job state on `onChanged`.
 - `safeSendMessage` pattern wraps `chrome.runtime.sendMessage` with error suppression for context invalidation.
+- Instagram Analyzer uses two independent content-side UIs: the compact drawer in `features/ig-unfollowers/content/index.ts` and the standalone dashboard overlay in `features/ig-unfollowers/content/dashboard.ts`.
+- Large Instagram Analyzer payloads should stay out of `chrome.storage.local`; keep summaries in storage and use the background durable-account flow for full results/history arrays.
 
 ## Commit Messages
 
@@ -173,3 +181,4 @@ Types: `feat`, `fix`, `refactor`, `chore`, `docs`, `ci`.
 8. **Update CHANGELOG.md** for user-facing changes.
 9. **i18n**: both `tr` and `en` keys must stay in sync in `shared/i18n.ts`.
 10. **No cross-layer imports** — content features must not import from `background/`, and vice versa. Use message passing.
+11. **Keep manifest resources aligned** — any new content-side module imported at runtime (for example `features/ig-unfollowers/content/dashboard.js`) must also be reachable through `web_accessible_resources` in `manifest.json`.

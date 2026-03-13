@@ -1,6 +1,11 @@
 import { getYoutubeIdFromUrl, inferExtFromUrl } from './utils.js';
 import { getSettings, getDownloadsState } from '../shared/storage.js';
 import { clearHistory, getJobIdByDownloadId, loadDownloadMap, updateJob } from './downloads/store.js';
+import {
+  getInstagramAnalyzerDurableAccount,
+  resolveInstagramViewerUsername,
+  startInstagramAnalyzerScan
+} from './instagram-analyzer/index.js';
 import { startYoutubeDownload } from '../features/youtube-download/background/index.js';
 import { startInstagramDownload, startInstagramImagesZip } from '../features/instagram-download/background/index.js';
 import { startInstagramImageDownload } from '../features/ig-image-download/background/index.js';
@@ -71,6 +76,101 @@ interface DownloadResult {
   error?: string;
 }
 
+function queryTabs(queryInfo: chrome.tabs.QueryInfo): Promise<chrome.tabs.Tab[]> {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.query(queryInfo, (tabs) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve(tabs);
+    });
+  });
+}
+
+function updateTab(tabId: number, updateProperties: chrome.tabs.UpdateProperties): Promise<chrome.tabs.Tab | undefined> {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.update(tabId, updateProperties, (tab) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve(tab);
+    });
+  });
+}
+
+function focusWindow(windowId: number): Promise<chrome.windows.Window | undefined> {
+  return new Promise((resolve, reject) => {
+    chrome.windows.update(windowId, { focused: true }, (window) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve(window);
+    });
+  });
+}
+
+function createTab(createProperties: chrome.tabs.CreateProperties): Promise<chrome.tabs.Tab> {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.create(createProperties, (tab) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve(tab);
+    });
+  });
+}
+
+function sendTabMessage(tabId: number, message: Record<string, unknown>): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.sendMessage(tabId, message, (response) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve(response);
+    });
+  });
+}
+
+function waitForTabComplete(tabId: number, timeoutMs = 20000): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timeoutId = globalThis.setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(handleUpdated);
+      reject(new Error('Timed out while waiting for Instagram tab to load'));
+    }, timeoutMs);
+
+    const handleUpdated = (updatedTabId: number, changeInfo: { status?: string }): void => {
+      if (updatedTabId !== tabId || changeInfo.status !== 'complete') {
+        return;
+      }
+
+      globalThis.clearTimeout(timeoutId);
+      chrome.tabs.onUpdated.removeListener(handleUpdated);
+      resolve();
+    };
+
+    chrome.tabs.onUpdated.addListener(handleUpdated);
+  });
+}
+
+async function openAnalyzerInTab(tabId: number, attempts = 8): Promise<void> {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      await sendTabMessage(tabId, { type: MESSAGE_TYPES.IG_ANALYZER_OPEN });
+      return;
+    } catch (error) {
+      if (attempt === attempts - 1) {
+        throw error;
+      }
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 350));
+    }
+  }
+}
+
 async function handleRetryDownload(jobId: string): Promise<DownloadResult> {
   const state = await getDownloadsState();
   const previous = state.history.find((job) => job.id === jobId);
@@ -135,6 +235,42 @@ async function handleRetryDownload(jobId: string): Promise<DownloadResult> {
   return { success: false, error: 'Bu tür için yeniden indirme desteklenmiyor' };
 }
 
+async function handleOpenInstagramAnalyzer(fallbackUrl: string): Promise<DownloadResult> {
+  const instagramTabs = await queryTabs({
+    url: ['https://*.instagram.com/*']
+  });
+  const targetTab = instagramTabs.find((tab) => typeof tab.id === 'number');
+
+  if (targetTab?.id != null) {
+    if (typeof targetTab.windowId === 'number') {
+      try {
+        await focusWindow(targetTab.windowId);
+      } catch (error) {
+        console.warn('Failed to focus Instagram window', error);
+      }
+    }
+
+    await updateTab(targetTab.id, { active: true });
+    try {
+      await openAnalyzerInTab(targetTab.id);
+    } catch (error) {
+      console.warn('Failed to open analyzer drawer in content script', error);
+    }
+    return { success: true };
+  }
+
+  const newTab = await createTab({ url: fallbackUrl || 'https://www.instagram.com/' });
+  if (typeof newTab.id === 'number') {
+    try {
+      await waitForTabComplete(newTab.id);
+      await openAnalyzerInTab(newTab.id);
+    } catch (error) {
+      console.warn('Failed to auto-open analyzer drawer in new tab', error);
+    }
+  }
+  return { success: true };
+}
+
 type MessageHandler = (message: BaseMessage) => Promise<unknown>;
 
 /** Safely extract a string field from a message payload, falling back to empty string. */
@@ -160,6 +296,28 @@ function optObj(message: BaseMessage, key: string): Record<string, unknown> | nu
 const messageHandlers: Record<string, MessageHandler> = {
   [MESSAGE_TYPES.GET_SETTINGS]: async () => getSettings(),
   [MESSAGE_TYPES.GET_DOWNLOADS]: async () => getDownloadsState(),
+  [MESSAGE_TYPES.IG_ANALYZER_OPEN]: async (message) => handleOpenInstagramAnalyzer(str(message, 'fallbackUrl')),
+  [MESSAGE_TYPES.IG_ANALYZER_GET_DURABLE_ACCOUNT]: async (message) => {
+    const viewerId = str(message, 'viewerId');
+    if (!viewerId) return { success: false, error: 'Missing viewerId' };
+    const account = await getInstagramAnalyzerDurableAccount(viewerId);
+    return { success: true, account };
+  },
+  [MESSAGE_TYPES.IG_ANALYZER_RESOLVE_VIEWER]: async (message) => {
+    const viewerId = str(message, 'viewerId');
+    if (!viewerId) return { success: false, error: 'Missing viewerId' };
+    const username = await resolveInstagramViewerUsername(viewerId, str(message, 'csrfToken'));
+    return { success: true, username };
+  },
+  [MESSAGE_TYPES.IG_ANALYZER_START_SCAN]: async (message) => {
+    const viewerId = str(message, 'viewerId');
+    if (!viewerId) return { success: false, error: 'Missing viewerId' };
+    return startInstagramAnalyzerScan({
+      viewerId,
+      username: str(message, 'username'),
+      csrfToken: str(message, 'csrfToken')
+    });
+  },
   [MESSAGE_TYPES.YT_AUDIO_DOWNLOAD]: async (message) => {
     maybeOpenPopup(message);
     const videoId = str(message, 'videoId');

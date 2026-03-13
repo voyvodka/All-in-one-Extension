@@ -10,6 +10,7 @@ Source code is written in **TypeScript** (`strict` mode). A lightweight `tsc` co
   - adds audio and video download actions to the share panel
 - Instagram
   - adds audio, video, single-image, and multi-image download actions across reels, post, and dialog surfaces
+  - **Instagram Analyzer** — a per-account follower analysis tool with a compact drawer and a full-screen dashboard overlay (non-followers detection, whitelist management, scan history with diffs, trend charts, quick compare, and hover cards on usernames)
 - Twitter / X
   - adds audio, video, and image download actions to the tweet action menu
 
@@ -41,6 +42,10 @@ scripts/                  # build, validation, packaging, and dev-mode scripts
   - uses view-model helpers to keep presentation logic separate
 - `extension/features/*-download/*`
   - holds feature-first content and background entrypoints
+- `extension/features/ig-unfollowers/content/index.ts`
+  - compact analyzer drawer (launcher, scan controls, results, whitelist, history)
+- `extension/features/ig-unfollowers/content/dashboard.ts`
+  - standalone full-screen analytics dashboard (KPI cards, charts, compare, user list with hover cards, scan history)
 - `extension/features/{youtube,instagram,twitter}/shared.js`
   - contains fragile DOM integration logic and should be changed carefully
   - these files stay as plain JavaScript with `.d.ts` declarations for TypeScript integration

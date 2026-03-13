@@ -103,6 +103,7 @@ if (!allowedProtocols.has(location.protocol)) {
 
     async function refreshSettings(): Promise<void> {
       currentSettings = await getSettings();
+      setLocale(currentSettings.language ?? resolveLocale());
     }
 
     function applyFeatures(): void {

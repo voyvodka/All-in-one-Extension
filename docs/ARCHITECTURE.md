@@ -19,6 +19,8 @@ Three fragile DOM integration files stay as plain JavaScript with companion `.d.
 - `extension/background/index.ts` is the message router and download orchestrator.
 - `extension/popup/popup.ts` renders settings and download history in the popup.
 - `extension/shared/*` contains cross-surface contracts and persistence helpers.
+- `extension/features/ig-unfollowers/content/index.ts` runs the compact analyzer drawer inside Instagram.
+- `extension/features/ig-unfollowers/content/dashboard.ts` runs the standalone full-screen analytics dashboard inside Instagram (shadow DOM, independent of the drawer).
 
 ## Current structure
 
@@ -34,6 +36,26 @@ Three fragile DOM integration files stay as plain JavaScript with companion `.d.
   - `extension/features/youtube/shared.js` (+ `shared.d.ts`)
   - `extension/features/instagram/shared.js` (+ `shared.d.ts`)
   - `extension/features/twitter/shared.js` (+ `shared.d.ts`)
+
+#### Instagram Analyzer
+
+The analyzer is split into two independent UI surfaces that share the same storage and background scan infrastructure:
+
+- **Compact drawer** (`extension/features/ig-unfollowers/content/index.ts`) — a fixed top-right launcher + side panel with scan controls, result list, whitelist management, and history detail. Stays small and always accessible.
+- **Dashboard** (`extension/features/ig-unfollowers/content/dashboard.ts`) — a near-full-screen overlay opened via a separate "Dashboard" button in the launcher group. Single scrollable page layout with:
+  - KPI cards (following, followers, non-followers, whitelisted) with sparklines and deltas
+  - Trend line charts (following/followers over time, non-follower count over time)
+  - Grouped bar chart (per-scan follow/unfollow/follower changes)
+  - Quick compare section with scan picker and expandable diff lists
+  - Searchable/paginated user list (non-followers, whitelist, following, followers)
+  - Collapsible scan history with per-entry detail grid and "Compare this scan" action
+  - Hover card on username links showing avatar, display name, verified/private/whitelist badges, and quick actions
+
+Both surfaces mount into isolated shadow DOM hosts (`aio-instagram-analyzer-host`, `aio-ig-dashboard-host`) so they never conflict with Instagram's own DOM.
+
+Storage is split:
+- `chrome.storage.local` — lightweight account summaries, job state, whitelist, scan metadata
+- `IndexedDB` (via background message `IG_ANALYZER_GET_DURABLE_ACCOUNT`) — full result arrays, following/followers snapshots, and history diff payloads for large accounts
 
 ### Background
 
@@ -96,6 +118,7 @@ UI changes are safe as long as the underlying data contract remains stable:
 - `extension/features/instagram/shared.js` is the riskiest DOM integration area.
 - `extension/features/twitter/shared.js` also has fragile selector logic.
 - `extension/manifest.json` must stay aligned with any content-side module moves.
+- `extension/features/ig-unfollowers/content/dashboard.ts` and `index.ts` both import from `./dashboard.js` — any rename or split must update both the import path and `web_accessible_resources` in `manifest.json`.
 
 ## Risk hotspots and safe-change rules
 

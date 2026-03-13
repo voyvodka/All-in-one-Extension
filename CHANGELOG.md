@@ -2,6 +2,22 @@
 
 All notable changes to this project should be documented in this file.
 
+## 0.4.0
+
+- Added the first Instagram Analyzer foundation with account-aware local state storage separated from download history.
+- Added a compact popup summary card that shows last scan age, account label, freshness, and analyzer counts without mixing data between Instagram accounts.
+- Added an Instagram-side analyzer launcher and compact drawer shell as the manual scan entry point in the page UI.
+- Wired the Instagram Analyzer drawer to a real manual background scan flow with persisted progress, per-account isolation, and graceful fallback for extension reload invalidation.
+- Refined the Instagram Analyzer UX with a hidden-by-default top-right launcher, theme/language syncing, whitelist management, copy/export actions, and an in-drawer non-follower results list.
+- Fixed popup toolbar selects so the active language and theme values render correctly.
+- Expanded the Instagram Analyzer with scan history, per-scan diff details, paginated result rendering, profile shortcuts, and lighter storage writes for larger accounts.
+- Polished analyzer interactions by preserving search focus and list scroll, confirming destructive whitelist clears, improving history tooltips and empty states, and auto-opening the drawer when Instagram is launched from the popup.
+- Added durable IndexedDB-backed analyzer payload storage, stronger account username resolution, and a dashboard-like history detail flow for large-account analysis.
+- Added a standalone full-screen Instagram Analyzer Dashboard that opens as a separate overlay alongside the compact drawer — accessible via a new "Dashboard" button in the top-right launcher group.
+- Dashboard includes KPI cards with sparklines and scan-over-scan deltas, line trend charts for following/followers/non-followers, a grouped bar chart for per-scan follow/unfollow changes, a quick compare section with expandable diff lists, a searchable and paginated user list covering non-followers/whitelist/following/followers, and a collapsible scan history with per-entry detail stats.
+- Dashboard is theme-aware (light/dark/system), account-scoped, and updates live when a background scan completes via storage change listeners.
+- Added a hover card on username links in the dashboard user list — shows avatar, display name, verified badge, private/whitelist tags, and quick-action buttons (open profile, whitelist toggle); card position tracks scroll via requestAnimationFrame and flips above/below the anchor based on available space.
+
 ## 0.3.4
 
 - Refined the popup update footer with a calmer loading state, clearer action grouping, and inline tooltips for download, guide, reload, and manual check actions.

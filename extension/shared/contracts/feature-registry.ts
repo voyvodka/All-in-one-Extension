@@ -2,7 +2,8 @@ export type Platform = 'youtube' | 'instagram' | 'twitter';
 export type Kind =
   | 'audio-download'
   | 'video-download'
-  | 'image-download';
+  | 'image-download'
+  | 'account-analysis';
 export type Surface = 'content' | 'background';
 
 export interface FeatureDescriptor {
@@ -54,6 +55,14 @@ export const featureDescriptors: readonly FeatureDescriptor[] = Object.freeze([
     modulePath: 'features/ig-image-download/content/index.js',
     settingsKey: 'ig-image-download',
     surfaces: ['content', 'background']
+  },
+  {
+    id: 'ig-unfollowers',
+    platform: 'instagram',
+    kind: 'account-analysis',
+    modulePath: 'features/ig-unfollowers/content/index.js',
+    settingsKey: 'ig-unfollowers',
+    surfaces: ['content']
   },
   {
     id: 'x-audio-download',

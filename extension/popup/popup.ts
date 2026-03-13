@@ -1,16 +1,19 @@
 import {
   getSettings,
   getDownloadsState,
+  getInstagramAnalyzerState,
   onDownloadsChanged,
+  onInstagramAnalyzerChanged,
   setLanguage,
   setTheme
 } from '../shared/storage.js';
-import type { DownloadJob, DownloadsState, ThemeChoice } from '../shared/storage.js';
+import type { DownloadJob, DownloadsState, InstagramAnalyzerState, ThemeChoice } from '../shared/storage.js';
 import { MESSAGE_TYPES } from '../shared/contracts/message-types.js';
 import { t, getLocale, setLocale, resolveLocale } from '../shared/i18n.js';
 import type { Locale } from '../shared/storage.js';
 import { createDownloadViewModel, sortJobsByDate } from './model/download-view-model.js';
 import type { StatusInfo } from './model/download-view-model.js';
+import { createInstagramAnalyzerViewModel } from './model/instagram-analyzer-view-model.js';
 import { resolveTheme, syncSystemThemeListener } from './model/theme-model.js';
 import type { ResolvedTheme } from './model/theme-model.js';
 
@@ -18,6 +21,7 @@ import type { ResolvedTheme } from './model/theme-model.js';
 const bugBtn = document.getElementById('bug-btn') as HTMLButtonElement | null;
 const languageSelect = document.getElementById('language-select') as HTMLSelectElement | null;
 const themeSelect = document.getElementById('theme-select') as HTMLSelectElement | null;
+const instagramAnalyzerEl = document.getElementById('instagram-analyzer');
 const downloadActiveEl = document.getElementById('download-active');
 const downloadHistoryEl = document.getElementById('download-history');
 const sortDownloadsBtn = document.getElementById('sort-downloads') as HTMLButtonElement | null;
@@ -44,6 +48,13 @@ const HOW_TO_UPDATE_URL = 'https://github.com/voyvodka/All-in-one-Extension/blob
 const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const MIN_UPDATE_LOADING_MS = 700;
 const UPDATE_CACHE_KEY = 'aioUpdateCheck';
+const IS_DEV_BUILD = (() => {
+  try {
+    return /\bdev\b/i.test(chrome.runtime.getManifest().name || '');
+  } catch {
+    return false;
+  }
+})();
 const prefersDark: MediaQueryList | null = window.matchMedia
   ? window.matchMedia('(prefers-color-scheme: dark)')
   : null;
@@ -61,6 +72,7 @@ let current: { language: Locale; theme: ThemeChoice } = {
   theme: 'system'
 };
 let downloads: DownloadsState = { active: [], history: [] };
+let instagramAnalyzer: InstagramAnalyzerState = { currentViewerId: null, accounts: {} };
 
 const savedSortAsc = (() => {
   try { const r = localStorage.getItem(SORT_KEY); return r === null ? null : r === 'true'; } catch { return null; }
@@ -71,6 +83,8 @@ let sortAscending = savedSortAsc ?? false;
 setLocale(current.language);
 applyStaticTranslations();
 applyTheme(current.theme);
+syncControlValues();
+renderInstagramAnalyzer(instagramAnalyzer);
 renderDownloads(downloads);
 sortDownloadsBtn?.classList.toggle('rotated', sortAscending);
 
@@ -124,16 +138,19 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes['language']) {
     current.language = changes['language'].newValue as Locale;
     setLocale(current.language);
+    syncControlValues();
     applyStaticTranslations();
     renderDownloads(downloads);
   }
   if (changes['theme']) {
     current.theme = changes['theme'].newValue as ThemeChoice;
+    syncControlValues();
     applyTheme(current.theme);
   }
 });
 
 onDownloadsChanged((next) => { downloads = next; renderDownloads(downloads); });
+onInstagramAnalyzerChanged((next) => { instagramAnalyzer = next; renderInstagramAnalyzer(instagramAnalyzer); });
 
 /* ── Popup init ──────────────────────────────────────────────────── */
 async function initializePopup(): Promise<void> {
@@ -143,15 +160,20 @@ async function initializePopup(): Promise<void> {
     if (!settings.language) await setLanguage(resolvedLanguage);
     current = { language: resolvedLanguage, theme: (settings.theme ?? 'system') as ThemeChoice };
     setLocale(current.language);
-    downloads = await getDownloadsState();
+    [downloads, instagramAnalyzer] = await Promise.all([
+      getDownloadsState(),
+      getInstagramAnalyzerState()
+    ]);
     initError = null;
   } catch (error) {
     console.error('Popup initialization failed', error);
     initError = error instanceof Error ? error : new Error(String(error));
   } finally {
     isInitializing = false;
+    syncControlValues();
     applyStaticTranslations();
     applyTheme(current.theme);
+    renderInstagramAnalyzer(instagramAnalyzer);
     renderDownloads(downloads);
     sortDownloadsBtn?.classList.toggle('rotated', sortAscending);
   }
@@ -160,8 +182,18 @@ async function initializePopup(): Promise<void> {
 function retryInitialize(): void {
   isInitializing = true;
   initError = null;
+  renderInstagramAnalyzer(instagramAnalyzer);
   renderDownloads(downloads);
   void initializePopup();
+}
+
+function syncControlValues(): void {
+  if (languageSelect && languageSelect.value !== current.language) {
+    languageSelect.value = current.language;
+  }
+  if (themeSelect && themeSelect.value !== current.theme) {
+    themeSelect.value = current.theme;
+  }
 }
 
 /* ── Sub-tab switching ───────────────────────────────────────────── */
@@ -183,6 +215,96 @@ function renderDownloads(state: DownloadsState): void {
   updateToolbarState(sortedActive.length, sortedHistory.length);
   renderDownloadList(downloadActiveEl, sortedActive, { allowCancel: true, kind: 'active' });
   renderDownloadList(downloadHistoryEl, sortedHistory, { allowCancel: false, kind: 'history' });
+}
+
+function renderInstagramAnalyzer(state: InstagramAnalyzerState): void {
+  if (!instagramAnalyzerEl) return;
+  instagramAnalyzerEl.innerHTML = '';
+
+  if (initError) {
+    instagramAnalyzerEl.appendChild(createStateCard({
+      variant: 'error',
+      icon: '!',
+      title: t('popupLoadErrorTitle'),
+      body: t('popupLoadErrorBody'),
+      actionLabel: t('tryAgain'),
+      onAction: retryInitialize
+    }));
+    return;
+  }
+
+  if (isInitializing) {
+    instagramAnalyzerEl.appendChild(createSkeletonCard());
+    return;
+  }
+
+  const vm = createInstagramAnalyzerViewModel({
+    state,
+    localeCode: getLocale(),
+    t
+  });
+  const card = el('section', 'analyzer-card');
+  if (vm.selectedViewerId) {
+    card.dataset['viewerId'] = vm.selectedViewerId;
+  }
+
+  const header = el('div', 'analyzer-header');
+  const titleGroup = el('div', 'analyzer-title-group');
+  titleGroup.appendChild(el('p', 'analyzer-title', t('analyzerTitle')));
+  titleGroup.appendChild(el('p', 'analyzer-account', `${vm.accountLabel}: ${vm.accountValue}`));
+
+  const badge = el('span', `analyzer-badge is-${vm.badge.tone}`, vm.badge.label);
+  header.appendChild(titleGroup);
+  header.appendChild(badge);
+
+  const body = el('p', 'analyzer-copy', vm.body);
+  const meta = el('div', 'analyzer-meta');
+  meta.appendChild(el('span', '', vm.lastScanLabel));
+
+  card.appendChild(header);
+  card.appendChild(body);
+  card.appendChild(meta);
+
+  if (vm.metrics.length) {
+    const metrics = el('div', 'analyzer-metrics');
+    vm.metrics.forEach((metric) => {
+      const metricCard = el('div', 'analyzer-metric');
+      metricCard.appendChild(el('span', 'analyzer-metric-label', metric.label));
+      metricCard.appendChild(el('span', 'analyzer-metric-value', metric.value));
+      metrics.appendChild(metricCard);
+    });
+    card.appendChild(metrics);
+  }
+
+  const actions = el('div', 'analyzer-actions');
+  const openBtn = el('button', 'analyzer-action', t('analyzerOpenInstagram')) as HTMLButtonElement;
+  openBtn.type = 'button';
+  openBtn.title = t('analyzerOpenInstagramTitle');
+  openBtn.setAttribute('aria-label', t('analyzerOpenInstagramTitle'));
+  openBtn.addEventListener('click', async () => {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: MESSAGE_TYPES.IG_ANALYZER_OPEN,
+        fallbackUrl: vm.openUrl
+      });
+      if (response?.success) {
+        window.close();
+        return;
+      }
+    } catch (error) {
+      console.warn('AIO: failed to open Instagram analyzer', error);
+    }
+
+    try {
+      chrome.tabs?.create?.({ url: vm.openUrl });
+    } catch {
+      window.open(vm.openUrl, '_blank', 'noopener,noreferrer');
+    }
+  });
+  actions.appendChild(openBtn);
+  card.appendChild(actions);
+
+  instagramAnalyzerEl.appendChild(card);
 }
 
 interface RenderListOptions { allowCancel: boolean; kind: 'active' | 'history'; }
@@ -457,6 +579,7 @@ function applyStaticTranslations(): void {
     footerVersionEl.textContent = t('footerVersion').replace('{version}', getCurrentVersion());
   }
 
+  renderInstagramAnalyzer(instagramAnalyzer);
   renderFooter(footerState, footerLatestTag, footerDownloadUrl);
 }
 
@@ -568,15 +691,18 @@ function renderFooter(state: 'loading' | 'latest' | 'error' | 'update', latestTa
 
   if (state === 'loading') {
     footerUpdateEl.appendChild(el('span', 'footer-status', t('updateChecking')));
+    appendDevReloadButton(footerUpdateEl);
     return;
   }
   if (state === 'error') {
     footerUpdateEl.appendChild(el('span', 'footer-error', t('updateError')));
     footerUpdateEl.appendChild(createCheckNowButton());
+    appendDevReloadButton(footerUpdateEl);
     return;
   }
   if (state === 'latest') {
     footerUpdateEl.appendChild(createCheckNowButton());
+    appendDevReloadButton(footerUpdateEl);
     return;
   }
 
@@ -597,6 +723,16 @@ function renderFooter(state: 'loading' | 'latest' | 'error' | 'update', latestTa
     footerUpdateEl.appendChild(mainRow);
     footerUpdateEl.appendChild(secondaryRow);
   }
+}
+
+function appendDevReloadButton(root: HTMLElement): void {
+  if (!IS_DEV_BUILD) {
+    return;
+  }
+
+  const container = el('div', 'footer-update-secondary');
+  container.appendChild(createReloadButton());
+  root.appendChild(container);
 }
 
 interface GitHubReleaseAsset { name: string; browser_download_url: string; }
