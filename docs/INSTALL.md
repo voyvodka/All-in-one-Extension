@@ -1,54 +1,47 @@
 # Install Guide
 
-## Recommended release asset
+This extension is installed manually.
+It is not installed from the Chrome Web Store.
 
-For manual installation, use:
+## Recommended file
 
-- `all-in-one-toolkit-unpacked-vX.Y.Z.zip`
-
-This package is easier to load because `manifest.json` is placed at the archive root.
-
-## Manual installation in Chrome
-
-1. Download the latest release asset
-2. Extract the zip to a permanent folder
-3. Open `chrome://extensions`
-4. Enable `Developer mode`
-5. Click `Load unpacked`
-6. Select the extracted folder that contains `manifest.json`
-
-## Which package should I choose?
+Download the latest release asset named:
 
 - `all-in-one-toolkit-unpacked-vX.Y.Z.zip`
-  - best for normal users
-  - extract and select the folder directly
-- `all-in-one-toolkit-vX.Y.Z.zip`
-  - keeps the historical nested `extension/` structure
-  - useful if you want the release archive to mirror the repository runtime folder
 
-## Troubleshooting
+This zip is prepared for normal users and contains a single folder named `All-in-One Toolkit`.
 
-- If Chrome says the manifest is missing, you selected the wrong folder level.
-- If the extension does not appear after loading, remove it and load the extracted folder again.
-- If the service worker fails to start, re-download the latest release and make sure the extraction completed fully.
+## Install in Chrome
 
-## Local repository install (developer)
+1. Download the latest `all-in-one-toolkit-unpacked-vX.Y.Z.zip` file from GitHub Releases.
+2. Extract the zip to a permanent location on your computer.
+3. Open `chrome://extensions` in Chrome.
+4. Turn on `Developer mode`.
+5. Click `Load unpacked`.
+6. Select the extracted `All-in-One Toolkit` folder.
 
-If you are installing from a local clone instead of a release asset:
+After loading, the extension should appear in Chrome and be ready to use.
 
-1. Install dependencies: `yarn install`
-2. Build the project: `yarn build`
-3. Open `chrome://extensions`
-4. Enable `Developer mode`
-5. Click `Load unpacked`
-6. Select the **`extension-dist/`** folder (not `extension/`)
+## Update to a new version
 
-> **Important:** Chrome loads compiled output from `extension-dist/`. The `extension/` folder contains TypeScript source and cannot be loaded directly.
+When a new version is available:
 
-For development with auto-recompilation:
+1. Download the newest `all-in-one-toolkit-unpacked-vX.Y.Z.zip` file.
+2. Extract it over the same `All-in-One Toolkit` folder you used before.
+3. Open `chrome://extensions`.
+4. Click `Reload` on the extension card.
 
-```bash
-yarn dev    # starts tsc --watch + static asset watcher
-```
+If your unzip tool asks whether existing files should be replaced, choose to replace them.
 
-Edit `.ts` files, then reload the extension in Chrome to pick up changes.
+## Common mistakes
+
+- If Chrome says `manifest.json` is missing, you selected the wrong folder.
+- Do not select the zip file itself; extract it first.
+- Do not select the parent folder if `All-in-One Toolkit` is inside it.
+- For updates, use the same extracted folder instead of creating a brand-new install folder each time.
+
+## Need help?
+
+- Open the extension popup and use the bug button.
+- Or visit the GitHub issues page:
+  - `https://github.com/voyvodka/All-in-one-Extension/issues/new/choose`

@@ -2,6 +2,12 @@
 
 All notable changes to this project should be documented in this file.
 
+## 0.3.2
+
+- Redesigned the popup into a denser layout with a fixed header/footer and a more compact downloads list.
+- Added GitHub-based update detection in the popup footer with direct access to the latest unpacked release zip.
+- Simplified user installation and update docs, and changed the unpacked release zip to ship a single `All-in-One Toolkit` folder for easier manual upgrades.
+
 ## 0.3.1
 
 - Improved Instagram image downloads for carousel posts by correctly detecting the active slide on feed and post pages.

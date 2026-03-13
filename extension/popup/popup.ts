@@ -14,10 +14,8 @@ import type { StatusInfo } from './model/download-view-model.js';
 import { resolveTheme, syncSystemThemeListener } from './model/theme-model.js';
 import type { ResolvedTheme } from './model/theme-model.js';
 
+/* ── DOM refs ────────────────────────────────────────────────────── */
 const bugBtn = document.getElementById('bug-btn') as HTMLButtonElement | null;
-const popupSubtitleEl = document.getElementById('popup-subtitle');
-const languageLabel = document.getElementById('language-label');
-const themeLabel = document.getElementById('theme-label');
 const languageSelect = document.getElementById('language-select') as HTMLSelectElement | null;
 const themeSelect = document.getElementById('theme-select') as HTMLSelectElement | null;
 const downloadActiveEl = document.getElementById('download-active');
@@ -26,6 +24,8 @@ const sortDownloadsBtn = document.getElementById('sort-downloads') as HTMLButton
 const clearHistoryBtn = document.getElementById('clear-history') as HTMLButtonElement | null;
 const activeCountEl = document.getElementById('active-count');
 const historyCountEl = document.getElementById('history-count');
+const footerVersionEl = document.getElementById('footer-version');
+const footerUpdateEl = document.getElementById('footer-update');
 
 const subTabs = Array.from(document.querySelectorAll<HTMLElement>('.subtab'));
 const subTabViews = Array.from(document.querySelectorAll<HTMLElement>('.download-group'));
@@ -34,14 +34,20 @@ const subTabLabelEls: Record<string, HTMLElement | null> = {
   history: document.querySelector<HTMLElement>('[data-subtab-label="history"]')
 };
 
+/* ── Constants ───────────────────────────────────────────────────── */
 const SUBTAB_KEY = 'aioPopupDownloadsTab';
 const defaultSubTab = 'active';
 const SORT_KEY = 'aioPopupSortAsc';
 const BUG_REPORT_URL = 'https://github.com/voyvodka/All-in-one-Extension/issues/new/choose';
+const GITHUB_RELEASES_API = 'https://api.github.com/repos/voyvodka/All-in-one-Extension/releases/latest';
+const HOW_TO_UPDATE_URL = 'https://github.com/voyvodka/All-in-one-Extension/blob/main/docs/INSTALL.md';
+const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const UPDATE_CACHE_KEY = 'aioUpdateCheck';
 const prefersDark: MediaQueryList | null = window.matchMedia
   ? window.matchMedia('(prefers-color-scheme: dark)')
   : null;
 
+/* ── State ───────────────────────────────────────────────────────── */
 let systemThemeHandler: (() => void) | null = null;
 let expandedJobId: string | null = null;
 let isInitializing = true;
@@ -50,46 +56,32 @@ let current: { language: Locale; theme: ThemeChoice } = {
   language: resolveLocale(),
   theme: 'system'
 };
-let downloads: DownloadsState = {
-  active: [],
-  history: []
-};
+let downloads: DownloadsState = { active: [], history: [] };
 
 const savedSortAsc = (() => {
-  try {
-    const raw = localStorage.getItem(SORT_KEY);
-    return raw === null ? null : raw === 'true';
-  } catch {
-    return null;
-  }
+  try { const r = localStorage.getItem(SORT_KEY); return r === null ? null : r === 'true'; } catch { return null; }
 })();
-
 let sortAscending = savedSortAsc ?? false;
 
+/* ── Init ────────────────────────────────────────────────────────── */
 setLocale(current.language);
 applyStaticTranslations();
-hydrateLanguageSelect(current.language);
-hydrateThemeSelect(current.theme);
 applyTheme(current.theme);
 renderDownloads(downloads);
 sortDownloadsBtn?.classList.toggle('rotated', sortAscending);
 
 void initializePopup();
 
-const savedSubTab = (() => {
-  try {
-    return localStorage.getItem(SUBTAB_KEY);
-  } catch {
-    return null;
-  }
-})();
-
+const savedSubTab = (() => { try { return localStorage.getItem(SUBTAB_KEY); } catch { return null; } })();
 selectSubTab(savedSubTab ?? defaultSubTab, false);
 
+// Render footer immediately then check updates
+renderFooter('latest');
+void checkForUpdates();
+
+/* ── Event listeners ─────────────────────────────────────────────── */
 subTabs.forEach((tab) => {
-  tab.addEventListener('click', () => {
-    selectSubTab(tab.dataset['subtab'] ?? defaultSubTab, true);
-  });
+  tab.addEventListener('click', () => selectSubTab(tab.dataset['subtab'] ?? defaultSubTab, true));
 });
 
 languageSelect?.addEventListener('change', async () => {
@@ -110,11 +102,7 @@ themeSelect?.addEventListener('change', async () => {
 
 sortDownloadsBtn?.addEventListener('click', () => {
   sortAscending = !sortAscending;
-  try {
-    localStorage.setItem(SORT_KEY, String(sortAscending));
-  } catch (err) {
-    console.warn('Sort persist failed', err);
-  }
+  try { localStorage.setItem(SORT_KEY, String(sortAscending)); } catch { /* noop */ }
   sortDownloadsBtn?.classList.toggle('rotated', sortAscending);
   renderDownloads(downloads);
 });
@@ -124,49 +112,32 @@ clearHistoryBtn?.addEventListener('click', async () => {
 });
 
 bugBtn?.addEventListener('click', () => {
-  try {
-    chrome.tabs?.create?.({ url: BUG_REPORT_URL });
-  } catch {
-    window.open(BUG_REPORT_URL, '_blank', 'noopener,noreferrer');
-  }
+  try { chrome.tabs?.create?.({ url: BUG_REPORT_URL }); } catch { window.open(BUG_REPORT_URL, '_blank', 'noopener,noreferrer'); }
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-
   if (changes['language']) {
     current.language = changes['language'].newValue as Locale;
     setLocale(current.language);
-    hydrateLanguageSelect(current.language);
     applyStaticTranslations();
     renderDownloads(downloads);
   }
-
   if (changes['theme']) {
     current.theme = changes['theme'].newValue as ThemeChoice;
-    hydrateThemeSelect(current.theme);
     applyTheme(current.theme);
   }
 });
 
-onDownloadsChanged((next) => {
-  downloads = next;
-  renderDownloads(downloads);
-});
+onDownloadsChanged((next) => { downloads = next; renderDownloads(downloads); });
 
+/* ── Popup init ──────────────────────────────────────────────────── */
 async function initializePopup(): Promise<void> {
   try {
     const settings = await getSettings();
     const resolvedLanguage = (settings.language ?? resolveLocale()) as Locale;
-    if (!settings.language) {
-      await setLanguage(resolvedLanguage);
-    }
-
-    current = {
-      language: resolvedLanguage,
-      theme: (settings.theme ?? 'system') as ThemeChoice
-    };
-
+    if (!settings.language) await setLanguage(resolvedLanguage);
+    current = { language: resolvedLanguage, theme: (settings.theme ?? 'system') as ThemeChoice };
     setLocale(current.language);
     downloads = await getDownloadsState();
     initError = null;
@@ -176,8 +147,6 @@ async function initializePopup(): Promise<void> {
   } finally {
     isInitializing = false;
     applyStaticTranslations();
-    hydrateLanguageSelect(current.language);
-    hydrateThemeSelect(current.theme);
     applyTheme(current.theme);
     renderDownloads(downloads);
     sortDownloadsBtn?.classList.toggle('rotated', sortAscending);
@@ -191,51 +160,28 @@ function retryInitialize(): void {
   void initializePopup();
 }
 
+/* ── Sub-tab switching ───────────────────────────────────────────── */
 function selectSubTab(name: string, persist = false): void {
   const tabName = ['active', 'history'].includes(name) ? name : defaultSubTab;
-  subTabs.forEach((tab) =>
-    tab.classList.toggle('active', tab.dataset['subtab'] === tabName)
-  );
-  subTabViews.forEach((view) =>
-    view.classList.toggle('active', view.dataset['subtab'] === tabName)
-  );
-
-  if (persist) {
-    try {
-      localStorage.setItem(SUBTAB_KEY, tabName);
-    } catch (err) {
-      console.warn('SubTab persist failed', err);
-    }
-  }
+  subTabs.forEach((tab) => tab.classList.toggle('active', tab.dataset['subtab'] === tabName));
+  subTabViews.forEach((view) => view.classList.toggle('active', view.dataset['subtab'] === tabName));
+  if (persist) { try { localStorage.setItem(SUBTAB_KEY, tabName); } catch { /* noop */ } }
 }
 
+/* ── Render downloads ────────────────────────────────────────────── */
 function renderDownloads(state: DownloadsState): void {
   const sortedActive = sortJobsByDate(state.active ?? [], sortAscending);
   const sortedHistory = sortJobsByDate(state.history ?? [], sortAscending);
-
-  const allIds = new Set([...sortedActive, ...sortedHistory].map((item) => item.id));
-  if (expandedJobId && !allIds.has(expandedJobId)) {
-    expandedJobId = null;
-  }
+  const allIds = new Set([...sortedActive, ...sortedHistory].map((i) => i.id));
+  if (expandedJobId && !allIds.has(expandedJobId)) expandedJobId = null;
 
   updateSubTabSummary(sortedActive.length, sortedHistory.length);
   updateToolbarState(sortedActive.length, sortedHistory.length);
-
-  renderDownloadList(downloadActiveEl, sortedActive, {
-    allowCancel: true,
-    kind: 'active'
-  });
-
-  renderDownloadList(downloadHistoryEl, sortedHistory, {
-    allowCancel: false,
-    kind: 'history'
-  });
+  renderDownloadList(downloadActiveEl, sortedActive, { allowCancel: true, kind: 'active' });
+  renderDownloadList(downloadHistoryEl, sortedHistory, { allowCancel: false, kind: 'history' });
 }
 
-interface RenderListOptions {
-  allowCancel: boolean;
-  kind: 'active' | 'history';
-}
+interface RenderListOptions { allowCancel: boolean; kind: 'active' | 'history'; }
 
 function renderDownloadList(
   rootEl: HTMLElement | null,
@@ -246,286 +192,202 @@ function renderDownloadList(
   rootEl.innerHTML = '';
 
   if (initError) {
-    rootEl.appendChild(
-      createStateCard({
-        variant: 'error',
-        icon: '⚠️',
-        title: t('popupLoadErrorTitle'),
-        body: t('popupLoadErrorBody'),
-        actionLabel: t('tryAgain'),
-        onAction: retryInitialize
-      })
-    );
+    rootEl.appendChild(createStateCard({
+      variant: 'error', icon: '!', title: t('popupLoadErrorTitle'),
+      body: t('popupLoadErrorBody'), actionLabel: t('tryAgain'), onAction: retryInitialize
+    }));
     return;
   }
 
   if (isInitializing) {
     rootEl.appendChild(createSkeletonCard());
-    rootEl.appendChild(createSkeletonCard());
-    rootEl.appendChild(
-      createStateCard({
-        variant: 'loading',
-        icon: '⏳',
-        title: t('loadingTitle'),
-        body: t('loadingBody')
-      })
-    );
     return;
   }
 
   if (!items.length) {
     const emptyTitleKey = kind === 'active' ? 'emptyActiveTitle' : 'emptyHistoryTitle';
     const emptyBodyKey = kind === 'active' ? 'emptyActiveBody' : 'emptyHistoryBody';
-    rootEl.appendChild(
-      createStateCard({
-        variant: 'empty',
-        icon: kind === 'active' ? '⬇️' : '🕘',
-        title: t(emptyTitleKey),
-        body: t(emptyBodyKey)
-      })
-    );
+    rootEl.appendChild(createStateCard({
+      variant: 'empty', icon: kind === 'active' ? '↓' : '⏱',
+      title: t(emptyTitleKey), body: t(emptyBodyKey)
+    }));
     return;
   }
 
-  items.forEach((job) => {
-    rootEl.appendChild(createDownloadCard(job, allowCancel));
-  });
+  items.forEach((job) => rootEl.appendChild(createDownloadCard(job, allowCancel)));
 }
 
+/* ── Download card — dense single-row layout ─────────────────────── */
 function createDownloadCard(job: DownloadJob, allowCancel: boolean): HTMLElement {
-  const viewModel = createDownloadViewModel(job, {
-    expandedJobId,
-    localeCode: getLocale(),
-    t
-  });
-
-  const card = createElement('article', 'download-card');
-  card.dataset['expanded'] = viewModel.expanded ? 'true' : 'false';
+  const vm = createDownloadViewModel(job, { expandedJobId, localeCode: getLocale(), t });
+  const card = el('article', 'download-card');
+  card.dataset['expanded'] = vm.expanded ? 'true' : 'false';
   card.dataset['status'] = job.status ?? 'preparing';
 
-  const header = createElement('div', 'download-row');
-  header.title = job.title ?? job.fileName ?? '';
-  header.setAttribute('role', 'button');
-  header.tabIndex = 0;
+  // ── Row: [status-dot] [title + progress] [pill] [action?] [chevron]
+  const row = el('div', 'download-row');
+  row.tabIndex = 0;
 
-  const main = createElement('div', 'download-main');
-  const statusBadge = createElement('div', `status-badge ${viewModel.statusInfo.tone}`);
-  statusBadge.appendChild(createElement('span', 'status-icon', viewModel.statusInfo.icon));
+  // Status dot
+  const dot = el('span', `status-dot ${vm.statusInfo.tone}`);
+  dot.title = vm.statusInfo.label;
 
-  const copy = createElement('div', 'download-copy');
-  copy.appendChild(createElement('p', 'download-overline', viewModel.sourceLabel));
+  // Center block: title + inline progress
+  const center = el('div', 'row-center');
+  const title = el('span', 'row-title', vm.displayName);
+  title.title = vm.displayName;
+  center.appendChild(title);
 
-  const titleEl = createElement('p', 'download-title', viewModel.displayName);
-  titleEl.title = viewModel.displayName;
-  copy.appendChild(titleEl);
-  copy.appendChild(createElement('p', 'download-meta', viewModel.statusSummary));
-
-  main.appendChild(statusBadge);
-  main.appendChild(copy);
-
-  const side = createElement('div', 'download-side');
-  side.appendChild(createElement('span', `pill ${viewModel.pill.className}`, viewModel.pill.label));
-
-  const inlineActions = createElement('div', 'download-actions-inline');
-  if (allowCancel && (job.status === 'preparing' || job.status === 'downloading')) {
-    inlineActions.appendChild(
-      createActionButton({
-        label: t('cancel'),
-        onClick: async () => {
-          await chrome.runtime.sendMessage({
-            type: MESSAGE_TYPES.CANCEL_DOWNLOAD,
-            jobId: job.id,
-            downloadId: job.downloadId
-          });
-        }
-      })
-    );
-  } else if (!allowCancel && canRetryJob(job)) {
-    inlineActions.appendChild(
-      createActionButton({
-        label: t('retry'),
-        onClick: async () => {
-          await chrome.runtime.sendMessage({
-            type: MESSAGE_TYPES.RETRY_DOWNLOAD,
-            jobId: job.id
-          });
-        }
-      })
-    );
+  // Inline progress for active downloads
+  if (job.status === 'downloading' || job.status === 'preparing') {
+    const prog = el('div', 'row-progress');
+    const bar = document.createElement('span');
+    bar.style.width = `${vm.progress}%`;
+    prog.appendChild(bar);
+    center.appendChild(prog);
+  } else if (job.status === 'failed' && vm.displayError) {
+    const errSpan = el('span', 'row-error', vm.displayError);
+    center.appendChild(errSpan);
   }
 
-  const chevron = createElement('button', 'chevron', '▾') as HTMLButtonElement;
+  // Pill (MP4/MP3/IMG etc)
+  const pill = el('span', `pill ${vm.pill.className}`, vm.pill.label);
+
+  // Action button
+  const actions = el('div', 'row-actions');
+  if (allowCancel && (job.status === 'preparing' || job.status === 'downloading')) {
+    actions.appendChild(createActionButton({
+      label: t('cancel'),
+      onClick: async () => {
+        await chrome.runtime.sendMessage({
+          type: MESSAGE_TYPES.CANCEL_DOWNLOAD,
+          jobId: job.id, downloadId: job.downloadId
+        });
+      }
+    }));
+  } else if (!allowCancel && canRetryJob(job)) {
+    actions.appendChild(createActionButton({
+      label: t('retry'),
+      onClick: async () => {
+        await chrome.runtime.sendMessage({ type: MESSAGE_TYPES.RETRY_DOWNLOAD, jobId: job.id });
+      }
+    }));
+  }
+
+  // Chevron
+  const chevron = el('button', 'chevron', '▾') as HTMLButtonElement;
   chevron.type = 'button';
   chevron.setAttribute('aria-label', t('toggleDetails'));
-  chevron.addEventListener('click', (event) => {
-    event.stopPropagation();
-    toggleExpandedJob(job.id);
-  });
-  inlineActions.appendChild(chevron);
+  chevron.addEventListener('click', (e) => { e.stopPropagation(); toggleExpandedJob(job.id); });
 
-  side.appendChild(inlineActions);
-  header.appendChild(main);
-  header.appendChild(side);
-  header.addEventListener('click', () => {
-    toggleExpandedJob(job.id);
-  });
-  header.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    event.preventDefault();
+  row.appendChild(dot);
+  row.appendChild(center);
+  row.appendChild(pill);
+  row.appendChild(actions);
+  row.appendChild(chevron);
+
+  row.addEventListener('click', () => toggleExpandedJob(job.id));
+  row.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
     toggleExpandedJob(job.id);
   });
 
-  const details = createElement('div', 'download-details');
-  details.appendChild(createProgressBlock(viewModel.statusInfo, viewModel.progress, viewModel.progressLabel));
+  // ── Expanded details
+  const details = el('div', 'download-details');
 
-  const detailGrid = createElement('div', 'detail-grid');
-  detailGrid.appendChild(createDetailItem(t('dateLabel'), viewModel.dateText || '-'));
-  detailGrid.appendChild(createDetailItem(t('typeLabel'), job.type || '-'));
-  detailGrid.appendChild(
-    createDetailItem(t('statusLabel'), job.status || '-', { wide: true })
-  );
-  detailGrid.appendChild(
-    createDetailItem(t('fileNameLabel'), job.fileName || '-', { wide: true })
-  );
-  detailGrid.appendChild(
-    createDetailItem(t('sourceLabel'), job.sourceUrl || '-', { wide: true })
-  );
+  // Progress bar in details
+  details.appendChild(createProgressBlock(vm.statusInfo, vm.progress, vm.progressLabel));
 
-  if (viewModel.displayError) {
-    detailGrid.appendChild(
-      createDetailItem(t('errorLabel'), viewModel.displayError, {
-        wide: true,
-        error: true
-      })
-    );
+  const grid = el('div', 'detail-grid');
+  grid.appendChild(createDetailItem(t('dateLabel'), vm.dateText || '-'));
+  grid.appendChild(createDetailItem(t('typeLabel'), job.type || '-'));
+  grid.appendChild(createDetailItem(t('statusLabel'), job.status || '-', { wide: true }));
+  grid.appendChild(createDetailItem(t('fileNameLabel'), job.fileName || '-', { wide: true }));
+  grid.appendChild(createDetailItem(t('sourceLabel'), job.sourceUrl || '-', { wide: true }));
+  if (vm.displayError) {
+    grid.appendChild(createDetailItem(t('errorLabel'), vm.displayError, { wide: true, error: true }));
   }
+  details.appendChild(grid);
 
-  details.appendChild(detailGrid);
-  card.appendChild(header);
+  card.appendChild(row);
   card.appendChild(details);
   return card;
 }
 
-function createProgressBlock(
-  statusInfo: StatusInfo,
-  progress: number,
-  progressLabel: string
-): HTMLElement {
-  const block = createElement('div', 'progress-block');
-  const meta = createElement('div', 'progress-meta');
-  meta.appendChild(createElement('span', '', statusInfo.label));
-  meta.appendChild(createElement('span', '', progressLabel));
-
-  const progressEl = createElement('div', 'progress');
+/* ── Helper builders ─────────────────────────────────────────────── */
+function createProgressBlock(statusInfo: StatusInfo, progress: number, progressLabel: string): HTMLElement {
+  const block = el('div', 'progress-block');
+  const meta = el('div', 'progress-meta');
+  meta.appendChild(el('span', '', statusInfo.label));
+  meta.appendChild(el('span', '', progressLabel));
+  const prog = el('div', 'progress');
   const bar = document.createElement('span');
   bar.style.width = `${progress}%`;
-  progressEl.appendChild(bar);
-
+  prog.appendChild(bar);
   block.appendChild(meta);
-  block.appendChild(progressEl);
+  block.appendChild(prog);
   return block;
 }
 
-interface DetailItemOptions {
-  wide?: boolean;
-  error?: boolean;
-}
-
-function createDetailItem(
-  label: string,
-  value: string,
-  { wide = false, error = false }: DetailItemOptions = {}
-): HTMLElement {
-  const item = createElement('div', `detail-item${wide ? ' is-wide' : ''}`);
-  item.appendChild(createElement('span', 'detail-k', label));
-  item.appendChild(createElement('span', `detail-v${error ? ' is-error' : ''}`, value));
+interface DetailItemOptions { wide?: boolean; error?: boolean; }
+function createDetailItem(label: string, value: string, { wide = false, error = false }: DetailItemOptions = {}): HTMLElement {
+  const item = el('div', `detail-item${wide ? ' is-wide' : ''}`);
+  item.appendChild(el('span', 'detail-k', label));
+  item.appendChild(el('span', `detail-v${error ? ' is-error' : ''}`, value));
   return item;
 }
 
-interface ActionButtonParams {
-  label: string;
-  onClick: () => Promise<void>;
-}
-
+interface ActionButtonParams { label: string; onClick: () => Promise<void>; }
 function createActionButton({ label, onClick }: ActionButtonParams): HTMLButtonElement {
-  const button = createElement('button', 'link-btn', label) as HTMLButtonElement;
+  const button = el('button', 'link-btn', label) as HTMLButtonElement;
   button.type = 'button';
-  button.addEventListener('click', async (event) => {
-    event.stopPropagation();
-    await onClick();
-  });
+  button.addEventListener('click', async (e) => { e.stopPropagation(); await onClick(); });
   return button;
 }
 
-interface StateCardParams {
-  variant: string;
-  icon: string;
-  title: string;
-  body: string;
-  actionLabel?: string;
-  onAction?: () => void;
-}
-
-function createStateCard({
-  variant,
-  icon,
-  title,
-  body,
-  actionLabel,
-  onAction
-}: StateCardParams): HTMLElement {
-  const card = createElement('section', `state-card is-${variant}`);
-  card.appendChild(createElement('span', 'state-icon', icon));
-  card.appendChild(createElement('p', 'state-title', title));
-  card.appendChild(createElement('p', 'state-copy', body));
-
+interface StateCardParams { variant: string; icon: string; title: string; body: string; actionLabel?: string; onAction?: () => void; }
+function createStateCard({ variant, icon, title, body, actionLabel, onAction }: StateCardParams): HTMLElement {
+  const card = el('section', `state-card is-${variant}`);
+  card.appendChild(el('span', 'state-icon', icon));
+  card.appendChild(el('p', 'state-title', title));
+  card.appendChild(el('p', 'state-copy', body));
   if (actionLabel && typeof onAction === 'function') {
-    const actionButton = createElement('button', 'state-action', actionLabel) as HTMLButtonElement;
-    actionButton.type = 'button';
-    actionButton.addEventListener('click', onAction);
-    card.appendChild(actionButton);
+    const btn = el('button', 'state-action', actionLabel) as HTMLButtonElement;
+    btn.type = 'button';
+    btn.addEventListener('click', onAction);
+    card.appendChild(btn);
   }
-
   return card;
 }
 
 function createSkeletonCard(): HTMLElement {
-  const card = createElement('div', 'skeleton-card');
-  const top = createElement('div', 'skeleton-top');
-  top.appendChild(createElement('div', 'skeleton-icon'));
-
-  const stack = createElement('div', 'skeleton-stack');
-  stack.appendChild(createElement('div', 'skeleton-line short'));
-  stack.appendChild(createElement('div', 'skeleton-line long'));
+  const card = el('div', 'skeleton-card');
+  const top = el('div', 'skeleton-top');
+  top.appendChild(el('div', 'skeleton-icon'));
+  const stack = el('div', 'skeleton-stack');
+  stack.appendChild(el('div', 'skeleton-line short'));
+  stack.appendChild(el('div', 'skeleton-line long'));
   top.appendChild(stack);
-  top.appendChild(createElement('div', 'skeleton-pill'));
-
-  const bottom = createElement('div', 'skeleton-bottom');
-  bottom.appendChild(createElement('div', 'skeleton-bar'));
-
+  top.appendChild(el('div', 'skeleton-pill'));
   card.appendChild(top);
-  card.appendChild(bottom);
   return card;
 }
 
 function canRetryJob(job: DownloadJob): boolean {
   const retryable: string[] = [
-    MESSAGE_TYPES.YT_AUDIO_DOWNLOAD,
-    MESSAGE_TYPES.YT_VIDEO_DOWNLOAD,
-    MESSAGE_TYPES.IG_AUDIO_DOWNLOAD,
-    MESSAGE_TYPES.IG_VIDEO_DOWNLOAD,
-    MESSAGE_TYPES.IG_IMAGE_DOWNLOAD,
-    MESSAGE_TYPES.X_AUDIO_DOWNLOAD,
-    MESSAGE_TYPES.X_VIDEO_DOWNLOAD
+    MESSAGE_TYPES.YT_AUDIO_DOWNLOAD, MESSAGE_TYPES.YT_VIDEO_DOWNLOAD,
+    MESSAGE_TYPES.IG_AUDIO_DOWNLOAD, MESSAGE_TYPES.IG_VIDEO_DOWNLOAD, MESSAGE_TYPES.IG_IMAGE_DOWNLOAD,
+    MESSAGE_TYPES.X_AUDIO_DOWNLOAD, MESSAGE_TYPES.X_VIDEO_DOWNLOAD
   ];
   return retryable.includes(job?.type);
 }
 
-function createElement(tagName: string, className: string, textContent?: string): HTMLElement {
-  const element = document.createElement(tagName);
-  if (className) element.className = className;
-  if (typeof textContent === 'string') element.textContent = textContent;
-  return element;
+function el(tagName: string, className: string, textContent?: string): HTMLElement {
+  const e = document.createElement(tagName);
+  if (className) e.className = className;
+  if (typeof textContent === 'string') e.textContent = textContent;
+  return e;
 }
 
 function toggleExpandedJob(jobId: string): void {
@@ -533,15 +395,14 @@ function toggleExpandedJob(jobId: string): void {
   renderDownloads(downloads);
 }
 
+/* ── Sub-tab summary + toolbar ───────────────────────────────────── */
 function updateSubTabSummary(activeCount: number, historyCount: number): void {
   if (activeCountEl) activeCountEl.textContent = String(activeCount);
   if (historyCountEl) historyCountEl.textContent = String(historyCount);
-
   const activeLabel = t('subtabActive');
   const historyLabel = t('subtabHistory');
   const activeTab = subTabs.find((tab) => tab.dataset['subtab'] === 'active');
   const historyTab = subTabs.find((tab) => tab.dataset['subtab'] === 'history');
-
   if (activeTab) activeTab.setAttribute('aria-label', `${activeLabel}: ${activeCount}`);
   if (historyTab) historyTab.setAttribute('aria-label', `${historyLabel}: ${historyCount}`);
 }
@@ -549,21 +410,16 @@ function updateSubTabSummary(activeCount: number, historyCount: number): void {
 function updateToolbarState(activeCount: number, historyCount: number): void {
   const totalCount = activeCount + historyCount;
   if (clearHistoryBtn) {
-    clearHistoryBtn.disabled =
-      isInitializing || Boolean(initError) || historyCount === 0;
+    clearHistoryBtn.disabled = isInitializing || Boolean(initError) || historyCount === 0;
   }
   if (sortDownloadsBtn) {
-    sortDownloadsBtn.disabled =
-      isInitializing || Boolean(initError) || totalCount < 2;
+    sortDownloadsBtn.disabled = isInitializing || Boolean(initError) || totalCount < 2;
   }
 }
 
+/* ── Static translations ─────────────────────────────────────────── */
 function applyStaticTranslations(): void {
   document.documentElement.lang = getLocale();
-
-  if (popupSubtitleEl) popupSubtitleEl.textContent = t('popupSubtitle');
-  if (languageLabel) languageLabel.textContent = t('language');
-  if (themeLabel) themeLabel.textContent = t('theme');
   if (bugBtn) bugBtn.title = t('bugTitle');
 
   const activeLabelEl = subTabLabelEls['active'];
@@ -575,42 +431,21 @@ function applyStaticTranslations(): void {
     clearHistoryBtn.title = t('clearHistory');
     clearHistoryBtn.setAttribute('aria-label', t('clearHistory'));
   }
-
   if (sortDownloadsBtn) {
     sortDownloadsBtn.title = t('sort');
     sortDownloadsBtn.setAttribute('aria-label', t('sort'));
   }
 
-  hydrateLanguageSelect(current.language);
-  hydrateThemeSelect(current.theme);
+  if (languageSelect) languageSelect.title = t('language');
+  if (themeSelect) themeSelect.title = t('theme');
+
+  // Footer version
+  if (footerVersionEl) {
+    footerVersionEl.textContent = t('footerVersion').replace('{version}', getCurrentVersion());
+  }
 }
 
-function hydrateLanguageSelect(langValue: string): void {
-  if (!languageSelect) return;
-  const effective = resolveLocale(langValue || current.language);
-  languageSelect.value = effective;
-
-  const optionTr = languageSelect.querySelector<HTMLOptionElement>('option[value="tr"]');
-  const optionEn = languageSelect.querySelector<HTMLOptionElement>('option[value="en"]');
-  if (optionTr) optionTr.textContent = t('languageTr');
-  if (optionEn) optionEn.textContent = t('languageEn');
-  languageSelect.title = t('language');
-}
-
-function hydrateThemeSelect(themeValue: string): void {
-  if (!themeSelect) return;
-  const effective = themeValue || current.theme || 'system';
-  themeSelect.value = effective;
-
-  const optionSystem = themeSelect.querySelector<HTMLOptionElement>('option[value="system"]');
-  const optionLight = themeSelect.querySelector<HTMLOptionElement>('option[value="light"]');
-  const optionDark = themeSelect.querySelector<HTMLOptionElement>('option[value="dark"]');
-  if (optionSystem) optionSystem.textContent = t('themeSystem');
-  if (optionLight) optionLight.textContent = t('themeLight');
-  if (optionDark) optionDark.textContent = t('themeDark');
-  themeSelect.title = t('theme');
-}
-
+/* ── Theme ───────────────────────────────────────────────────────── */
 function applyTheme(themeValue: ThemeChoice | string): void {
   const chosen = (themeValue || current.theme || 'system') as ThemeChoice;
   const effective: ResolvedTheme = resolveTheme(chosen, prefersDark);
@@ -627,4 +462,119 @@ function applyTheme(themeValue: ThemeChoice | string): void {
   });
 }
 
+/* ── Footer: version + update checker ────────────────────────────── */
+interface UpdateCacheEntry { checkedAt: number; latestTag: string | null; downloadUrl: string | null; error: boolean; }
 
+function getCurrentVersion(): string {
+  try { return chrome.runtime.getManifest().version || '0.0.0'; } catch { return '0.0.0'; }
+}
+
+function compareVersions(a: string, b: string): number {
+  const pa = a.replace(/^v/, '').split('.').map(Number);
+  const pb = b.replace(/^v/, '').split('.').map(Number);
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const na = pa[i] ?? 0;
+    const nb = pb[i] ?? 0;
+    if (na !== nb) return na - nb;
+  }
+  return 0;
+}
+
+function getCachedUpdateCheck(): UpdateCacheEntry | null {
+  try {
+    const raw = localStorage.getItem(UPDATE_CACHE_KEY);
+    if (!raw) return null;
+    const entry = JSON.parse(raw) as UpdateCacheEntry;
+    return typeof entry.checkedAt === 'number' ? entry : null;
+  } catch { return null; }
+}
+
+function setCachedUpdateCheck(entry: UpdateCacheEntry): void {
+  try { localStorage.setItem(UPDATE_CACHE_KEY, JSON.stringify(entry)); } catch { /* noop */ }
+}
+
+function renderFooter(state: 'loading' | 'latest' | 'error' | 'update', latestTag?: string, downloadUrl?: string): void {
+  const version = getCurrentVersion();
+  if (footerVersionEl) footerVersionEl.textContent = t('footerVersion').replace('{version}', version);
+  if (!footerUpdateEl) return;
+  footerUpdateEl.innerHTML = '';
+
+  if (state === 'loading') {
+    footerUpdateEl.appendChild(el('span', 'footer-status', t('updateChecking')));
+    return;
+  }
+  if (state === 'error') {
+    footerUpdateEl.appendChild(el('span', 'footer-error', t('updateError')));
+    return;
+  }
+  if (state === 'latest') return;
+
+  if (state === 'update' && latestTag) {
+    const badge = el('span', 'update-badge', t('updateAvailable').replace('{version}', latestTag.replace(/^v/, '')));
+    footerUpdateEl.appendChild(badge);
+
+    if (downloadUrl) {
+      const dlBtn = el('button', 'update-link', t('updateDownload')) as HTMLButtonElement;
+      dlBtn.type = 'button';
+      dlBtn.addEventListener('click', () => {
+        try { chrome.downloads?.download?.({ url: downloadUrl, saveAs: true }); }
+        catch { window.open(downloadUrl, '_blank', 'noopener,noreferrer'); }
+      });
+      footerUpdateEl.appendChild(dlBtn);
+    }
+
+    const howTo = el('button', 'update-link', t('updateHowTo')) as HTMLButtonElement;
+    howTo.type = 'button';
+    howTo.addEventListener('click', () => {
+      try { chrome.tabs?.create?.({ url: HOW_TO_UPDATE_URL }); }
+      catch { window.open(HOW_TO_UPDATE_URL, '_blank', 'noopener,noreferrer'); }
+    });
+    footerUpdateEl.appendChild(howTo);
+  }
+}
+
+interface GitHubReleaseAsset { name: string; browser_download_url: string; }
+interface GitHubRelease { tag_name: string; assets: GitHubReleaseAsset[]; }
+
+async function fetchLatestRelease(): Promise<{ tag: string; downloadUrl: string | null }> {
+  const response = await fetch(GITHUB_RELEASES_API, {
+    headers: { 'Accept': 'application/vnd.github.v3+json' },
+    cache: 'no-cache'
+  });
+  if (!response.ok) throw new Error(`GitHub API ${response.status}`);
+  const data = (await response.json()) as GitHubRelease;
+  const tag = data.tag_name || '';
+  const asset = data.assets?.find((a) => a.name.includes('unpacked') && a.name.endsWith('.zip'));
+  return { tag, downloadUrl: asset?.browser_download_url ?? null };
+}
+
+async function checkForUpdates(): Promise<void> {
+  const version = getCurrentVersion();
+  renderFooter('loading');
+
+  const cached = getCachedUpdateCheck();
+  const now = Date.now();
+  if (cached && (now - cached.checkedAt) < UPDATE_CHECK_INTERVAL_MS && !cached.error) {
+    if (cached.latestTag && compareVersions(cached.latestTag, version) > 0) {
+      renderFooter('update', cached.latestTag, cached.downloadUrl ?? undefined);
+    } else {
+      renderFooter('latest');
+    }
+    return;
+  }
+
+  try {
+    const { tag, downloadUrl } = await fetchLatestRelease();
+    setCachedUpdateCheck({ checkedAt: now, latestTag: tag, downloadUrl, error: false });
+    if (tag && compareVersions(tag, version) > 0) {
+      renderFooter('update', tag, downloadUrl ?? undefined);
+    } else {
+      renderFooter('latest');
+    }
+  } catch (err) {
+    console.warn('AIO: update check failed', err);
+    setCachedUpdateCheck({ checkedAt: now, latestTag: null, downloadUrl: null, error: true });
+    renderFooter('error');
+  }
+}

@@ -59,14 +59,16 @@ yarn release:verify            # verify version/tag/changelog alignment
   - zip root contains the `extension/` folder
 - `all-in-one-toolkit-unpacked-vX.Y.Z.zip`
   - user-friendly unpacked layout
-  - zip root contains `manifest.json` directly for easier `Load unpacked`
-  - includes `INSTALL.txt` with short setup steps
+  - zip root contains a single `All-in-One Toolkit/` folder
+  - users load that folder directly in `chrome://extensions`
+  - includes `INSTALL.txt` inside the folder with short setup steps
 
 Tagged releases and `main` delivery artifacts publish both zip variants.
 
 Supporting docs:
 
 - `docs/INSTALL.md`
+- `docs/LOCAL_DEV.md`
 - `docs/SMOKE_CHECKLIST.md`
 
 ## SemVer guidance

@@ -15,7 +15,9 @@ type I18nKey =
   | 'bugTitle' | 'theme' | 'themeSystem' | 'themeLight' | 'themeDark'
   | 'downloadAction' | 'downloadAudio' | 'downloadVideo'
   | 'downloadImageSingle' | 'downloadImageMultiple'
-  | 'twitterUrlNotFound' | 'instagramDownloadIcon' | 'instagramPhotoUrlMissing';
+  | 'twitterUrlNotFound' | 'instagramDownloadIcon' | 'instagramPhotoUrlMissing'
+  | 'footerVersion' | 'updateAvailable' | 'updateDownload' | 'updateHowTo'
+  | 'updateChecking' | 'updateLatest' | 'updateError';
 
 type I18nDictionary = Record<I18nKey, string>;
 
@@ -71,7 +73,14 @@ const messages: Record<Locale, I18nDictionary> = {
     downloadImageMultiple: 'Tüm fotoğrafları indir (ZIP)',
     twitterUrlNotFound: 'Geçerli tweet URL bulunamadı',
     instagramDownloadIcon: 'İndir',
-    instagramPhotoUrlMissing: 'Fotoğraf URL bulunamadı'
+    instagramPhotoUrlMissing: 'Fotoğraf URL bulunamadı',
+    footerVersion: 'All-in-One Toolkit v{version}',
+    updateAvailable: 'Yeni sürüm: v{version}',
+    updateDownload: 'İndir',
+    updateHowTo: 'Nasıl güncellenir?',
+    updateChecking: 'Güncelleme kontrol ediliyor...',
+    updateLatest: 'Güncel sürümü kullanıyorsunuz.',
+    updateError: 'Güncelleme kontrol edilemedi.'
   },
   en: {
     subtabActive: 'Active',
@@ -124,7 +133,14 @@ const messages: Record<Locale, I18nDictionary> = {
     downloadImageMultiple: 'Download all photos (ZIP)',
     twitterUrlNotFound: 'Could not find a valid tweet URL',
     instagramDownloadIcon: 'Download',
-    instagramPhotoUrlMissing: 'Photo URL not found'
+    instagramPhotoUrlMissing: 'Photo URL not found',
+    footerVersion: 'All-in-One Toolkit v{version}',
+    updateAvailable: 'New version: v{version}',
+    updateDownload: 'Download',
+    updateHowTo: 'How to update?',
+    updateChecking: 'Checking for updates...',
+    updateLatest: 'You are using the latest version.',
+    updateError: 'Could not check for updates.'
   }
 };
 

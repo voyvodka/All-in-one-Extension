@@ -49,11 +49,14 @@ For more detail, see:
 
 - `docs/ARCHITECTURE.md`
 - `docs/INSTALL.md`
+- `docs/LOCAL_DEV.md`
 - `docs/RELEASE.md`
 - `docs/SMOKE_CHECKLIST.md`
 - `docs/POPUP_REDESIGN.md`
 
 ## Local development
+
+For the full developer setup guide, see `docs/LOCAL_DEV.md`.
 
 ### Prerequisites
 

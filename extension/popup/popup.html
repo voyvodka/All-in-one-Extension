@@ -8,39 +8,32 @@
 </head>
 
 <body>
-  <main id="app" class="app-shell">
-    <section class="topbar-panel">
-      <div class="topbar-main">
-        <div class="title-block">
-          <h1>All-in-One Toolkit</h1>
-          <p id="popup-subtitle" class="topbar-subtitle"></p>
+  <div id="app" class="app-shell">
+    <!-- ── Sticky header ─────────────────────────────────────── -->
+    <header class="app-header">
+      <div class="header-top">
+        <h1>All-in-One Toolkit</h1>
+        <div class="header-actions">
+          <label class="inline-select" for="language-select">
+            <select id="language-select" class="mini-select" title="Dil">
+              <option value="tr">TR</option>
+              <option value="en">EN</option>
+            </select>
+          </label>
+          <label class="inline-select" for="theme-select">
+            <select id="theme-select" class="mini-select" title="Tema">
+              <option value="system">☀️🌙</option>
+              <option value="light">☀️</option>
+              <option value="dark">🌙</option>
+            </select>
+          </label>
+          <button id="bug-btn" class="icon-btn" title="Hata bildir" type="button" aria-label="Hata bildir">🐞</button>
         </div>
-        <button id="bug-btn" class="icon-btn bug-btn" title="Hata bildir" type="button" aria-label="Hata bildir">
-          <span class="bug-btn-icon" aria-hidden="true">🐞</span>
-        </button>
       </div>
+    </header>
 
-      <div class="control-row">
-        <label class="control-inline" for="language-select">
-          <span id="language-label" class="field-label">Dil</span>
-          <select id="language-select" class="select-field" title="Dil">
-            <option value="tr">Türkçe</option>
-            <option value="en">English</option>
-          </select>
-        </label>
-
-        <label class="control-inline" for="theme-select">
-          <span id="theme-label" class="field-label">Tema</span>
-          <select id="theme-select" class="select-field" title="Tema">
-            <option value="system">System</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </label>
-      </div>
-    </section>
-
-    <section id="downloads-view" class="downloads-panel">
+    <!-- ── Scrollable body ───────────────────────────────────── -->
+    <section class="app-body">
       <div class="downloads-toolbar">
         <div class="download-subtabs">
           <button class="subtab active" data-subtab="active" type="button">
@@ -52,7 +45,6 @@
             <span id="history-count" class="subtab-count">0</span>
           </button>
         </div>
-
         <div class="download-actions">
           <button id="sort-downloads" class="icon-btn rotate" title="Sırala" aria-label="Sırala" type="button">
             <svg class="sort-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -67,12 +59,17 @@
       <div class="download-group active" data-subtab="active">
         <div id="download-active" class="download-list" aria-live="polite"></div>
       </div>
-
       <div class="download-group" data-subtab="history">
         <div id="download-history" class="download-list" aria-live="polite"></div>
       </div>
     </section>
-  </main>
+
+    <!-- ── Sticky footer ─────────────────────────────────────── -->
+    <footer id="app-footer" class="app-footer">
+      <span id="footer-version" class="footer-version"></span>
+      <span id="footer-update" class="footer-update"></span>
+    </footer>
+  </div>
   <script type="module" src="./popup.js"></script>
 </body>
 
