@@ -38,16 +38,12 @@ async function startMp3Download({
   tweetTitle: string;
 }): Promise<void> {
   try {
-    const response = await safeSendMessage({
+    await safeSendMessage({
       type: MESSAGE_TYPES.X_AUDIO_DOWNLOAD,
       openPopup: true,
       tweetUrl,
       tweetTitle: tweetTitle || 'twitter-audio'
     });
-
-    if (!response?.success) {
-      console.error('Audio download failed:', response?.error);
-    }
   } catch (error) {
     console.error('Error sending audio download message:', error);
   }

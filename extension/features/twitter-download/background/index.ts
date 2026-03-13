@@ -66,7 +66,6 @@ export async function startTwitterDownload(
             });
             resolve({ success: false, error: errMsg });
           } else if (downloadId) {
-            console.log('Download started with ID:', downloadId);
             registerDownloadId(downloadId, job.id);
             updateJob(job.id, (j) => {
               j.status = 'downloading';
@@ -74,7 +73,6 @@ export async function startTwitterDownload(
             });
             resolve({ success: true });
           } else {
-            console.log('Download cancelled by user.');
             updateJob(job.id, (j) => {
               j.status = 'failed';
               j.error = 'USER_CANCELED';

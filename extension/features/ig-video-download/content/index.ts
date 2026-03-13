@@ -41,16 +41,13 @@ async function startVideoDownload({
   directMedia: { url: string; type?: string; ext?: string } | null;
 }): Promise<void> {
   try {
-    const response = await safeSendMessage({
+    await safeSendMessage({
       type: MESSAGE_TYPES.IG_VIDEO_DOWNLOAD,
       openPopup: true,
       reelUrl,
       reelTitle: reelTitle || 'instagram-reel',
       directMedia
     });
-    if (!response?.success) {
-      console.error('Video download failed:', response?.error);
-    }
   } catch (error) {
     console.error('Error sending Video download message:', error);
   }

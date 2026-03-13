@@ -41,16 +41,13 @@ async function startAudioDownload({
   directMedia: { url: string; type?: string; ext?: string } | null;
 }): Promise<void> {
   try {
-    const response = await safeSendMessage({
+    await safeSendMessage({
       type: MESSAGE_TYPES.IG_AUDIO_DOWNLOAD,
       openPopup: true,
       reelUrl,
       reelTitle: reelTitle || 'instagram-reel',
       directMedia
     });
-    if (!response?.success) {
-      console.error('Audio download failed:', response?.error);
-    }
   } catch (error) {
     console.error('Error sending Audio download message:', error);
   }

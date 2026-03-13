@@ -37,6 +37,157 @@ function buildAriaSelectors(labels) {
   };
 }
 
+const ACTION_BUTTON_SELECTOR = '[role="button"],button';
+const ACTION_BAR_MAX_BUTTONS = 12;
+
+function normalizeComparableText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function getElementLabel(node) {
+  if (!node) return '';
+  const label =
+    node.getAttribute?.('aria-label') ||
+    node.getAttribute?.('title') ||
+    node.querySelector?.('title')?.textContent ||
+    node.textContent ||
+    '';
+  return normalizeComparableText(label);
+}
+
+function getImmediateChild(root, node) {
+  let cur = node;
+  while (cur && cur.parentElement !== root) {
+    cur = cur.parentElement;
+  }
+  return cur && cur.parentElement === root ? cur : null;
+}
+
+function isKnownShareButton(button) {
+  if (!button) return false;
+  if (button.matches?.(SHARE_SELECTOR)) return true;
+  return Boolean(button.querySelector?.(SHARE_SELECTOR));
+}
+
+function isKnownSaveButton(button) {
+  const label = getElementLabel(button);
+  return label.includes('save') || label.includes('kaydet');
+}
+
+function isLikelyActionButton(button) {
+  if (!button?.matches?.(ACTION_BUTTON_SELECTOR)) return false;
+  if (button.hasAttribute?.(INSTAGRAM_DOWNLOAD_MENU_ATTR) || button.closest?.(`[${INSTAGRAM_DOWNLOAD_MENU_ATTR}]`)) {
+    return false;
+  }
+  if (!button.querySelector?.('svg')) return false;
+  if (button.querySelector('img, video, picture, canvas')) return false;
+
+  const label = getElementLabel(button);
+  if (label.length > 48) return false;
+
+  const rect = typeof button.getBoundingClientRect === 'function' ? button.getBoundingClientRect() : null;
+  if (rect && rect.width > 0 && rect.height > 0) {
+    if (rect.width > 180 || rect.height > 120) return false;
+  }
+
+  return true;
+}
+
+function getLikelyActionButtons(scope) {
+  if (!scope?.querySelectorAll) return [];
+  const buttons = new Set();
+  scope.querySelectorAll(ACTION_BUTTON_SELECTOR).forEach((node) => {
+    if (!isLikelyActionButton(node)) return;
+    buttons.add(node);
+  });
+  return Array.from(buttons);
+}
+
+function getDirectChildButtonGroups(root) {
+  if (!root?.children) return [];
+  return Array.from(root.children)
+    .map((child) => ({ node: child, buttons: getLikelyActionButtons(child) }))
+    .filter(({ buttons }) => buttons.length);
+}
+
+function hasMoreSpecificActionChild(root, anchor) {
+  const directChild = getImmediateChild(root, anchor);
+  if (!directChild || directChild === anchor) return false;
+  return getLikelyActionButtons(directChild).length >= 2;
+}
+
+function scoreActionBarCandidate(node, { requireSingleShare = false } = {}) {
+  if (!node?.querySelectorAll) return Number.NEGATIVE_INFINITY;
+
+  const buttons = getLikelyActionButtons(node);
+  const count = buttons.length;
+  if (count < 2 || count > ACTION_BAR_MAX_BUTTONS) {
+    return Number.NEGATIVE_INFINITY;
+  }
+
+  const childGroups = getDirectChildButtonGroups(node);
+  const primaryGroupCount = childGroups.reduce((max, group) => Math.max(max, group.buttons.length), 0);
+  const shareCount = buttons.filter((button) => isKnownShareButton(button)).length;
+  const hasKnownSave = buttons.some((button) => isKnownSaveButton(button));
+  const mediaCount = node.querySelectorAll('img, video, picture').length;
+  const textLength = normalizeComparableText(node.textContent || '').replace(/\b\d+\b/g, '').length;
+
+  let score = 0;
+  score += Math.max(0, 14 - (Math.abs(count - 4) * 3));
+  score += Math.min(8, primaryGroupCount * 3);
+  if (childGroups.length >= 2) score += 4;
+  if (node.tagName === 'SECTION') score += 5;
+  if (node.tagName === 'DIV') score += 2;
+
+  if (shareCount === 1) {
+    score += 6;
+  } else if (shareCount > 1) {
+    score -= 3;
+  } else if (requireSingleShare) {
+    score -= 2;
+  }
+
+  if (hasKnownSave) score += 2;
+
+  if (mediaCount === 0) {
+    score += 4;
+  } else {
+    score -= Math.min(10, mediaCount * 2);
+  }
+
+  if (textLength <= 24) {
+    score += 3;
+  } else if (textLength > 80) {
+    score -= 6;
+  }
+
+  if (node.querySelector('input, textarea, form')) {
+    score -= 10;
+  }
+
+  return score;
+}
+
+function pickTemplateButton(actionBar) {
+  const shareButton = findShareButton(actionBar);
+  if (shareButton) return shareButton;
+
+  const childGroups = getDirectChildButtonGroups(actionBar)
+    .sort((a, b) => b.buttons.length - a.buttons.length);
+  const primaryGroup = childGroups[0];
+  if (primaryGroup?.buttons?.length) {
+    return primaryGroup.buttons[primaryGroup.buttons.length - 1];
+  }
+
+  const buttons = getLikelyActionButtons(actionBar);
+  return buttons[buttons.length - 1] || null;
+}
+
 const ACTION_ARIA_LABELS = [
   'Share',
   'Share Post',
@@ -76,24 +227,28 @@ function countShareButtons(scope) {
 }
 
 function countActionIcons(scope) {
-  return getUniqueButtonsBySelector(scope, ACTION_SELECTOR).length;
+  return getLikelyActionButtons(scope).length;
 }
 
 function findActionBarContainer(startEl, { requireSingleShare = false, stopAt = null } = {}) {
-  const minIcons = 2;
-  const maxIcons = 30;
   const limit = stopAt || startEl?.closest?.('article') || null;
   const search = (stopNode, mustBeSingleShare) => {
     let node = startEl && startEl.nodeType === 1 ? startEl : startEl?.parentElement || null;
+    let best = null;
+    let bestScore = Number.NEGATIVE_INFINITY;
     while (node && node !== document.body) {
-      const count = countActionIcons(node);
-      if (count >= minIcons && count <= maxIcons) {
-        if (!mustBeSingleShare || countShareButtons(node) === 1) return node;
+      const score = scoreActionBarCandidate(node, { requireSingleShare: mustBeSingleShare });
+      if (score > Number.NEGATIVE_INFINITY && !hasMoreSpecificActionChild(node, startEl)) {
+        return node;
+      }
+      if (score > bestScore) {
+        best = node;
+        bestScore = score;
       }
       if (stopNode && node === stopNode) break;
       node = node.parentElement;
     }
-    return null;
+    return bestScore > Number.NEGATIVE_INFINITY ? best : null;
   };
 
   let found = search(limit, requireSingleShare);
@@ -341,7 +496,7 @@ function isLikelyAvatar({ url, alt, width }) {
   const altText = (alt || '').toLowerCase();
   const urlText = (url || '').toLowerCase();
   const small = Number.isFinite(width) && width > 0 && width <= 200;
-  if (/profile\s*picture|profil\s*fotograf|profil\s*foto|profil\s*fotografi/.test(altText)) return true;
+  if (/profile\s*picture|profil\s*fotograf|profil\s*foto|profil\s*fotografi|profil\s*resmi/.test(altText)) return true;
   if (/profile_pic|pfp|avatar/.test(urlText)) return true;
   if (small && /s\d{2,3}x\d{2,3}/.test(urlText)) return true;
   return false;
@@ -495,14 +650,39 @@ export function findInstagramActionBar(article) {
   const scope = article || getActiveInstagramArticle() || document;
   const shareButton = findShareButton(scope);
   let templateButton = shareButton;
+  let actionBar = null;
 
-  if (!templateButton) {
-    const candidate = scope.querySelector?.(ACTION_SELECTOR);
-    templateButton = candidate?.closest?.('[role="button"], button') || candidate || null;
+  if (shareButton) {
+    actionBar =
+      findActionBarContainer(shareButton, { requireSingleShare: true }) ||
+      findActionBarContainer(shareButton);
+  }
+
+  if (!actionBar) {
+    const buttons = getLikelyActionButtons(scope);
+    let bestScore = Number.NEGATIVE_INFINITY;
+
+    buttons.forEach((button) => {
+      const candidateBar = findActionBarContainer(button);
+      if (!candidateBar) return;
+
+      const candidateScore = scoreActionBarCandidate(candidateBar);
+      if (candidateScore <= bestScore) return;
+
+      bestScore = candidateScore;
+      actionBar = candidateBar;
+      templateButton = pickTemplateButton(candidateBar) || button;
+    });
+  }
+
+  if (!templateButton && actionBar) {
+    templateButton = pickTemplateButton(actionBar);
   }
 
   if (!templateButton) return { actionBar: null, shareButton: null };
-  const actionBar =
+
+  actionBar =
+    actionBar ||
     findActionBarContainer(templateButton, { requireSingleShare: Boolean(shareButton) }) ||
     findActionBarContainer(templateButton) ||
     templateButton.closest('section') ||
@@ -521,12 +701,12 @@ export function getInstagramActionContainers() {
   const detected = detectInstagramScope();
   if (detected?.scope) containers.add(detected.scope);
 
-  document.querySelectorAll(ACTION_SELECTOR).forEach((svg) => {
+  getLikelyActionButtons(document).forEach((button) => {
     const candidate =
-      svg.closest('article') ||
-      svg.closest('section') ||
-      svg.closest('[class]') ||
-      svg.parentElement;
+      button.closest('article') ||
+      button.closest('section') ||
+      button.closest('[class]') ||
+      button.parentElement;
     if (candidate) containers.add(candidate);
   });
 
@@ -544,17 +724,22 @@ function collectInstagramActionBars() {
     actionBars.set(actionBar, shareButton);
   });
 
+  getInstagramActionContainers().forEach((container) => {
+    const result = findInstagramActionBar(container);
+    if (!result.actionBar || !result.shareButton || actionBars.has(result.actionBar)) return;
+    actionBars.set(result.actionBar, result.shareButton);
+  });
+
   if (actionBars.size) {
     return Array.from(actionBars, ([actionBar, shareButton]) => ({ actionBar, shareButton }));
   }
 
-  document.querySelectorAll(ACTION_SELECTOR).forEach((icon) => {
-    const button = icon.closest?.('[role="button"], button') || icon;
+  getLikelyActionButtons(document).forEach((button) => {
     const actionBar = findActionBarContainer(button);
     if (!actionBar || actionBars.has(actionBar)) return;
-    const shareButton = findShareButton(actionBar) || button;
-    if (!shareButton) return;
-    actionBars.set(actionBar, shareButton);
+    const templateButton = pickTemplateButton(actionBar) || button;
+    if (!templateButton) return;
+    actionBars.set(actionBar, templateButton);
   });
   return Array.from(actionBars, ([actionBar, shareButton]) => ({ actionBar, shareButton }));
 }
@@ -632,14 +817,6 @@ export function insertActionButtonNear(templateButton, newButton, actionBarHint 
   const actionBar = actionBarHint || findActionBarContainer(templateButton) || templateButton.parentElement;
   if (!actionBar) return;
 
-  const getImmediateChild = (root, node) => {
-    let cur = node;
-    while (cur && cur.parentElement !== root) {
-      cur = cur.parentElement;
-    }
-    return cur && cur.parentElement === root ? cur : null;
-  };
-
   const templateRoot = getImmediateChild(actionBar, templateButton) || templateButton;
   const templateWrapper = templateRoot !== templateButton ? templateRoot : null;
   const existingWrapper = getImmediateChild(actionBar, newButton);
@@ -661,11 +838,19 @@ export function insertActionButtonNear(templateButton, newButton, actionBarHint 
     'svg[aria-label="Save"], [role="button"][aria-label="Save"], button[aria-label="Save"]'
   );
   const saveRoot = saveButton?.closest?.('[role="button"], button') || saveButton;
-  const desiredRef = saveRoot ? getImmediateChild(actionBar, saveRoot) : null;
+  let desiredRef = saveRoot ? getImmediateChild(actionBar, saveRoot) : null;
+  const templateSibling = templateRoot?.nextElementSibling || null;
+  if (!desiredRef && templateSibling && templateSibling !== insertNode) {
+    desiredRef = templateSibling;
+  }
 
   const alreadyPlaced =
     insertNode.parentElement === actionBar &&
-    ((desiredRef && insertNode.nextSibling === desiredRef) || (!desiredRef && actionBar.lastElementChild === insertNode));
+    (
+      (desiredRef && insertNode.nextSibling === desiredRef) ||
+      (!desiredRef && templateRoot && templateRoot.nextElementSibling === insertNode) ||
+      (!desiredRef && !templateRoot && actionBar.lastElementChild === insertNode)
+    );
   if (alreadyPlaced) return;
 
   if (insertNode.parentElement && insertNode.parentElement !== actionBar) {
@@ -781,7 +966,6 @@ function injectMenuButtons() {
       menuObserver = null;
     }
     if (!resumeObserverTimer) {
-      console.warn('AIO: instagram injection throttled due to high mutation rate');
       resumeObserverTimer = setTimeout(() => {
         resumeObserverTimer = null;
         ensureMenuObserver();
@@ -1147,7 +1331,6 @@ export function findInstagramMediaSources(targetArticle) {
   }
 
   if (!targetArticle && scopeType === INSTAGRAM_SCOPE_TYPES.dialog && !postScope) {
-    console.log('AIO: ig media skip dialog (no post scope)', { scopeType, scopeRootTag: scopeRoot?.tagName });
     return {
       bestVideo: null,
       bestImage: null,
@@ -1308,18 +1491,6 @@ export function findInstagramMediaSources(targetArticle) {
 
   const isCarousel = Boolean(carousel);
   const carouselTotal = carousel ? carousel.totalSlides : 0;
-
-  console.log('AIO: ig media collected', {
-    scopeType,
-    scopeRootTag: scopeRoot?.tagName,
-    mediaScopeTag: mediaScope?.tagName,
-    imageCount: images.length,
-    allCount: media.length,
-    hasVideo: hasVideoElement,
-    isCarousel,
-    carouselTotal,
-    carouselActiveIndex: carousel?.activeIndex ?? -1
-  });
 
   return {
     bestVideo,

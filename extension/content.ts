@@ -5,15 +5,8 @@ type FeatureDescriptor = import('./shared/contracts/feature-registry.js').Featur
 
 // Skip chrome://, edge://, about:blank, etc.
 const allowedProtocols = new Set(['http:', 'https:']);
-if (!allowedProtocols.has(location.protocol)) {
-  console.debug('All-in-One: content script skipped on protocol', location.protocol);
-} else {
+if (allowedProtocols.has(location.protocol)) {
   (async function main() {
-    console.debug('All-in-One: booting content script', {
-      href: location.href,
-      protocol: location.protocol
-    });
-
     interface FeatureModule {
       id: string;
       label?: string;
@@ -58,7 +51,6 @@ if (!allowedProtocols.has(location.protocol)) {
         import(chrome.runtime.getURL('shared/storage.js') as string),
         import(chrome.runtime.getURL('shared/i18n.js') as string)
       ]);
-      console.debug('All-in-One: imports loaded', { features, storage });
     } catch (err) {
       console.error('All-in-One: import failed', err);
       return;
@@ -85,15 +77,10 @@ if (!allowedProtocols.has(location.protocol)) {
     }
 
     const matchedFeatures = getMatchedFeatures(location.href);
-    console.debug(
-      'All-in-One: matched features',
-      matchedFeatures.map((f) => f.id)
-    );
     const activeCleanups = new Map<string, () => void>();
 
     let currentSettings = await getSettings();
     setLocale(currentSettings.language ?? resolveLocale());
-    console.debug('All-in-One: initial settings', currentSettings);
 
     applyFeatures();
 
@@ -120,7 +107,6 @@ if (!allowedProtocols.has(location.protocol)) {
                 descriptor: feature.descriptor
               }) ?? (() => { /* noop */ });
             activeCleanups.set(feature.id, cleanup);
-            console.debug('All-in-One: feature started', feature.id);
           } catch (err) {
             console.error('Failed to start feature', feature.id, err);
           }
@@ -135,7 +121,6 @@ if (!allowedProtocols.has(location.protocol)) {
       if (cleanup) {
         try {
           cleanup();
-          console.debug('All-in-One: feature stopped', featureId);
         } catch (err) {
           console.warn('Cleanup failed for', featureId, err);
         }

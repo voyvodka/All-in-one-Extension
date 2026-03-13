@@ -5,7 +5,8 @@ import {
   registerInstagramMenuProvider,
   safeSendMessage,
   findInstagramMediaSources,
-  detectInstagramScope
+  detectInstagramScope,
+  INSTAGRAM_DOWNLOAD_MENU_ATTR
 } from '../../instagram/shared.js';
 
 interface ImageInfo {
@@ -34,6 +35,8 @@ const NAV_LABELS: Record<string, string[]> = {
   next: ['Next', 'Sonraki', 'İleri'],
   prev: ['Previous', 'Önceki', 'Geri', 'Back', 'Go back']
 };
+
+const NAV_BUTTON_SELECTOR = 'button, div[role="button"]';
 
 export default {
   id: 'ig-image-download',
@@ -102,7 +105,7 @@ async function startSingleImageDownload({
 }): Promise<void> {
   if (!image?.url) return;
   try {
-    const response = await safeSendMessage({
+    await safeSendMessage({
       type: MESSAGE_TYPES.IG_IMAGE_DOWNLOAD,
       openPopup: true,
       reelUrl,
@@ -114,9 +117,6 @@ async function startSingleImageDownload({
       },
       imageUrl: image.url
     });
-    if (!response?.success) {
-      console.error('Image download failed:', response?.error);
-    }
   } catch (error) {
     console.error('Error sending image download message:', error);
   }
@@ -146,16 +146,13 @@ async function startBulkImageDownload({
   if (!urls.length) return;
 
   try {
-    const response = await safeSendMessage({
+    await safeSendMessage({
       type: MESSAGE_TYPES.IG_IMAGE_ZIP_DOWNLOAD,
       openPopup: true,
       reelUrl,
       reelTitle: reelTitle || 'instagram-reel',
       imageUrls: urls
     });
-    if (!response?.success) {
-      console.error('Bulk image zip error:', response?.error);
-    }
   } catch (error) {
     console.error('Bulk image zip send failed:', error);
   }
@@ -224,21 +221,115 @@ async function collectCarouselImages(article: Element | null): Promise<ImageInfo
     return list.sort((a, b) => distanceToScope(a) - distanceToScope(b))[0] ?? null;
   };
 
-  const findButton = (labels: string[]): Element | null => {
+  const getMediaRect = (): DOMRect | null => {
+    const roots = [
+      scopeRoot,
+      scopeRoot.closest?.('article') ?? null,
+      scopeRoot.closest?.('div[role="dialog"]') ?? null,
+      document.querySelector('div[role="dialog"]'),
+      document.querySelector('main[role="main"]'),
+      document.querySelector('main')
+    ].filter(Boolean) as Element[];
+
+    const seenRoots = new Set<Element>();
+    const mediaCandidates: Array<{ area: number; rect: DOMRect }> = [];
+    roots.forEach((root) => {
+      if (!root || seenRoots.has(root)) return;
+      seenRoots.add(root);
+
+      root.querySelectorAll('video, img').forEach((media) => {
+        if (!(media instanceof HTMLElement)) return;
+        const rect = media.getBoundingClientRect();
+        const area = rect.width * rect.height;
+        if (rect.width < 120 || rect.height < 120 || area <= 0) return;
+        mediaCandidates.push({ area, rect });
+      });
+    });
+
+    return mediaCandidates
+      .sort((a, b) => b.area - a.area)[0]?.rect ?? null;
+  };
+
+  const scoreButtonByGeometry = (btn: Element, direction: 'next' | 'prev'): number => {
+    if (!btn || !sameInteractionScope(btn) || isInStoryTray(btn)) {
+      return Number.POSITIVE_INFINITY;
+    }
+    if (btn.closest?.(`[${INSTAGRAM_DOWNLOAD_MENU_ATTR}]`)) {
+      return Number.POSITIVE_INFINITY;
+    }
+    if (!btn.querySelector?.('svg')) {
+      return Number.POSITIVE_INFINITY;
+    }
+
+    const mediaRect = getMediaRect();
+    if (!mediaRect) return Number.POSITIVE_INFINITY;
+
+    const rect = btn.getBoundingClientRect();
+    if (!rect.width || !rect.height || rect.width > 96 || rect.height > 96) {
+      return Number.POSITIVE_INFINITY;
+    }
+
+    const centerX = rect.left + (rect.width / 2);
+    const centerY = rect.top + (rect.height / 2);
+    const midY = mediaRect.top + (mediaRect.height / 2);
+    const bandTop = mediaRect.top + (mediaRect.height * 0.15);
+    const bandBottom = mediaRect.bottom - (mediaRect.height * 0.15);
+    if (centerY < bandTop || centerY > bandBottom) {
+      return Number.POSITIVE_INFINITY;
+    }
+
+    const onWrongSide = direction === 'prev'
+      ? centerX > (mediaRect.left + (mediaRect.width * 0.45))
+      : centerX < (mediaRect.right - (mediaRect.width * 0.45));
+    if (onWrongSide) {
+      return Number.POSITIVE_INFINITY;
+    }
+
+    const edgeDistance = direction === 'prev'
+      ? Math.abs(centerX - mediaRect.left)
+      : Math.abs(centerX - mediaRect.right);
+    const maxEdgeDistance = Math.max(96, mediaRect.width * 0.2);
+    if (edgeDistance > maxEdgeDistance) {
+      return Number.POSITIVE_INFINITY;
+    }
+
+    const yDistance = Math.abs(centerY - midY);
+    return edgeDistance + (yDistance * 1.5);
+  };
+
+  const findButtonByGeometry = (direction: 'next' | 'prev'): Element | null => {
+    const localCandidates = Array.from(scopeRoot?.querySelectorAll?.(NAV_BUTTON_SELECTOR) ?? [])
+      .filter((btn) => Number.isFinite(scoreButtonByGeometry(btn, direction)));
+    const local = localCandidates
+      .sort((a, b) => scoreButtonByGeometry(a, direction) - scoreButtonByGeometry(b, direction))[0] ?? null;
+    if (local) return local;
+
+    const globalCandidates = Array.from(document.querySelectorAll(NAV_BUTTON_SELECTOR))
+      .filter((btn) => Number.isFinite(scoreButtonByGeometry(btn, direction)));
+    return globalCandidates
+      .sort((a, b) => scoreButtonByGeometry(a, direction) - scoreButtonByGeometry(b, direction))[0] ?? null;
+  };
+
+  const findButton = (labels: string[], direction: 'next' | 'prev'): Element | null => {
     const selector = labels
       .map((lbl) => `button[aria-label*="${lbl}"], div[role="button"][aria-label*="${lbl}"]`)
       .join(',');
 
-    const localCandidates = Array.from(scopeRoot?.querySelectorAll?.(selector) ?? []).filter(
-      (btn) => !isInStoryTray(btn)
-    );
-    const local = pickClosest(localCandidates);
-    if (local) return local;
+    if (selector) {
+      const localCandidates = Array.from(scopeRoot?.querySelectorAll?.(selector) ?? []).filter(
+        (btn) => !isInStoryTray(btn)
+      );
+      const local = pickClosest(localCandidates);
+      if (local) return local;
 
-    const globalCandidates = Array.from(document.querySelectorAll(selector))
-      .filter((btn) => !isInStoryTray(btn))
-      .filter((btn) => sameInteractionScope(btn));
-    return pickClosest(globalCandidates);
+      const globalCandidates = Array.from(document.querySelectorAll(selector))
+        .filter((btn) => !isInStoryTray(btn))
+        .filter((btn) => sameInteractionScope(btn));
+      const global = pickClosest(globalCandidates);
+      if (global) return global;
+    }
+
+    return findButtonByGeometry(direction);
   };
 
   const delay = (ms: number): Promise<void> =>
@@ -264,14 +355,14 @@ async function collectCarouselImages(article: Element | null): Promise<ImageInfo
   addFromState();
 
   {
-    let prevButton = findButton(NAV_LABELS['prev'] ?? []);
+    let prevButton = findButton(NAV_LABELS['prev'] ?? [], 'prev');
     const start = Date.now();
     while (prevButton && prevButton.isConnected && Date.now() - start < 5000) {
       if (prevButton.getAttribute('aria-disabled') === 'true') break;
       clickNav(prevButton);
       await delay(200);
       addFromState();
-      prevButton = findButton(NAV_LABELS['prev'] ?? []);
+      prevButton = findButton(NAV_LABELS['prev'] ?? [], 'prev');
     }
   }
 
@@ -279,7 +370,7 @@ async function collectCarouselImages(article: Element | null): Promise<ImageInfo
   let stagnantSteps = 0;
   const maxStagnant = 8;
   for (let step = 0; step < 120; step++) {
-    const nextButton = findButton(NAV_LABELS['next'] ?? []);
+    const nextButton = findButton(NAV_LABELS['next'] ?? [], 'next');
     if (!nextButton) break;
     if (nextButton.getAttribute('aria-disabled') === 'true') break;
     clickNav(nextButton);

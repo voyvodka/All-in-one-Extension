@@ -38,16 +38,12 @@ async function startMp4Download({
   tweetTitle: string;
 }): Promise<void> {
   try {
-    const response = await safeSendMessage({
+    await safeSendMessage({
       type: MESSAGE_TYPES.X_VIDEO_DOWNLOAD,
       openPopup: true,
       tweetUrl,
       tweetTitle: tweetTitle || 'twitter-video'
     });
-
-    if (!response?.success) {
-      console.error('Video download failed:', response?.error);
-    }
   } catch (error) {
     console.error('Error sending Video download message:', error);
   }

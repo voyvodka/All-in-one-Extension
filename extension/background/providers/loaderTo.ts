@@ -96,7 +96,6 @@ async function pollForDownloadUrl(
       progressData = await fetchLoaderJson(progressUrl, 'Failed to poll conversion');
     } catch (err) {
       // Transient network errors during polling — retry silently up to a point
-      console.warn('[loaderTo] Poll fetch error, retrying...', err);
       continue;
     }
 

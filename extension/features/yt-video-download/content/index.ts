@@ -74,7 +74,6 @@ export default {
         if (response?.success) {
           if (titleEl) titleEl.textContent = t('downloadStarted') || 'İndirme başladı!';
         } else {
-          console.error('Download failed or was cancelled:', response?.error);
           if (titleEl) titleEl.textContent = t('error') || 'Hata!';
         }
       } catch (error) {
