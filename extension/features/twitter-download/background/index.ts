@@ -183,7 +183,8 @@ export async function startTwitterImagesZip({
     type: MESSAGE_TYPES.X_IMAGE_ZIP_DOWNLOAD,
     title: baseTitle,
     fileName,
-    sourceUrl: tweetUrl
+    sourceUrl: tweetUrl,
+    retryImageUrls: uniqueUrls
   });
   await addJob(job);
 

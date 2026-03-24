@@ -11,10 +11,8 @@
 
 import { getLocale, t } from '../../../shared/i18n.js';
 import {
-  createInstagramAnalyzerAccountState,
   getInstagramAnalyzerState,
-  getSettings,
-  updateInstagramAnalyzer
+  getSettings
 } from '../../../shared/storage.js';
 import type {
   InstagramAnalyzerAccountState,
@@ -903,6 +901,7 @@ const DASHBOARD_CSS = `
     text-overflow: ellipsis;
     white-space: nowrap;
     display: inline-block;
+    align-self: flex-start;
     max-width: 100%;
   }
 
@@ -951,6 +950,27 @@ const DASHBOARD_CSS = `
 
   .db-wl-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .db-wl-btn[data-active='true'] { background: var(--success-muted); border-color: transparent; }
+
+  .db-unfollow-btn {
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: var(--error-muted);
+    color: var(--error);
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .db-unfollow-btn[disabled] {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
 
   .db-list-footer {
     display: flex;
@@ -1158,6 +1178,7 @@ const DASHBOARD_CSS = `
   /* Focus outlines */
   .db-btn:focus-visible,
   .db-wl-btn:focus-visible,
+  .db-unfollow-btn:focus-visible,
   .db-history-row:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
@@ -1167,11 +1188,12 @@ const DASHBOARD_CSS = `
   .db-hover-card {
     position: fixed;
     z-index: 2147483647;
-    width: 260px;
+    width: 280px;
+    max-width: min(280px, calc(100vw - 20px));
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 14px;
-    box-shadow: 0 12px 36px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.10);
+    border-radius: 18px;
+    box-shadow: 0 18px 44px rgba(0,0,0,0.24), 0 4px 14px rgba(0,0,0,0.10);
     overflow: hidden;
     pointer-events: none;
     opacity: 0;
@@ -1194,12 +1216,18 @@ const DASHBOARD_CSS = `
     pointer-events: auto;
   }
 
-  /* Top: avatar + identity side by side */
+  .db-hover-hero {
+    padding: 14px 14px 10px;
+    background:
+      radial-gradient(circle at top right, rgba(0, 149, 246, 0.14), transparent 34%),
+      linear-gradient(180deg, var(--surface-2), var(--surface));
+    border-bottom: 1px solid var(--border);
+  }
+
   .db-hover-top {
     display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 14px 10px;
+    align-items: flex-start;
+    gap: 10px;
   }
 
   .db-hover-avatar {
@@ -1215,7 +1243,7 @@ const DASHBOARD_CSS = `
     color: var(--text-2);
     flex-shrink: 0;
     overflow: hidden;
-    border: 2px solid var(--border);
+    border: 2px solid rgba(255,255,255,0.55);
   }
 
   .db-hover-avatar img {
@@ -1234,11 +1262,11 @@ const DASHBOARD_CSS = `
   .db-hover-name-row {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
   }
 
   .db-hover-username {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     color: var(--text);
     overflow: hidden;
@@ -1255,46 +1283,103 @@ const DASHBOARD_CSS = `
   }
 
   .db-hover-fullname {
-    margin-top: 1px;
-    font-size: 11px;
-    color: var(--text-3);
+    margin-top: 3px;
+    font-size: 12px;
+    color: var(--text-2);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
+  .db-hover-profile-link {
+    margin-top: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .db-hover-profile-link:hover {
+    text-decoration: underline;
+  }
+
   .db-hover-tags {
     display: flex;
-    gap: 4px;
-    margin-top: 5px;
+    gap: 6px;
+    margin-top: 7px;
     flex-wrap: wrap;
   }
 
   .db-hover-tag {
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 700;
-    padding: 2px 6px;
+    padding: 4px 8px;
     border-radius: 999px;
     background: var(--surface-3);
     color: var(--text-3);
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.02em;
   }
 
   .db-hover-tag--wl  { background: var(--success-muted); color: var(--success); }
   .db-hover-tag--prv { background: var(--warning-muted); color: var(--warning); }
+  .db-hover-tag--verified { background: rgba(0, 149, 246, 0.14); color: #0095f6; }
+  .db-hover-tag--pending { background: var(--error-muted); color: var(--error); }
 
-  /* Action row */
+  .db-hover-summary {
+    padding: 10px 14px 12px;
+    color: var(--text-2);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .db-hover-summary-strong {
+    color: var(--text);
+    font-weight: 700;
+  }
+
+  .db-hover-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding: 0 14px 12px;
+  }
+
+  .db-hover-stat {
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    border-radius: 12px;
+    padding: 8px 6px;
+    text-align: center;
+  }
+
+  .db-hover-stat-label {
+    display: block;
+    font-size: 10px;
+    color: var(--text-3);
+    margin-bottom: 4px;
+  }
+
+  .db-hover-stat-value {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
   .db-hover-actions {
     display: flex;
-    gap: 7px;
-    padding: 0 14px 13px;
+    gap: 8px;
+    padding: 0 14px 14px;
   }
 
   .db-hover-btn {
     flex: 1;
-    height: 30px;
-    border-radius: 8px;
+    min-width: 0;
+    height: 34px;
+    border-radius: 10px;
     border: 1px solid var(--border);
     background: var(--surface-2);
     color: var(--text);
@@ -1306,6 +1391,7 @@ const DASHBOARD_CSS = `
     text-decoration: none;
     transition: opacity 0.1s;
     white-space: nowrap;
+    padding: 0 10px;
   }
 
   .db-hover-btn:hover { opacity: 0.75; }
@@ -1322,6 +1408,12 @@ const DASHBOARD_CSS = `
     color: var(--success);
     border-color: transparent;
   }
+
+  .db-hover-btn--danger {
+    background: var(--error-muted);
+    color: var(--error);
+    border-color: transparent;
+  }
 `;
 
 /* ─────────────────────────────────────────────────────────────────── */
@@ -1330,7 +1422,8 @@ const DASHBOARD_CSS = `
 
 function renderDashboard(
   state: DashboardState,
-  account: InstagramAnalyzerAccountState | null
+  account: InstagramAnalyzerAccountState | null,
+  isUnfollowPending: (id: string) => boolean
 ): string {
   const history = getHistoryPoints(account);
   const username = state.activeUsername || account?.summary.username || '';
@@ -1354,7 +1447,7 @@ function renderDashboard(
     ${renderChartsSection(history)}
     ${renderChangesChartSection(history)}
     ${renderCompareSection(state, account, history)}
-    ${renderListSection(state, account)}
+    ${renderListSection(state, account, isUnfollowPending)}
     ${renderHistorySection(state, history)}
     <div style="height:8px"></div>
   `.trim();
@@ -1565,7 +1658,7 @@ function renderCompareSection(
 
   // Scan picker options
   const scanOptions = history.map((h) =>
-    `<option value="${escHtml(h.scanId)}" ${h.scanId === scanB.scanId ? 'selected' : ''}>${escHtml(formatDateTime(h.scannedAt))} — NF ${h.nonFollowerCount}</option>`
+    `<option value="${escHtml(h.scanId)}" ${h.scanId === scanB.scanId ? 'selected' : ''}>${escHtml(formatDateTime(h.scannedAt))} — ${t('analyzerHistoryPillNonFollowers')} ${h.nonFollowerCount}</option>`
   ).join('');
 
   void account;
@@ -1642,7 +1735,8 @@ function renderDiffGroup(label: string, users: InstagramAnalyzerSnapshotUser[], 
 
 function renderListSection(
   state: DashboardState,
-  account: InstagramAnalyzerAccountState | null
+  account: InstagramAnalyzerAccountState | null,
+  isUnfollowPending: (id: string) => boolean
 ): string {
   const allItems = getListItems(state.listSource, account);
   const filtered = filterListItems(allItems, state.listSearchQuery, state.listSource, account?.whitelist ?? []);
@@ -1673,6 +1767,7 @@ function renderListSection(
         const avatarUrl = isResult ? (item as InstagramAnalyzerResultItem).profilePictureUrl : '';
         const itemId = item.id;
         const isWl = whitelistSet.has(itemId);
+        const unfollowPending = isUnfollowPending(itemId);
 
         const avatarContent = avatarUrl
           ? `<img src="${escHtml(avatarUrl)}" alt="${escHtml(username)}" loading="lazy" />`
@@ -1689,6 +1784,9 @@ function renderListSection(
               ${isPrivate ? `<span class="db-mini-badge">${t('analyzerPrivateBadge')}</span>` : ''}
               ${isVerified ? `<span class="db-mini-badge">${t('analyzerVerifiedBadge')}</span>` : ''}
             </div>
+            <button class="db-unfollow-btn" type="button" data-action="unfollow" data-id="${escHtml(itemId)}" title="${escHtml(t('analyzerUnfollowTitle'))}" ${unfollowPending ? 'disabled' : ''}>
+              ${t('analyzerUnfollow')}
+            </button>
             <button class="db-wl-btn" type="button" data-action="toggle-wl" data-id="${escHtml(itemId)}" data-active="${String(isWl)}" title="${escHtml(isWl ? t('analyzerWhitelistRemove') : t('analyzerWhitelistAdd'))}">
               ${isWl ? '★' : '☆'}
             </button>
@@ -1737,6 +1835,26 @@ function getListItems(
     case 'following': return account.followingSnapshot;
     case 'followers': return account.followersSnapshot;
     default: return account.results;
+  }
+}
+
+function isRichListItem(
+  item: InstagramAnalyzerResultItem | InstagramAnalyzerSnapshotUser
+): item is InstagramAnalyzerResultItem {
+  return 'fullName' in item;
+}
+
+function getListSourceLabel(source: ListSource): string {
+  switch (source) {
+    case 'whitelist':
+      return t('analyzerTabWhitelisted');
+    case 'following':
+      return t('dashboardListFollowing');
+    case 'followers':
+      return t('dashboardListFollowers');
+    case 'non-followers':
+    default:
+      return t('dashboardListNonFollowers');
   }
 }
 
@@ -1831,11 +1949,11 @@ function renderHistorySection(
           </div>
         </div>
         <div class="db-history-pills">
-          <span class="db-history-pill" title="${escHtml(t('analyzerHistoryTooltipFollowed'))}">+${entry.diffs.followed.length}</span>
-          <span class="db-history-pill" title="${escHtml(t('analyzerHistoryTooltipUnfollowed'))}">-${entry.diffs.unfollowed.length}</span>
+          <span class="db-history-pill" title="${escHtml(t('analyzerHistoryTooltipFollowed'))}">${t('analyzerHistoryPillFollowed')} ${entry.diffs.followed.length}</span>
+          <span class="db-history-pill" title="${escHtml(t('analyzerHistoryTooltipUnfollowed'))}">${t('analyzerHistoryPillUnfollowed')} ${entry.diffs.unfollowed.length}</span>
           ${entry.diffs.followersAvailable
-            ? `<span class="db-history-pill" title="${escHtml(t('analyzerHistoryTooltipFollowersGained'))}">+FR${entry.diffs.followersGained.length}</span>
-               <span class="db-history-pill" title="${escHtml(t('analyzerHistoryTooltipFollowersLost'))}">-FR${entry.diffs.followersLost.length}</span>`
+            ? `<span class="db-history-pill" title="${escHtml(t('analyzerHistoryTooltipFollowersGained'))}">${t('analyzerHistoryPillFollowersGained')} ${entry.diffs.followersGained.length}</span>
+               <span class="db-history-pill" title="${escHtml(t('analyzerHistoryTooltipFollowersLost'))}">${t('analyzerHistoryPillFollowersLost')} ${entry.diffs.followersLost.length}</span>`
             : ''}
         </div>
         <span class="db-history-expand-icon">▶</span>
@@ -1868,7 +1986,9 @@ export function openDashboard(
   themeChoice: ThemeChoice,
   onClose: () => void,
   onScan: () => void,
-  onToggleWhitelist: (id: string) => void
+  onToggleWhitelist: (id: string) => void,
+  onUnfollow: (id: string) => void,
+  isUnfollowPending: (id: string) => boolean
 ): () => void {
   // Remove existing instance
   const existing = document.getElementById(DASHBOARD_HOST_ID);
@@ -1947,7 +2067,12 @@ export function openDashboard(
   function showHoverCard(
     item: InstagramAnalyzerResultItem | InstagramAnalyzerSnapshotUser,
     anchorEl: HTMLElement,
-    whitelistSet: Set<string>
+    whitelistSet: Set<string>,
+    relationState: {
+      followingIds: Set<string>;
+      followerIds: Set<string>;
+      nonFollowerIds: Set<string>;
+    }
   ): void {
     window.clearTimeout(hoverHideTimer);
     window.clearTimeout(hoverShowTimer);
@@ -1956,14 +2081,18 @@ export function openDashboard(
     if (hoverCurrentId === id && hoverCard.classList.contains('db-hover-card--visible')) return;
     hoverCurrentId = id;
 
-    const isResult = 'fullName' in item;
+    const isResult = isRichListItem(item);
     const username = item.username;
-    const fullName = isResult ? (item as InstagramAnalyzerResultItem).fullName : '';
-    const isPrivate = isResult ? (item as InstagramAnalyzerResultItem).isPrivate : false;
-    const isVerified = isResult ? (item as InstagramAnalyzerResultItem).isVerified : false;
-    const avatarUrl = isResult ? (item as InstagramAnalyzerResultItem).profilePictureUrl : '';
+    const fullName = isResult ? item.fullName : '';
+    const isPrivate = isResult ? item.isPrivate : false;
+    const isVerified = isResult ? item.isVerified : false;
+    const avatarUrl = isResult ? item.profilePictureUrl : '';
     const isWl = whitelistSet.has(id);
     const profileUrl = `https://www.instagram.com/${encodeURIComponent(username)}/`;
+    const unfollowPending = isUnfollowPending(id);
+    const followingLabel = relationState.followingIds.has(id) ? t('analyzerHoverYes') : t('analyzerHoverNo');
+    const followerLabel = relationState.followerIds.has(id) ? t('analyzerHoverYes') : t('analyzerHoverNo');
+    const followsBackLabel = relationState.nonFollowerIds.has(id) ? t('analyzerHoverNo') : t('analyzerHoverYes');
 
     const avatarInitial = username.slice(0, 1).toUpperCase();
     const avatarContent = avatarUrl
@@ -1972,34 +2101,69 @@ export function openDashboard(
 
     // Verified SVG (Instagram blue check, simplified)
     const verifiedSvg = isVerified
-      ? `<svg class="db-hover-verified-icon" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-label="Verified">
+      ? `<svg class="db-hover-verified-icon" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-label="${escHtml(t('analyzerVerifiedBadge'))}">
            <path d="M19.998 3.094 14.638 0l-2.972 5.15H5.432v6.354L0 14.64 3.094 20 0 25.359l5.432 3.137v5.905h5.975L14.638 40l5.36-3.094L25.358 40l3.232-5.6h6.162v-6.01L40 25.359 36.905 20 40 14.641l-5.248-3.03v-6.46h-6.419L25.358 0l-5.36 3.094Zm7.415 11.225 2.254 2.287-11.43 11.5-6.835-6.93 2.244-2.258 4.587 4.581 9.18-9.18Z" fill-rule="evenodd"/>
          </svg>`
       : '';
 
     const tagsHtml = [
-      isWl      ? `<span class="db-hover-tag db-hover-tag--wl">★ Whitelist</span>` : '',
-      isPrivate ? `<span class="db-hover-tag db-hover-tag--prv">Private</span>`    : ''
+      isWl ? `<span class="db-hover-tag db-hover-tag--wl">★ ${escHtml(t('analyzerTabWhitelisted'))}</span>` : '',
+      unfollowPending ? `<span class="db-hover-tag db-hover-tag--pending">${escHtml(t('analyzerHoverPending'))}</span>` : '',
+      isPrivate ? `<span class="db-hover-tag db-hover-tag--prv">${escHtml(t('analyzerPrivateBadge'))}</span>` : '',
+      !isPrivate ? `<span class="db-hover-tag">${escHtml(t('analyzerHoverPublic'))}</span>` : ''
     ].filter(Boolean).join('');
 
+    const relationSummary = relationState.nonFollowerIds.has(id)
+      ? t('dashboardListNonFollowers')
+      : relationState.followingIds.has(id) && relationState.followerIds.has(id)
+        ? `${t('analyzerHoverFollowing')} + ${t('analyzerHoverFollower')}`
+        : relationState.followingIds.has(id)
+          ? t('analyzerHoverFollowing')
+          : relationState.followerIds.has(id)
+            ? t('analyzerHoverFollower')
+            : getListSourceLabel(state.listSource);
+
     hoverCard.innerHTML = `
-      <div class="db-hover-top">
-        <div class="db-hover-avatar">${avatarContent}</div>
-        <div class="db-hover-identity">
-          <div class="db-hover-name-row">
-            <span class="db-hover-username">@${escHtml(username)}</span>
-            ${verifiedSvg}
+      <div class="db-hover-hero">
+        <div class="db-hover-top">
+          <div class="db-hover-avatar">${avatarContent}</div>
+          <div class="db-hover-identity">
+            <div class="db-hover-name-row">
+              <span class="db-hover-username">@${escHtml(username)}</span>
+              ${verifiedSvg}
+            </div>
+            ${fullName ? `<div class="db-hover-fullname">${escHtml(fullName)}</div>` : ''}
+            ${tagsHtml ? `<div class="db-hover-tags">${tagsHtml}</div>` : ''}
           </div>
-          ${fullName ? `<div class="db-hover-fullname">${escHtml(fullName)}</div>` : ''}
-          ${tagsHtml ? `<div class="db-hover-tags">${tagsHtml}</div>` : ''}
+        </div>
+      </div>
+      <div class="db-hover-summary">
+        <span class="db-hover-summary-strong">${escHtml(relationSummary)}</span>
+        ${fullName ? '' : ` · ${escHtml(isResult ? t('analyzerHoverDataRich') : t('analyzerHoverDataLimited'))}`}
+      </div>
+      <div class="db-hover-stats">
+        <div class="db-hover-stat">
+          <span class="db-hover-stat-label">${escHtml(t('analyzerHoverFollowing'))}</span>
+          <span class="db-hover-stat-value">${escHtml(followingLabel)}</span>
+        </div>
+        <div class="db-hover-stat">
+          <span class="db-hover-stat-label">${escHtml(t('analyzerHoverFollower'))}</span>
+          <span class="db-hover-stat-value">${escHtml(followerLabel)}</span>
+        </div>
+        <div class="db-hover-stat">
+          <span class="db-hover-stat-label">${escHtml(t('analyzerHoverNonFollower'))}</span>
+          <span class="db-hover-stat-value">${escHtml(followsBackLabel)}</span>
         </div>
       </div>
       <div class="db-hover-actions">
-        <a class="db-hover-btn db-hover-btn--profile" href="${escHtml(profileUrl)}" target="_blank" rel="noopener noreferrer">
-          Open Profile
+        <a class="db-hover-btn db-hover-btn--profile" href="${escHtml(profileUrl)}" target="_blank" rel="noopener noreferrer" title="${escHtml(t('analyzerOpenProfileTitle'))}">
+          ${escHtml(t('analyzerOpenProfile'))}
         </a>
-        <button class="db-hover-btn ${isWl ? 'db-hover-btn--wl-active' : ''}" type="button" data-hover-wl="${escHtml(id)}">
-          ${isWl ? '★ Remove WL' : '☆ Whitelist'}
+        <button class="db-hover-btn ${isWl ? 'db-hover-btn--wl-active' : ''}" type="button" data-hover-wl="${escHtml(id)}" title="${escHtml(isWl ? t('analyzerWhitelistRemove') : t('analyzerWhitelistAdd'))}">
+          ${escHtml(t('analyzerWhitelistShort'))}
+        </button>
+        <button class="db-hover-btn db-hover-btn--danger" type="button" data-hover-unfollow="${escHtml(id)}" ${unfollowPending ? 'disabled' : ''}>
+          ${t('analyzerUnfollow')}
         </button>
       </div>
     `;
@@ -2023,6 +2187,12 @@ export function openDashboard(
       hideHoverCard(true);
     });
 
+    const unfollowBtn = hoverCard.querySelector<HTMLButtonElement>('[data-hover-unfollow]');
+    unfollowBtn?.addEventListener('click', () => {
+      onUnfollow(id);
+      hideHoverCard(true);
+    });
+
     // Position then reveal
     hoverAnchorEl = anchorEl;
     const fromBottom = positionHoverCard(anchorEl);
@@ -2039,8 +2209,8 @@ export function openDashboard(
   function positionHoverCard(anchorEl: HTMLElement): boolean {
     const panelRect = panel.getBoundingClientRect();
     const anchorRect = anchorEl.getBoundingClientRect();
-    const cardW = 260;
-    const cardH = hoverCard.offsetHeight || 130; // use real height if already rendered
+    const cardW = hoverCard.offsetWidth || 312;
+    const cardH = hoverCard.offsetHeight || 220;
 
     // Horizontal: align left edge of card with left edge of anchor row
     let left = anchorRect.left;
@@ -2056,14 +2226,14 @@ export function openDashboard(
     let fromBottom: boolean;
 
     if (spaceBelow >= cardH + 6 || spaceBelow >= spaceAbove) {
-      // Open downward — top of card flush with bottom of anchor
       top = anchorRect.bottom;
       fromBottom = true;
     } else {
-      // Open upward — bottom of card flush with top of anchor
       top = anchorRect.top - cardH;
       fromBottom = false;
     }
+
+    top = Math.max(panelRect.top + 8, Math.min(panelRect.bottom - cardH - 8, top));
 
     hoverCard.style.left = `${left}px`;
     hoverCard.style.top  = `${top}px`;
@@ -2143,7 +2313,7 @@ export function openDashboard(
         </div>
       </div>
       <div class="db-body">
-        ${renderDashboard(state, account)}
+        ${renderDashboard(state, account, isUnfollowPending)}
       </div>
     `;
 
@@ -2259,9 +2429,21 @@ export function openDashboard(
       });
     });
 
+    panel.querySelectorAll<HTMLButtonElement>('[data-action="unfollow"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset['id'];
+        if (id) onUnfollow(id);
+      });
+    });
+
     // Hover card on list items
     const account = resolveAccount(state.analyzerState, state.activeViewerId);
     const whitelistSet = new Set(account?.whitelist ?? []);
+    const relationState = {
+      followingIds: new Set(account?.followingSnapshot.map((entry) => entry.id) ?? []),
+      followerIds: new Set(account?.followersSnapshot.map((entry) => entry.id) ?? []),
+      nonFollowerIds: new Set(account?.results.map((entry) => entry.id) ?? [])
+    };
     const allListItems = [
       ...getListItems(state.listSource, account),
       ...getListItems('non-followers', account),
@@ -2270,7 +2452,12 @@ export function openDashboard(
       ...getListItems('followers', account)
     ];
     const itemById = new Map<string, InstagramAnalyzerResultItem | InstagramAnalyzerSnapshotUser>();
-    allListItems.forEach((it) => itemById.set(it.id, it));
+    allListItems.forEach((it) => {
+      const existing = itemById.get(it.id);
+      if (!existing || (isRichListItem(it) && !isRichListItem(existing))) {
+        itemById.set(it.id, it);
+      }
+    });
 
     panel.querySelectorAll<HTMLElement>('.db-list-item').forEach((row) => {
       const wlBtn = row.querySelector<HTMLButtonElement>('[data-action="toggle-wl"]');
@@ -2284,9 +2471,17 @@ export function openDashboard(
       if (!usernameEl) return;
 
       usernameEl.addEventListener('mouseenter', () => {
-        showHoverCard(item, usernameEl, whitelistSet);
+        showHoverCard(item, usernameEl, whitelistSet, relationState);
+      });
+      usernameEl.addEventListener('focus', () => {
+        showHoverCard(item, usernameEl, whitelistSet, relationState);
       });
       usernameEl.addEventListener('mouseleave', (e) => {
+        const to = e.relatedTarget as Node | null;
+        if (hoverCard.contains(to)) return;
+        hideHoverCard();
+      });
+      usernameEl.addEventListener('blur', (e) => {
         const to = e.relatedTarget as Node | null;
         if (hoverCard.contains(to)) return;
         hideHoverCard();
@@ -2444,6 +2639,8 @@ export function toggleDashboard(params: {
   themeChoice: ThemeChoice;
   onScan: () => void;
   onToggleWhitelist: (id: string) => void;
+  onUnfollow: (id: string) => void;
+  isUnfollowPending: (id: string) => boolean;
 }): void {
   if (closeDashboard) {
     closeDashboard();
@@ -2458,39 +2655,8 @@ export function toggleDashboard(params: {
     params.themeChoice,
     () => { closeDashboard = null; },
     params.onScan,
-    params.onToggleWhitelist
+    params.onToggleWhitelist,
+    params.onUnfollow,
+    params.isUnfollowPending
   );
-}
-
-export function isDashboardOpen(): boolean {
-  return closeDashboard !== null;
-}
-
-/* ─────────────────────────────────────────────────────────────────── */
-/* Whitelist mutation (same pattern as index.ts)                      */
-/* ─────────────────────────────────────────────────────────────────── */
-
-export async function toggleWhitelistInDashboard(
-  resultId: string,
-  viewerId: string,
-  username: string,
-  currentResults: InstagramAnalyzerResultItem[]
-): Promise<InstagramAnalyzerState | null> {
-  try {
-    return await updateInstagramAnalyzer((state) => {
-      const account = state.accounts[viewerId] ?? createInstagramAnalyzerAccountState(viewerId, username);
-      const whitelist = new Set(account.whitelist);
-      if (whitelist.has(resultId)) {
-        whitelist.delete(resultId);
-      } else {
-        whitelist.add(resultId);
-      }
-      account.whitelist = Array.from(whitelist).sort();
-      account.summary.whitelistedCount = currentResults.filter((r) => whitelist.has(r.id)).length;
-      state.accounts[viewerId] = account;
-      return state;
-    });
-  } catch {
-    return null;
-  }
 }

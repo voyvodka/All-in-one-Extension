@@ -602,6 +602,23 @@ export async function getInstagramAnalyzerDurableAccount(viewerId: string): Prom
   return normalizeDurableAccount(await getDurableAnalyzerAccount(viewerId), viewerId, '');
 }
 
+export async function removeInstagramAnalyzerResult(
+  viewerId: string,
+  targetId: string,
+  username: string
+): Promise<InstagramAnalyzerDurableAccount> {
+  const durableAccount = normalizeDurableAccount(await getDurableAnalyzerAccount(viewerId), viewerId, username);
+  const nextAccount: InstagramAnalyzerDurableAccount = {
+    ...durableAccount,
+    username: username || durableAccount.username,
+    updatedAt: Date.now(),
+    results: durableAccount.results.filter((item) => item.id !== targetId),
+    followingSnapshot: durableAccount.followingSnapshot.filter((item) => item.id !== targetId)
+  };
+  await putDurableAnalyzerAccount(nextAccount);
+  return nextAccount;
+}
+
 export async function startInstagramAnalyzerScan({
   viewerId,
   username,

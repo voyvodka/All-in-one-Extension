@@ -17,6 +17,7 @@ export interface DownloadJob {
   fileName: string;
   sourceUrl: string;
   mediaUrl: string | null;
+  retryImageUrls?: string[];
   status: DownloadStatus;
   progress: number;
   createdAt: number;

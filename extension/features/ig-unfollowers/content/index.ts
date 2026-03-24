@@ -21,6 +21,7 @@ import { MESSAGE_TYPES } from '../../../shared/contracts/message-types.js';
 const FEATURE_ID = 'ig-unfollowers';
 const HOST_ID = 'aio-instagram-analyzer-host';
 const VIEWER_SYNC_MS = 10000;
+const IG_APP_ID = '936619743392459';
 
 type DrawerTheme = 'light' | 'dark';
 type PrimaryView = 'results' | 'history';
@@ -110,7 +111,7 @@ function isContextInvalidatedError(error: unknown): boolean {
 
 async function sendAnalyzerMessage(payload: Record<string, unknown>): Promise<Record<string, unknown> | null> {
   if (!chrome?.runtime?.id) {
-    return { success: false, error: 'Extension was reloaded. Please refresh the page and try again.' };
+    return { success: false, error: 'Uzanti yeniden yuklendi. Sayfayi yenileyip tekrar dene.' };
   }
 
   return await new Promise((resolve) => {
@@ -124,16 +125,56 @@ async function sendAnalyzerMessage(payload: Record<string, unknown>): Promise<Re
       });
     } catch (error) {
       if (isContextInvalidatedError(error)) {
-        resolve({ success: false, error: 'Extension was reloaded. Please refresh the page and try again.' });
+        resolve({ success: false, error: 'Uzanti yeniden yuklendi. Sayfayi yenileyip tekrar dene.' });
         return;
       }
 
       resolve({
         success: false,
-        error: String((error as { message?: string } | null)?.message ?? error ?? 'Message failed')
+        error: String((error as { message?: string } | null)?.message ?? error ?? 'Mesaj gonderilemedi')
       });
     }
   });
+}
+
+async function unfollowInstagramUser(targetId: string, csrfToken: string): Promise<void> {
+  if (!targetId) {
+    throw new Error('Hedef kullanici bilgisi eksik');
+  }
+  if (!csrfToken) {
+    throw new Error('Instagram oturumu dogrulanamadi');
+  }
+
+  const response = await fetch(`https://www.instagram.com/web/friendships/${encodeURIComponent(targetId)}/unfollow/`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      'x-csrftoken': csrfToken,
+      'x-ig-app-id': IG_APP_ID,
+      'x-requested-with': 'XMLHttpRequest'
+    },
+    body: ''
+  });
+
+  const rawText = await response.text();
+  let data: Record<string, unknown> | null = null;
+  if (rawText) {
+    try {
+      data = JSON.parse(rawText) as Record<string, unknown>;
+    } catch {
+      data = null;
+    }
+  }
+
+  if (!response.ok) {
+    const message =
+      (typeof data?.['message'] === 'string' && data['message']) ||
+      (typeof data?.['status'] === 'string' && data['status']) ||
+      rawText.slice(0, 160).replace(/\s+/g, ' ') ||
+      response.statusText;
+    throw new Error(message || `Instagram takibi birakma istegi basarisiz oldu (${response.status})`);
+  }
 }
 
 function parseRgb(color: string): [number, number, number] | null {
@@ -842,7 +883,8 @@ function createUi(shadowRoot: ShadowRoot): UiElements {
       .close,
       .tab,
       .action,
-      .wl-toggle {
+      .wl-toggle,
+      .unfollow-toggle {
         border: 1px solid var(--border);
         background: var(--surface);
         color: var(--text);
@@ -1016,7 +1058,8 @@ function createUi(shadowRoot: ShadowRoot): UiElements {
       }
 
       .action[disabled],
-      .wl-toggle[disabled] {
+      .wl-toggle[disabled],
+      .unfollow-toggle[disabled] {
         opacity: 0.55;
         cursor: not-allowed;
       }
@@ -1119,7 +1162,8 @@ function createUi(shadowRoot: ShadowRoot): UiElements {
         font-weight: 700;
       }
 
-      .wl-toggle {
+      .wl-toggle,
+      .unfollow-toggle {
         height: 28px;
         min-width: 34px;
         padding: 0 8px;
@@ -1129,6 +1173,10 @@ function createUi(shadowRoot: ShadowRoot): UiElements {
         font-weight: 700;
       }
 
+      .unfollow-toggle {
+        min-width: 54px;
+      }
+
       .open-profile {
         min-width: 56px;
       }
@@ -1136,6 +1184,12 @@ function createUi(shadowRoot: ShadowRoot): UiElements {
       .wl-toggle[data-active='true'] {
         background: var(--success-muted);
         color: var(--success);
+        border-color: transparent;
+      }
+
+      .unfollow-toggle {
+        background: var(--error-muted);
+        color: var(--error);
         border-color: transparent;
       }
 
@@ -1165,7 +1219,8 @@ function createUi(shadowRoot: ShadowRoot): UiElements {
       .ghost-btn:focus-visible,
       .open-profile:focus-visible,
       .history-diff-tab:focus-visible,
-      .wl-toggle:focus-visible {
+      .wl-toggle:focus-visible,
+      .unfollow-toggle:focus-visible {
         outline: 2px solid var(--accent);
         outline-offset: 2px;
       }
@@ -1228,6 +1283,7 @@ export default {
     let localActionError: string | null = null;
     let currentTheme: ThemeChoice = 'system';
     let isDisposed = false;
+    const pendingUnfollowIds = new Set<string>();
     let intervalId = 0;
     let shouldRestoreSearchFocus = false;
     let searchSelectionStart = 0;
@@ -1465,6 +1521,79 @@ export default {
       }
     };
 
+    const unfollowResult = async (resultId: string): Promise<void> => {
+      if (!activeViewerId || pendingUnfollowIds.has(resultId)) {
+        return;
+      }
+
+      const viewerId = activeViewerId;
+      const currentAccount = analyzerState.accounts[viewerId];
+      const knownResults = currentAccount?.results ?? [];
+      const knownHistory = currentAccount?.history ?? [];
+      const knownFollowingSnapshot = currentAccount?.followingSnapshot ?? [];
+      const knownFollowersSnapshot = currentAccount?.followersSnapshot ?? [];
+      const targetUser = knownResults.find((item) => item.id === resultId)
+        ?? knownFollowingSnapshot.find((item) => item.id === resultId)
+        ?? knownFollowersSnapshot.find((item) => item.id === resultId)
+        ?? null;
+      const username = targetUser?.username ?? resultId;
+
+      if (!window.confirm(t('analyzerUnfollowConfirm').replace('{username}', username))) {
+        return;
+      }
+
+      pendingUnfollowIds.add(resultId);
+      localActionError = null;
+      render();
+
+      try {
+        await unfollowInstagramUser(resultId, getCookieValue('csrftoken'));
+        const durableResponse = await sendAnalyzerMessage({
+          type: MESSAGE_TYPES.IG_ANALYZER_REMOVE_RESULT,
+          viewerId,
+          targetId: resultId,
+          username: activeUsername || currentAccount?.summary.username || ''
+        });
+        if (durableResponse?.['success'] !== true) {
+          throw new Error(typeof durableResponse?.['error'] === 'string' ? durableResponse['error'] : t('analyzerErrorBody'));
+        }
+
+        analyzerState = await updateInstagramAnalyzer((state) => {
+          const account = state.accounts[viewerId] ?? createInstagramAnalyzerAccountState(viewerId, activeUsername);
+          account.results = account.results.filter((item) => item.id !== resultId);
+          account.followingSnapshot = account.followingSnapshot.filter((item) => item.id !== resultId);
+          account.whitelist = account.whitelist.filter((id) => id !== resultId);
+          account.summary.nonFollowerCount = account.results.length;
+          account.summary.followingCount = account.followingSnapshot.length;
+          account.summary.whitelistedCount = account.results.filter((item) => account.whitelist.includes(item.id)).length;
+          state.accounts[viewerId] = account;
+          return state;
+        });
+
+        const hydratedAccount = analyzerState.accounts[viewerId];
+        if (hydratedAccount) {
+          hydratedAccount.results = knownResults.filter((item) => item.id !== resultId);
+          hydratedAccount.history = knownHistory;
+          hydratedAccount.followingSnapshot = knownFollowingSnapshot.filter((item) => item.id !== resultId);
+          hydratedAccount.followersSnapshot = knownFollowersSnapshot;
+          hydratedAccount.whitelist = hydratedAccount.whitelist.filter((id) => id !== resultId);
+          hydratedAccount.summary.nonFollowerCount = hydratedAccount.results.length;
+          hydratedAccount.summary.followingCount = hydratedAccount.followingSnapshot.length;
+          hydratedAccount.summary.whitelistedCount = hydratedAccount.results.filter((item) => hydratedAccount.whitelist.includes(item.id)).length;
+        }
+
+        if (activeTab === 'whitelisted' && !(analyzerState.accounts[viewerId]?.whitelist.length ?? 0)) {
+          activeTab = 'non-whitelisted';
+        }
+      } catch (error) {
+        localActionError = String((error as { message?: string } | null)?.message ?? t('analyzerErrorBody'));
+        handlePotentialInvalidation(error);
+      } finally {
+        pendingUnfollowIds.delete(resultId);
+        render();
+      }
+    };
+
     const startScan = async (): Promise<void> => {
       if (!activeViewerId || isScanRequestPending || isDisposed) {
         return;
@@ -1491,6 +1620,8 @@ export default {
         localActionError = typeof response?.['error'] === 'string'
           ? response['error']
           : t('analyzerErrorBody');
+      } else if (typeof response?.['error'] === 'string' && response['error']) {
+        localActionError = response['error'];
       }
       await refreshState();
     };
@@ -1690,6 +1821,7 @@ export default {
         return pagedResults.items.map((item) => {
           const hasAvatar = Boolean(item.profilePictureUrl);
           const displayName = item.fullName || `@${item.username}`;
+          const isUnfollowPending = pendingUnfollowIds.has(item.id);
           const badges = [
             item.isPrivate ? `<span class="mini-badge">${t('analyzerPrivateBadge')}</span>` : '',
             item.isVerified ? `<span class="mini-badge">${t('analyzerVerifiedBadge')}</span>` : ''
@@ -1710,7 +1842,8 @@ export default {
                 <div class="result-name">${escapeHtml(displayName)}</div>
               </div>
               <div class="row-actions">
-                <button class="wl-toggle" type="button" data-action="toggle-whitelist" data-id="${escapeHtml(item.id)}" data-active="${String(whitelistSet.has(item.id))}" title="${escapeHtml(whitelistSet.has(item.id) ? t('analyzerWhitelistRemove') : t('analyzerWhitelistAdd'))}">WL</button>
+                <button class="unfollow-toggle" type="button" data-action="unfollow" data-id="${escapeHtml(item.id)}" title="${escapeHtml(t('analyzerUnfollowTitle'))}" ${isUnfollowPending ? 'disabled' : ''}>${t('analyzerUnfollow')}</button>
+                <button class="wl-toggle" type="button" data-action="toggle-whitelist" data-id="${escapeHtml(item.id)}" data-active="${String(whitelistSet.has(item.id))}" title="${escapeHtml(whitelistSet.has(item.id) ? t('analyzerWhitelistRemove') : t('analyzerWhitelistAdd'))}">${t('analyzerWhitelistShort')}</button>
               </div>
             </div>
           `;
@@ -1740,11 +1873,11 @@ export default {
                 <button class="ghost-btn" type="button" data-action="view-history" data-scan-id="${escapeHtml(entry.scanId)}">${t('analyzerDetail')}</button>
               </div>
               <div class="history-item-meta">
-                <span class="history-pill" title="${escapeHtml(t('analyzerHistoryTooltipNonFollowers'))}">NF ${entry.nonFollowerCount}</span>
-                <span class="history-pill" title="${escapeHtml(t('analyzerHistoryTooltipFollowed'))}">+F ${entry.diffs.followed.length}</span>
-                <span class="history-pill" title="${escapeHtml(t('analyzerHistoryTooltipUnfollowed'))}">-F ${entry.diffs.unfollowed.length}</span>
-                <span class="history-pill" title="${escapeHtml(t('analyzerHistoryTooltipFollowersGained'))}">+FR ${entry.diffs.followersGained.length}</span>
-                <span class="history-pill" title="${escapeHtml(t('analyzerHistoryTooltipFollowersLost'))}">-FR ${entry.diffs.followersLost.length}</span>
+                <span class="history-pill" title="${escapeHtml(t('analyzerHistoryTooltipNonFollowers'))}">${t('analyzerHistoryPillNonFollowers')} ${entry.nonFollowerCount}</span>
+                <span class="history-pill" title="${escapeHtml(t('analyzerHistoryTooltipFollowed'))}">${t('analyzerHistoryPillFollowed')} ${entry.diffs.followed.length}</span>
+                <span class="history-pill" title="${escapeHtml(t('analyzerHistoryTooltipUnfollowed'))}">${t('analyzerHistoryPillUnfollowed')} ${entry.diffs.unfollowed.length}</span>
+                <span class="history-pill" title="${escapeHtml(t('analyzerHistoryTooltipFollowersGained'))}">${t('analyzerHistoryPillFollowersGained')} ${entry.diffs.followersGained.length}</span>
+                <span class="history-pill" title="${escapeHtml(t('analyzerHistoryTooltipFollowersLost'))}">${t('analyzerHistoryPillFollowersLost')} ${entry.diffs.followersLost.length}</span>
               </div>
             </div>
           `;
@@ -2002,6 +2135,15 @@ export default {
         });
       });
 
+      panel.querySelectorAll<HTMLButtonElement>('[data-action="unfollow"]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const resultId = button.dataset['id'];
+          if (resultId) {
+            void unfollowResult(resultId);
+          }
+        });
+      });
+
       restoreUiState();
     };
 
@@ -2051,7 +2193,9 @@ export default {
         analyzerState,
         themeChoice: currentTheme,
         onScan: () => { void startScan(); },
-        onToggleWhitelist: (id) => { void toggleWhitelist(id); }
+        onToggleWhitelist: (id) => { void toggleWhitelist(id); },
+        onUnfollow: (id) => { void unfollowResult(id); },
+        isUnfollowPending: (id) => pendingUnfollowIds.has(id)
       });
     });
 

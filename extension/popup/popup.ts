@@ -68,6 +68,7 @@ let footerState: 'loading' | 'latest' | 'error' | 'update' = 'latest';
 let footerLatestTag: string | undefined;
 let footerDownloadUrl: string | undefined;
 let currentSubTab = defaultSubTab;
+let analyzerOpenError: string | null = null;
 let current: { language: Locale; theme: ThemeChoice } = {
   language: resolveLocale(),
   theme: 'system'
@@ -285,6 +286,13 @@ function renderInstagramAnalyzer(state: InstagramAnalyzerState): void {
   card.appendChild(body);
   card.appendChild(meta);
 
+  if (analyzerOpenError) {
+    const errorEl = el('p', 'analyzer-copy');
+    errorEl.textContent = analyzerOpenError;
+    errorEl.style.color = 'var(--c-danger, #ff6b6b)';
+    card.appendChild(errorEl);
+  }
+
   if (vm.metrics.length) {
     const metrics = el('div', 'analyzer-metrics');
     vm.metrics.forEach((metric) => {
@@ -302,23 +310,26 @@ function renderInstagramAnalyzer(state: InstagramAnalyzerState): void {
   openBtn.title = t('analyzerOpenInstagramTitle');
   openBtn.setAttribute('aria-label', t('analyzerOpenInstagramTitle'));
   openBtn.addEventListener('click', async () => {
+    analyzerOpenError = null;
+    renderInstagramAnalyzer(instagramAnalyzer);
     try {
       const response = await chrome.runtime.sendMessage({
         type: MESSAGE_TYPES.IG_ANALYZER_OPEN,
         fallbackUrl: vm.openUrl
       });
       if (response?.success) {
+        analyzerOpenError = null;
         window.close();
         return;
       }
+      analyzerOpenError = typeof response?.error === 'string' ? response.error : t('analyzerErrorBody');
+      renderInstagramAnalyzer(instagramAnalyzer);
+      return;
     } catch (error) {
       console.warn('AIO: failed to open Instagram analyzer', error);
-    }
-
-    try {
-      chrome.tabs?.create?.({ url: vm.openUrl });
-    } catch {
-      window.open(vm.openUrl, '_blank', 'noopener,noreferrer');
+      analyzerOpenError = error instanceof Error ? error.message : t('analyzerErrorBody');
+      renderInstagramAnalyzer(instagramAnalyzer);
+      return;
     }
   });
   actions.appendChild(openBtn);
@@ -524,7 +535,9 @@ function canRetryJob(job: DownloadJob): boolean {
   const retryable: string[] = [
     MESSAGE_TYPES.YT_AUDIO_DOWNLOAD, MESSAGE_TYPES.YT_VIDEO_DOWNLOAD,
     MESSAGE_TYPES.IG_AUDIO_DOWNLOAD, MESSAGE_TYPES.IG_VIDEO_DOWNLOAD, MESSAGE_TYPES.IG_IMAGE_DOWNLOAD,
-    MESSAGE_TYPES.X_AUDIO_DOWNLOAD, MESSAGE_TYPES.X_VIDEO_DOWNLOAD
+    MESSAGE_TYPES.IG_IMAGE_ZIP_DOWNLOAD,
+    MESSAGE_TYPES.X_AUDIO_DOWNLOAD, MESSAGE_TYPES.X_VIDEO_DOWNLOAD,
+    MESSAGE_TYPES.X_IMAGE_DOWNLOAD, MESSAGE_TYPES.X_IMAGE_ZIP_DOWNLOAD
   ];
   return retryable.includes(job?.type);
 }

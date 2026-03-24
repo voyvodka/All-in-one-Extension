@@ -3,6 +3,7 @@ import { getSettings, getDownloadsState } from '../shared/storage.js';
 import { clearHistory, getJobIdByDownloadId, loadDownloadMap, updateJob } from './downloads/store.js';
 import {
   getInstagramAnalyzerDurableAccount,
+  removeInstagramAnalyzerResult,
   resolveInstagramViewerUsername,
   startInstagramAnalyzerScan
 } from './instagram-analyzer/index.js';
@@ -171,6 +172,17 @@ async function openAnalyzerInTab(tabId: number, attempts = 8): Promise<void> {
   }
 }
 
+function normalizeAnalyzerOpenError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  if (/timed out/i.test(message)) {
+    return 'Instagram sekmesi zamaninda hazir olmadi. Sayfayi yenileyip tekrar dene.';
+  }
+  if (/receiving end does not exist|context invalidated|message port closed/i.test(message)) {
+    return 'Instagram sayfasi analyzer panelini hazirlayamadi. Sayfayi yenileyip tekrar dene.';
+  }
+  return 'Instagram Analyzer acilamadi. Instagram sekmesini yenileyip tekrar dene.';
+}
+
 async function handleRetryDownload(jobId: string): Promise<DownloadResult> {
   const state = await getDownloadsState();
   const previous = state.history.find((job) => job.id === jobId);
@@ -217,11 +229,15 @@ async function handleRetryDownload(jobId: string): Promise<DownloadResult> {
   }
 
   if (previous.type === MESSAGE_TYPES.IG_IMAGE_ZIP_DOWNLOAD) {
-    if (!previous.sourceUrl) {
+    if (!previous.sourceUrl || !previous.retryImageUrls?.length) {
       return { success: false, error: 'Kaynak bulunamadı' };
     }
 
-    return { success: false, error: 'ZIP yeniden indirilemiyor (URL listesi eksik)' };
+    return startInstagramImagesZip({
+      reelUrl: previous.sourceUrl,
+      reelTitle: previous.title || previous.fileName,
+      imageUrls: previous.retryImageUrls
+    });
   }
 
   if (previous.type === MESSAGE_TYPES.X_AUDIO_DOWNLOAD) {
@@ -230,6 +246,31 @@ async function handleRetryDownload(jobId: string): Promise<DownloadResult> {
 
   if (previous.type === MESSAGE_TYPES.X_VIDEO_DOWNLOAD) {
     return startTwitterDownload(MESSAGE_TYPES.X_VIDEO_DOWNLOAD, previous.sourceUrl, previous.title || previous.fileName);
+  }
+
+  if (previous.type === MESSAGE_TYPES.X_IMAGE_DOWNLOAD) {
+    const imageUrl = previous.mediaUrl || previous.sourceUrl;
+    if (!previous.sourceUrl || !imageUrl) {
+      return { success: false, error: 'Kaynak bulunamadı' };
+    }
+
+    return startTwitterImageDownload({
+      tweetUrl: previous.sourceUrl,
+      tweetTitle: previous.title || previous.fileName,
+      imageUrl
+    });
+  }
+
+  if (previous.type === MESSAGE_TYPES.X_IMAGE_ZIP_DOWNLOAD) {
+    if (!previous.sourceUrl || !previous.retryImageUrls?.length) {
+      return { success: false, error: 'Kaynak bulunamadı' };
+    }
+
+    return startTwitterImagesZip({
+      tweetUrl: previous.sourceUrl,
+      tweetTitle: previous.title || previous.fileName,
+      imageUrls: previous.retryImageUrls
+    });
   }
 
   return { success: false, error: 'Bu tür için yeniden indirme desteklenmiyor' };
@@ -253,10 +294,14 @@ async function handleOpenInstagramAnalyzer(fallbackUrl: string): Promise<Downloa
     await updateTab(targetTab.id, { active: true });
     try {
       await openAnalyzerInTab(targetTab.id);
+      return { success: true };
     } catch (error) {
       console.warn('Failed to open analyzer drawer in content script', error);
+      return {
+        success: false,
+        error: normalizeAnalyzerOpenError(error)
+      };
     }
-    return { success: true };
   }
 
   const newTab = await createTab({ url: fallbackUrl || 'https://www.instagram.com/' });
@@ -264,11 +309,17 @@ async function handleOpenInstagramAnalyzer(fallbackUrl: string): Promise<Downloa
     try {
       await waitForTabComplete(newTab.id);
       await openAnalyzerInTab(newTab.id);
+      return { success: true };
     } catch (error) {
       console.warn('Failed to auto-open analyzer drawer in new tab', error);
+      return {
+        success: false,
+        error: normalizeAnalyzerOpenError(error)
+      };
     }
   }
-  return { success: true };
+
+  return { success: false, error: 'Instagram sekmesi acilamadi.' };
 }
 
 type MessageHandler = (message: BaseMessage) => Promise<unknown>;
@@ -299,19 +350,26 @@ const messageHandlers: Record<string, MessageHandler> = {
   [MESSAGE_TYPES.IG_ANALYZER_OPEN]: async (message) => handleOpenInstagramAnalyzer(str(message, 'fallbackUrl')),
   [MESSAGE_TYPES.IG_ANALYZER_GET_DURABLE_ACCOUNT]: async (message) => {
     const viewerId = str(message, 'viewerId');
-    if (!viewerId) return { success: false, error: 'Missing viewerId' };
+    if (!viewerId) return { success: false, error: 'Viewer ID eksik.' };
     const account = await getInstagramAnalyzerDurableAccount(viewerId);
+    return { success: true, account };
+  },
+  [MESSAGE_TYPES.IG_ANALYZER_REMOVE_RESULT]: async (message) => {
+    const viewerId = str(message, 'viewerId');
+    const targetId = str(message, 'targetId');
+    if (!viewerId || !targetId) return { success: false, error: 'Viewer veya hedef hesap bilgisi eksik.' };
+    const account = await removeInstagramAnalyzerResult(viewerId, targetId, str(message, 'username'));
     return { success: true, account };
   },
   [MESSAGE_TYPES.IG_ANALYZER_RESOLVE_VIEWER]: async (message) => {
     const viewerId = str(message, 'viewerId');
-    if (!viewerId) return { success: false, error: 'Missing viewerId' };
+    if (!viewerId) return { success: false, error: 'Viewer ID eksik.' };
     const username = await resolveInstagramViewerUsername(viewerId, str(message, 'csrfToken'));
     return { success: true, username };
   },
   [MESSAGE_TYPES.IG_ANALYZER_START_SCAN]: async (message) => {
     const viewerId = str(message, 'viewerId');
-    if (!viewerId) return { success: false, error: 'Missing viewerId' };
+    if (!viewerId) return { success: false, error: 'Viewer ID eksik.' };
     return startInstagramAnalyzerScan({
       viewerId,
       username: str(message, 'username'),

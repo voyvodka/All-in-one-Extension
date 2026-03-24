@@ -868,12 +868,12 @@ export async function safeSendMessage(payload) {
   const normalizeError = (message) => {
     const msg = String(message || '');
     if (/context invalidated/i.test(msg)) {
-      return 'Extension was reloaded. Please refresh the page and try again.';
+      return 'Uzanti yeniden yuklendi. Sayfayi yenileyip tekrar dene.';
     }
     if (/receiving end does not exist/i.test(msg)) {
-      return 'Extension background is not available. Please reload the extension and refresh the page.';
+      return 'Uzanti arka plani kullanilamiyor. Uzantiyi ve sayfayi yenileyip tekrar dene.';
     }
-    return msg || 'Message failed';
+    return msg || 'Mesaj gonderilemedi';
   };
 
   if (!chrome?.runtime?.id) {

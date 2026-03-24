@@ -2,6 +2,13 @@
 
 All notable changes to this project should be documented in this file.
 
+## 0.4.2
+
+- Added direct unfollow actions to both Instagram Analyzer surfaces (compact drawer and full dashboard), including durable account updates so removed users immediately disappear from non-follower and following snapshots.
+- Expanded retry support in download history for Instagram image ZIP jobs and Twitter image/image-ZIP jobs by persisting retry image URL lists in job metadata.
+- Improved Analyzer launch and messaging resilience with clearer popup/background error feedback when Instagram tabs are not ready or extension contexts are reloaded.
+- Refined Analyzer dashboard and i18n polish: richer hover cards, localized history pill labels, and broader TR/EN copy consistency updates.
+
 ## 0.4.1
 
 - Hardened loader.to polling so long-running `ProcessingContext` jobs and transient request stalls fail more predictably instead of timing out too early.

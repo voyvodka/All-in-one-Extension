@@ -34,6 +34,7 @@ export interface CreateJobParams {
   sourceUrl: string;
   fileName: string;
   mediaUrl?: string | null;
+  retryImageUrls?: string[];
 }
 
 export function createJob({
@@ -41,7 +42,8 @@ export function createJob({
   title,
   sourceUrl,
   fileName,
-  mediaUrl
+  mediaUrl,
+  retryImageUrls
 }: CreateJobParams): DownloadJob {
   return {
     id: crypto.randomUUID
@@ -52,6 +54,7 @@ export function createJob({
     fileName,
     sourceUrl,
     mediaUrl: mediaUrl ?? null,
+    retryImageUrls: Array.isArray(retryImageUrls) ? [...retryImageUrls] : undefined,
     status: 'preparing',
     progress: 0,
     createdAt: Date.now(),

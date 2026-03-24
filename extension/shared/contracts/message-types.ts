@@ -7,6 +7,7 @@ export const MESSAGE_TYPES = Object.freeze({
   IG_ANALYZER_OPEN: 'ig-analyzer-open',
   IG_ANALYZER_START_SCAN: 'ig-analyzer-start-scan',
   IG_ANALYZER_GET_DURABLE_ACCOUNT: 'ig-analyzer-get-durable-account',
+  IG_ANALYZER_REMOVE_RESULT: 'ig-analyzer-remove-result',
   IG_ANALYZER_RESOLVE_VIEWER: 'ig-analyzer-resolve-viewer',
   YT_AUDIO_DOWNLOAD: 'yt-audio-download',
   YT_VIDEO_DOWNLOAD: 'yt-video-download',

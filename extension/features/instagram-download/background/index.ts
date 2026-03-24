@@ -134,7 +134,8 @@ export async function startInstagramImagesZip({
     type: MESSAGE_TYPES.IG_IMAGE_ZIP_DOWNLOAD,
     title: baseTitle,
     fileName,
-    sourceUrl: reelUrl
+    sourceUrl: reelUrl,
+    retryImageUrls: uniqueUrls
   });
   await addJob(job);
 
