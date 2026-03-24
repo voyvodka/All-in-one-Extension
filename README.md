@@ -57,7 +57,6 @@ For more detail, see:
 - `docs/LOCAL_DEV.md`
 - `docs/RELEASE.md`
 - `docs/SMOKE_CHECKLIST.md`
-- `docs/POPUP_REDESIGN.md`
 
 ## Local development
 

@@ -96,23 +96,6 @@ extension/
   providers/
 ```
 
-## Popup redesign constraints
-
-Any popup redesign must preserve these behaviors:
-
-- active/history tabs
-- sort toggle
-- clear history action
-- retry and cancel actions
-- theme and language controls
-- expandable download detail rows
-
-UI changes are safe as long as the underlying data contract remains stable:
-
-- `downloads.active`
-- `downloads.history`
-- job fields: `id`, `type`, `title`, `fileName`, `sourceUrl`, `mediaUrl`, `status`, `progress`, `downloadId`, `createdAt`, `updatedAt`, `error`
-
 ## Known refactor boundaries
 
 - `extension/features/instagram/shared.js` is the riskiest DOM integration area.

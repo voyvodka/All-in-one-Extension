@@ -10,7 +10,6 @@ const requiredFiles = [
   'CHANGELOG.md',
   'docs/ARCHITECTURE.md',
   'docs/RELEASE.md',
-  'docs/POPUP_REDESIGN.md',
   'extension/PRIVACY_POLICY.md',
   'extension/terms.md'
 ];

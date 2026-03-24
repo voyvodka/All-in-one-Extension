@@ -68,7 +68,7 @@ extension/                             # TypeScript source
 
 extension-dist/                        # Compiled output (gitignored) — Chrome loads this
 scripts/                               # Node utility scripts (.mjs)
-docs/                                  # ARCHITECTURE.md, RELEASE.md, POPUP_REDESIGN.md
+docs/                                  # ARCHITECTURE.md, RELEASE.md
 ```
 
 ### Build Pipeline
