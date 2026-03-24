@@ -18,7 +18,7 @@
     "removeComments": false,
     "outDir": "extension-dist",
     "rootDir": "extension",
-    "baseUrl": "."
+    "types": ["chrome"]
   },
   "include": ["extension/**/*.ts", "extension/**/*.d.ts"],
   "exclude": ["node_modules", "extension-dist", "artifacts", "scripts"]

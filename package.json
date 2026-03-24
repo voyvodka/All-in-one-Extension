@@ -19,7 +19,7 @@
     "release:verify": "node scripts/release-verify.mjs"
   },
   "devDependencies": {
-    "@types/chrome": "^0.1.37",
-    "typescript": "^5.9.3"
+    "@types/chrome": "^0.1.38",
+    "typescript": "^6.0.2"
   }
 }
