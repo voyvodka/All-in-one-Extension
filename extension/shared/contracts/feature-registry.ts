@@ -93,4 +93,3 @@ export const contentFeatureDescriptors: readonly FeatureDescriptor[] = featureDe
 export const featureModulePaths: string[] = contentFeatureDescriptors.map(
   (descriptor) => descriptor.modulePath,
 );
-

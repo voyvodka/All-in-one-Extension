@@ -119,9 +119,7 @@ export interface InstagramAnalyzerState {
 
 type SettingsChange = Partial<Settings>;
 type DownloadsUpdater = (state: DownloadsState) => DownloadsState | void;
-type InstagramAnalyzerUpdater = (
-  state: InstagramAnalyzerState,
-) => InstagramAnalyzerState | void;
+type InstagramAnalyzerUpdater = (state: InstagramAnalyzerState) => InstagramAnalyzerState | void;
 
 const DEFAULT_SETTINGS: Settings = {
   enabled: true,

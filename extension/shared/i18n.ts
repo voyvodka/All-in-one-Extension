@@ -599,5 +599,3 @@ export function t(key: I18nKey): string {
   const locale = getLocale();
   return messages[locale]?.[key] ?? messages.en[key] ?? key;
 }
-
-

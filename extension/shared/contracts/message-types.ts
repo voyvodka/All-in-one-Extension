@@ -20,4 +20,3 @@ export const MESSAGE_TYPES = Object.freeze({
   X_IMAGE_DOWNLOAD: 'x-image-download',
   X_IMAGE_ZIP_DOWNLOAD: 'x-image-zip-download',
 } as const);
-
