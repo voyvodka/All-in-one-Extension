@@ -1347,12 +1347,24 @@ export default {
     const shadowRoot = host.attachShadow({ mode: 'open' });
     const { root, launcher, dashboardBtn, panel } = createUi(shadowRoot);
 
+    let lastPathname = location.pathname;
+    let navPollId = 0;
+
+    const pollNavigation = (): void => {
+      const current = location.pathname;
+      if (current !== lastPathname) {
+        lastPathname = current;
+        updateHostVisibility();
+      }
+    };
+
     const cleanup = (): void => {
       if (isDisposed) {
         return;
       }
       isDisposed = true;
       window.clearInterval(intervalId);
+      window.clearInterval(navPollId);
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       chrome.storage.onChanged.removeListener(handleStorageChange);
@@ -1891,10 +1903,17 @@ export default {
       input.click();
     };
 
+    const isStoryPage = (): boolean => /^\/stories\//i.test(location.pathname);
+
+    const updateHostVisibility = (): void => {
+      host.style.display = isStoryPage() ? 'none' : '';
+    };
+
     const render = (): void => {
       if (isDisposed) {
         return;
       }
+      updateHostVisibility();
 
       const account = resolveActiveAccount(analyzerState, activeViewerId);
       const visibleResults = getVisibleResults(account, activeTab, searchQuery);
@@ -1957,7 +1976,7 @@ export default {
               <div class="avatar">
                 ${
                   hasAvatar
-                    ? `<img class="avatar-img" alt="${escapeHtml(item.username)}" src="${escapeHtml(item.profilePictureUrl)}" />`
+                    ? `<img class="avatar-img" alt="${escapeHtml(item.username)}" src="${escapeHtml(item.profilePictureUrl)}" data-fallback="${escapeHtml(item.username.slice(0, 1).toUpperCase())}" />`
                     : escapeHtml(item.username.slice(0, 1).toUpperCase())
                 }
               </div>
@@ -2363,10 +2382,26 @@ export default {
       render();
     });
 
+    root.addEventListener(
+      'error',
+      (e) => {
+        const img = e.target;
+        if (!(img instanceof HTMLImageElement)) return;
+        const fallback = img.dataset['fallback'];
+        if (!fallback) return;
+        const parent = img.parentNode;
+        img.remove();
+        if (parent) parent.textContent = fallback;
+      },
+      true,
+    );
+
     chrome.storage.onChanged.addListener(handleStorageChange);
     chrome.runtime.onMessage.addListener(handleRuntimeMessage);
     window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    navPollId = window.setInterval(pollNavigation, 800);
 
     intervalId = window.setInterval(() => {
       void syncViewer();

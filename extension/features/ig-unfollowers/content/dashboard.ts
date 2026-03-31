@@ -1888,9 +1888,10 @@ function renderListSection(
             const isWl = whitelistSet.has(itemId);
             const unfollowPending = isUnfollowPending(itemId);
 
+            const avatarInitialChar = escHtml(username.slice(0, 1).toUpperCase());
             const avatarContent = avatarUrl
-              ? `<img src="${escHtml(avatarUrl)}" alt="${escHtml(username)}" loading="lazy" />`
-              : escHtml(username.slice(0, 1).toUpperCase());
+              ? `<img src="${escHtml(avatarUrl)}" alt="${escHtml(username)}" loading="lazy" data-fallback="${avatarInitialChar}" />`
+              : avatarInitialChar;
 
             return `
           <div class="db-list-item">
@@ -2173,6 +2174,20 @@ export function openDashboard(
   panel.className = 'db-panel';
   wrapper.appendChild(panel);
 
+  wrapper.addEventListener(
+    'error',
+    (e: Event) => {
+      const img = e.target;
+      if (!(img instanceof HTMLImageElement)) return;
+      const fallback = img.dataset['fallback'];
+      if (!fallback) return;
+      const parent = img.parentNode;
+      img.remove();
+      if (parent) (parent as HTMLElement).textContent = fallback;
+    },
+    true,
+  );
+
   let listSearchInput: HTMLInputElement | null = null;
   let listScrollTop = 0;
 
@@ -2241,7 +2256,7 @@ export function openDashboard(
 
     const avatarInitial = username.slice(0, 1).toUpperCase();
     const avatarContent = avatarUrl
-      ? `<img src="${escHtml(avatarUrl)}" alt="${escHtml(username)}" crossorigin="anonymous" />`
+      ? `<img src="${escHtml(avatarUrl)}" alt="${escHtml(username)}" crossorigin="anonymous" data-fallback="${escHtml(avatarInitial)}" />`
       : avatarInitial;
 
     // Verified SVG (Instagram blue check, simplified)

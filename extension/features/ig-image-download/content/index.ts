@@ -182,8 +182,9 @@ async function collectCarouselImages(article: Element | null): Promise<ImageInfo
     });
   };
 
-  const isInStoryTray = (node: Element): boolean =>
-    Boolean(node?.closest?.('div[data-pagelet="story_tray"]'));
+  const isInStoryContext = (node: Element): boolean =>
+    Boolean(node?.closest?.('div[data-pagelet="story_tray"]')) ||
+    /^\/stories\//i.test(location.pathname);
 
   const sameInteractionScope = (btn: Element): boolean => {
     if (!btn || !btn.closest) return false;
@@ -256,7 +257,7 @@ async function collectCarouselImages(article: Element | null): Promise<ImageInfo
   };
 
   const scoreButtonByGeometry = (btn: Element, direction: 'next' | 'prev'): number => {
-    if (!btn || !sameInteractionScope(btn) || isInStoryTray(btn)) {
+    if (!btn || !sameInteractionScope(btn) || isInStoryContext(btn)) {
       return Number.POSITIVE_INFINITY;
     }
     if (btn.closest?.(`[${INSTAGRAM_DOWNLOAD_MENU_ATTR}]`)) {
@@ -331,13 +332,13 @@ async function collectCarouselImages(article: Element | null): Promise<ImageInfo
 
     if (selector) {
       const localCandidates = Array.from(scopeRoot?.querySelectorAll?.(selector) ?? []).filter(
-        (btn) => !isInStoryTray(btn),
+        (btn) => !isInStoryContext(btn),
       );
       const local = pickClosest(localCandidates);
       if (local) return local;
 
       const globalCandidates = Array.from(document.querySelectorAll(selector))
-        .filter((btn) => !isInStoryTray(btn))
+        .filter((btn) => !isInStoryContext(btn))
         .filter((btn) => sameInteractionScope(btn));
       const global = pickClosest(globalCandidates);
       if (global) return global;

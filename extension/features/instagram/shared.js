@@ -1022,9 +1022,17 @@ function teardownMenuUi() {
   document.querySelectorAll(`[${INSTAGRAM_DOWNLOAD_MENU_ATTR}]`).forEach((node) => node.remove());
 }
 
+function isStoryPage() {
+  return /^\/stories\//i.test(location.pathname);
+}
+
 function injectMenuButtons() {
   if (!menuProviders.size) return;
   if (injectingMenuButtons) return;
+  if (isStoryPage()) {
+    document.querySelectorAll(`[${INSTAGRAM_DOWNLOAD_MENU_ATTR}]`).forEach((node) => node.remove());
+    return;
+  }
 
   const now = Date.now();
   if (!burstStart || now - burstStart > 2000) {

@@ -53,6 +53,15 @@ These are plain JavaScript with `.d.ts` declarations. They depend on live DOM se
 - `extension/features/twitter/shared.js` (~651 lines)
 - `extension/features/youtube/shared.js` (~232 lines)
 
+## DOM Element Detection & Button Injection
+
+Element detection (action bars, share buttons, like buttons, etc.) and download button injection must work correctly across **all UI languages**, not just English or Turkish. Rules:
+
+- **Never match user-visible text** (button labels, tooltips, etc.) for element detection — these change per locale.
+- Instagram keeps SVG `aria-label` attributes in English regardless of UI language; these are safe to use as selectors.
+- YouTube and Twitter/X may localize `aria-label` values — prefer structural selectors (`role`, `data-*`, tag hierarchy) over `aria-label` for these platforms.
+- When adding or modifying selectors, verify they hold across at least `en`, `tr`, and one RTL locale (e.g. `ar`).
+
 ## Release & Versioning
 
 - Version source of truth: `extension/manifest.json`
