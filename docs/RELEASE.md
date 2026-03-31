@@ -18,13 +18,8 @@ This single command:
 1. Bumps the version in `extension/manifest.json`.
 2. Generates a changelog draft from commits since the last tag, grouped by conventional commit type.
 3. Prepends the new section to `CHANGELOG.md`.
-
-The script does **not** commit, tag, or push. After running it:
-
-1. Review and edit `CHANGELOG.md`.
-2. `git add -A && git commit -m "chore: release vX.Y.Z"`
-3. `git tag vX.Y.Z`
-4. `git push origin main --tags`
+4. Pauses so you can review the changelog.
+5. On Enter: commits, tags, and pushes to origin.
 
 ## Branch and PR flow
 

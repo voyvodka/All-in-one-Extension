@@ -1,3 +1,4 @@
+import { createInterface } from 'node:readline';
 import { execSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -93,23 +94,38 @@ const newSection = lines.join('\n');
 
 /* ── Prepend to CHANGELOG.md ────────────────────────────────────── */
 const changelog = readFileSync(changelogPath, 'utf8');
-const headerEnd = changelog.indexOf('\n\n');
-if (headerEnd === -1) {
+const firstVersion = changelog.indexOf('\n## ');
+if (firstVersion === -1) {
   writeFileSync(changelogPath, `${changelog.trimEnd()}\n\n${newSection}\n`, 'utf8');
 } else {
-  const header = changelog.slice(0, headerEnd);
-  const rest = changelog.slice(headerEnd);
-  writeFileSync(changelogPath, `${header}\n\n${newSection}${rest}`, 'utf8');
+  const before = changelog.slice(0, firstVersion);
+  const rest = changelog.slice(firstVersion);
+  writeFileSync(changelogPath, `${before}\n\n${newSection}${rest}`, 'utf8');
 }
 console.log(`\u2713 CHANGELOG.md: added section for ${newVersion}`);
 
-/* ── Summary ────────────────────────────────────────────────────── */
+/* ── Show summary and confirm ───────────────────────────────────── */
 console.log('');
-console.log(`  New version: ${newVersion}`);
-console.log(`  Commits:     ${commits.length}`);
+console.log(`  Version : ${current} \u2192 ${newVersion}`);
+console.log(`  Commits : ${commits.length}`);
 console.log('');
-console.log('Next steps:');
-console.log('  1. Review and edit CHANGELOG.md');
-console.log(`  2. git add -A && git commit -m "chore: release v${newVersion}"`);
-console.log(`  3. git tag v${newVersion}`);
-console.log(`  4. git push origin main --tags`);
+console.log('This will: commit all changes, create tag, and push to origin.');
+console.log('Review CHANGELOG.md now if needed. Press Enter to continue, Ctrl+C to abort.');
+
+const rl = createInterface({ input: process.stdin, output: process.stdout });
+await new Promise((resolve) => rl.question('', resolve));
+rl.close();
+
+/* ── Commit + tag + push ────────────────────────────────────────── */
+const run = (cmd) => {
+  console.log(`  $ ${cmd}`);
+  execSync(cmd, { cwd: rootDir, stdio: 'inherit' });
+};
+
+run('git add -A');
+run(`git commit -m "chore: release v${newVersion}"`);
+run(`git tag v${newVersion}`);
+run('git push origin main --tags');
+
+console.log('');
+console.log(`\u2713 v${newVersion} released and pushed.`);

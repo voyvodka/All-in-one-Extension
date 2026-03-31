@@ -1,6 +1,13 @@
 # Changelog
 
-All notable changes to this project should be documented in this file.
+## 0.5.0
+
+- Added a step-by-step update wizard that takes over the popup body when a new version is available, guiding users through download, extract, and reload in three clear steps.
+- Added install path memory so users enter their extension folder once and see it pre-filled on every future update, with copy and change actions.
+- Added `yarn release <patch|minor|major>` command that bumps the manifest version and generates a grouped changelog draft from recent commits.
+- Removed the legacy nested zip packaging layout; only the user-friendly unpacked variant is produced now.
+- Removed unused i18n keys and dead CSS to reduce bundle noise.
+- Fixed Instagram story UI visibility and added avatar image fallbacks.
 
 ## 0.4.2
 
