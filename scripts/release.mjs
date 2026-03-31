@@ -127,5 +127,31 @@ run(`git commit -m "chore: release v${newVersion}"`);
 run(`git tag v${newVersion}`);
 run('git push origin main --tags');
 
+/* ── Extract release notes from CHANGELOG.md ────────────────────── */
+const updatedChangelog = readFileSync(changelogPath, 'utf8');
+const sectionStart = updatedChangelog.indexOf(`## ${newVersion}`);
+if (sectionStart !== -1) {
+  const contentStart = updatedChangelog.indexOf('\n', sectionStart) + 1;
+  const nextSection = updatedChangelog.indexOf('\n## ', contentStart);
+  const notes = (
+    nextSection === -1
+      ? updatedChangelog.slice(contentStart)
+      : updatedChangelog.slice(contentStart, nextSection)
+  ).trim();
+
+  if (notes) {
+    console.log('  $ gh release edit ...');
+    try {
+      execSync(`gh release edit v${newVersion} --notes ${JSON.stringify(notes)}`, {
+        cwd: rootDir,
+        stdio: 'inherit',
+      });
+      console.log(`\u2713 Release notes added to v${newVersion}`);
+    } catch {
+      console.warn('  (release notes could not be added — update manually on GitHub)');
+    }
+  }
+}
+
 console.log('');
 console.log(`\u2713 v${newVersion} released and pushed.`);
