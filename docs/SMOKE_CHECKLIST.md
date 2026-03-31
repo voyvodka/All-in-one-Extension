@@ -39,6 +39,8 @@ Use this checklist before tagging a release or after touching fragile DOM integr
 - Click Analyzer — confirm the compact drawer opens with correct account label
 - Start a scan and confirm progress updates in the drawer
 - After scan completes, confirm non-follower results render in the drawer with whitelist toggle and copy/export actions
+- Confirm the unfollow action button appears on non-follower entries in the drawer
+- Click unfollow on a non-follower entry and confirm the user is immediately removed from the non-follower and following lists
 - Open History in the drawer and confirm scan entries and diff details render
 
 ### Dashboard
@@ -55,6 +57,7 @@ Use this checklist before tagging a release or after touching fragile DOM integr
 - Hover over a username link — confirm the hover card appears below/above the anchor with avatar, name, and action buttons
 - Scroll the list while a hover card is open — confirm the card tracks the anchor position
 - Click Whitelist in the hover card and confirm the user moves between lists
+- Click Unfollow in the hover card and confirm the user is immediately removed from non-follower and following lists in the dashboard
 - Click Open Profile in the hover card and confirm it opens the Instagram profile in a new tab
 - Open Scan History and expand an entry — confirm stat grid renders
 - Click "Compare this scan" from history and confirm it scrolls to and updates the Compare section

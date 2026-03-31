@@ -85,13 +85,12 @@ yarn build        # compile TS + copy static assets → extension-dist/
 yarn dev          # tsc --watch + static asset watcher in parallel
 ```
 
-Edit `.ts` files → `extension-dist/` updates automatically → reload extension in Chrome.
+Edit `.ts` files → `extension-dev-dist/` updates automatically → reload extension in Chrome.
 
 ### Available scripts
 
 ```bash
 yarn dev                       # recommended watch mode -> extension-dev-dist/ (separately branded dev build)
-yarn dev:dist                  # same as yarn dev
 yarn dev:prod                  # watch mode for production-like output -> extension-dist/
 yarn build                     # one-shot compile + copy static assets
 yarn build:dev                 # build separately branded dev output -> extension-dev-dist/

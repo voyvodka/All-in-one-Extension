@@ -4,7 +4,6 @@
   "packageManager": "yarn@1.22.22",
   "scripts": {
     "dev": "AIO_DEST_DIR=extension-dev-dist AIO_DEV_BRAND=1 node scripts/dev.mjs",
-    "dev:dist": "AIO_DEST_DIR=extension-dev-dist AIO_DEV_BRAND=1 node scripts/dev.mjs",
     "dev:prod": "node scripts/dev.mjs",
     "build": "tsc --project tsconfig.json && node scripts/copy-static.mjs",
     "build:dev": "tsc --project tsconfig.json --outDir extension-dev-dist && AIO_DEST_DIR=extension-dev-dist AIO_DEV_BRAND=1 node scripts/copy-static.mjs",

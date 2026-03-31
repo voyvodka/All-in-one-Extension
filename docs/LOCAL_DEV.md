@@ -50,12 +50,6 @@ The dev build is branded separately so it is easier to recognize:
 - popup header becomes `All-in-One Toolkit Dev`
 - output folder is `extension-dev-dist/`
 
-For watch mode with the dev build:
-
-```bash
-yarn dev:dist
-```
-
 If you explicitly want the normal production-like watch output instead:
 
 ```bash

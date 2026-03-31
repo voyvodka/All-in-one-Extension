@@ -40,6 +40,16 @@ function buildAriaSelectors(labels) {
 const ACTION_BUTTON_SELECTOR = '[role="button"],button';
 const ACTION_BAR_MAX_BUTTONS = 12;
 
+// Instagram always keeps SVG aria-labels in English regardless of UI language.
+// These are navigation / media-control SVG labels that should never count as
+// social action buttons.
+const NAV_CONTROL_SVG_LABELS = new Set([
+  'previous', 'next', 'back', 'close',
+  'play', 'pause',
+  'audio is muted', 'audio is on', 'toggle audio',
+  'down chevron icon', 'chevron down',
+]);
+
 function normalizeComparableText(value) {
   return String(value || '')
     .normalize('NFD')
@@ -86,6 +96,14 @@ function isLikelyActionButton(button) {
   }
   if (!button.querySelector?.('svg')) return false;
   if (button.querySelector('img, video, picture, canvas')) return false;
+  if (button.querySelector('h1, h2, h3, h4, h5, h6')) return false;
+
+  // Instagram keeps SVG aria-labels in English regardless of UI language —
+  // use this as a language-agnostic way to exclude nav/media-control buttons.
+  const svgLabel = normalizeComparableText(
+    button.querySelector('svg')?.getAttribute('aria-label') || ''
+  );
+  if (svgLabel && NAV_CONTROL_SVG_LABELS.has(svgLabel)) return false;
 
   const label = getElementLabel(button);
   if (label.length > 48) return false;
@@ -143,6 +161,7 @@ function scoreActionBarCandidate(node, { requireSingleShare = false } = {}) {
   if (childGroups.length >= 2) score += 4;
   if (node.tagName === 'SECTION') score += 5;
   if (node.tagName === 'DIV') score += 2;
+  if (node.tagName === 'HEADER') score -= 20;
 
   if (shareCount === 1) {
     score += 6;
@@ -987,6 +1006,7 @@ function injectMenuButtons() {
     targets.forEach(({ actionBar, shareButton }) => {
       if (!actionBar || !shareButton) return;
       if (actionBar?.closest?.('div[data-pagelet="story_tray"]')) return;
+      if (actionBar.tagName === 'HEADER') return;
 
       const existing = actionBar.querySelector(`[${INSTAGRAM_DOWNLOAD_MENU_ATTR}]`);
       if (existing) {
