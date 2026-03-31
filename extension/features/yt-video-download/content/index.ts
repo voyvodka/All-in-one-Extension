@@ -54,7 +54,7 @@ export default {
       const titleEl = shareTarget?.querySelector('#title') as HTMLElement | null;
       const originalText = titleEl ? titleEl.textContent : t('downloadVideo');
 
-      if (titleEl) titleEl.textContent = t('downloading') || 'İndiriliyor...';
+      if (titleEl) titleEl.textContent = t('downloading');
       button.disabled = true;
 
       try {
@@ -72,13 +72,13 @@ export default {
         });
 
         if (response?.success) {
-          if (titleEl) titleEl.textContent = t('downloadStarted') || 'İndirme başladı!';
+          if (titleEl) titleEl.textContent = t('downloadStarted');
         } else {
-          if (titleEl) titleEl.textContent = t('error') || 'Hata!';
+          if (titleEl) titleEl.textContent = t('error');
         }
       } catch (error) {
         console.error('Error sending download message:', error);
-        if (titleEl) titleEl.textContent = t('error') || 'Hata!';
+        if (titleEl) titleEl.textContent = t('error');
       } finally {
         setTimeout(() => {
           if (titleEl) titleEl.textContent = originalText ?? '';

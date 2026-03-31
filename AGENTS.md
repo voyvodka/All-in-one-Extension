@@ -13,14 +13,18 @@ Source is **TypeScript** (`strict: true`). A `tsc` compile step produces runtime
 yarn dev                 # Watch mode (tsc --watch + static file watcher)
 yarn build               # One-shot compile TS + copy static assets → extension-dist/
 yarn build:check         # Type-check only (no emit)
-yarn verify              # build:check + validate:manifest + check:repo
+yarn verify              # build:check + lint + format:check + validate:manifest + check:repo
+yarn lint                # ESLint check
+yarn lint:fix            # ESLint auto-fix
+yarn format              # Prettier format all files
+yarn format:check        # Prettier check (CI gate)
 yarn validate:manifest   # Validate manifest.json structure
 yarn check:repo          # Repo hygiene (no .DS_Store, no secrets, etc.)
 yarn package:extension   # Build + package .zip into artifacts/
 yarn release:verify      # Verify version/tag/changelog alignment
 ```
 
-TypeScript compiler (`tsc`) is the type-checker. There is no linter, formatter, or test runner.
+TypeScript compiler (`tsc`) is the type-checker. There is no test runner. ESLint and Prettier are configured.
 Syntax-check a compiled file manually: `node --check extension-dist/<file>`.
 
 ## Architecture

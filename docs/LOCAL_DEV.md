@@ -64,11 +64,22 @@ Recommended setup:
 - dev extension -> load from `extension-dev-dist/`
 - if possible, use a separate Chrome profile for development
 
+## Lint & Format
+
+```bash
+yarn lint              # ESLint check
+yarn lint:fix          # ESLint auto-fix
+yarn format            # Prettier format all files
+yarn format:check      # Prettier check (CI gate)
+```
+
 ## Verify before release
 
 ```bash
 yarn verify
 ```
+
+This runs type-check, lint, format check, manifest validation, and repo hygiene in one command.
 
 ## Package release zips locally
 

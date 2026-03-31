@@ -1,7 +1,7 @@
 import type { Locale } from './storage.js';
 
 // Define keys statically to avoid circular reference
-type I18nKey =
+export type I18nKey =
   | 'subtabActive'
   | 'subtabHistory'
   | 'sort'

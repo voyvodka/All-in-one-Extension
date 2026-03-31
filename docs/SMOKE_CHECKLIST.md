@@ -5,7 +5,7 @@ Use this checklist before tagging a release or after touching fragile DOM integr
 ## Build
 
 - Run `yarn build` and confirm it succeeds with zero errors
-- Run `yarn verify` and confirm all checks pass
+- Run `yarn verify` and confirm all checks pass (type-check, lint, format, manifest, repo hygiene)
 
 ## Global
 

@@ -8,7 +8,7 @@
     "build": "tsc --project tsconfig.json && node scripts/copy-static.mjs",
     "build:dev": "tsc --project tsconfig.json --outDir extension-dev-dist && AIO_DEST_DIR=extension-dev-dist AIO_DEV_BRAND=1 node scripts/copy-static.mjs",
     "build:check": "tsc --project tsconfig.json --noEmit",
-    "verify": "yarn build:check && yarn validate:manifest && yarn check:repo",
+    "verify": "yarn build:check && yarn lint && yarn format:check && yarn validate:manifest && yarn check:repo",
     "check:repo": "node scripts/check-repo.mjs",
     "validate:manifest": "node scripts/validate-manifest.mjs",
     "package:extension": "yarn build && yarn package:extension:nested && yarn package:extension:unpacked",

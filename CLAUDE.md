@@ -15,14 +15,18 @@ Chrome Manifest V3 extension — adds download actions to YouTube, Instagram, an
 yarn dev              # Watch mode → extension-dev-dist/ (dev branded)
 yarn build            # One-shot compile + copy static → extension-dist/
 yarn build:check      # Type-check only (no emit)
-yarn verify           # build:check + validate:manifest + check:repo
+yarn verify           # build:check + lint + format:check + validate:manifest + check:repo
+yarn lint              # ESLint check
+yarn lint:fix          # ESLint auto-fix
+yarn format            # Prettier format all files
+yarn format:check      # Prettier check (CI gate)
 yarn validate:manifest
 yarn check:repo       # Repo hygiene
 yarn package:extension # Build + zip into artifacts/
 yarn release:verify   # Version/tag/changelog alignment
 ```
 
-There is no linter, formatter, or test runner in this project.
+There is no test runner. ESLint and Prettier are configured; `yarn verify` includes lint + format checks.
 
 ## Code Style
 

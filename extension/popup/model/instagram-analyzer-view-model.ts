@@ -3,6 +3,7 @@ import type {
   InstagramAnalyzerState,
   InstagramAnalyzerStatus,
 } from '../../shared/storage.js';
+import type { I18nKey } from '../../shared/i18n.js';
 
 export interface AnalyzerBadgeInfo {
   label: string;
@@ -25,8 +26,7 @@ export interface InstagramAnalyzerViewModel {
   selectedViewerId: string | null;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type TranslateFn = (key: any) => string;
+type TranslateFn = (key: I18nKey) => string;
 
 interface AccountSelection {
   account: InstagramAnalyzerAccountState | null;

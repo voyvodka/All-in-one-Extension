@@ -1,4 +1,5 @@
 import type { DownloadJob, DownloadStatus } from '../../shared/storage.js';
+import type { I18nKey } from '../../shared/i18n.js';
 
 export type { DownloadJob };
 
@@ -27,8 +28,7 @@ export interface DownloadViewModel {
   expanded: boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type TranslateFn = (key: any) => string;
+type TranslateFn = (key: I18nKey) => string;
 
 function getDisplayError(job: DownloadJob, t: TranslateFn): string {
   if (!job?.error) return '';
@@ -89,7 +89,7 @@ export function sortJobsByDate(list: DownloadJob[], sortAscending: boolean): Dow
   });
 }
 
-const STATUS_MAP: Record<DownloadStatus, Omit<StatusInfo, 'label'> & { labelKey: string }> = {
+const STATUS_MAP: Record<DownloadStatus, Omit<StatusInfo, 'label'> & { labelKey: I18nKey }> = {
   preparing: { icon: '⏳', labelKey: 'statusPreparing', tone: 'info' },
   downloading: { icon: '⬇️', labelKey: 'statusDownloading', tone: 'info' },
   completed: { icon: '✅', labelKey: 'statusCompleted', tone: 'success' },
