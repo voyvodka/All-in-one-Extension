@@ -1,11 +1,9 @@
 # Changelog
 
-
 ## 0.5.1
 
-### Features
-
-- auto-add release notes from changelog to GitHub release
+- Added automatic release notes extraction from CHANGELOG.md to GitHub Releases.
+- Fixed release script to run format and verify checks before committing.
 
 ## 0.5.0
 
