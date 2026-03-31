@@ -2,63 +2,189 @@ import type { Locale } from './storage.js';
 
 // Define keys statically to avoid circular reference
 type I18nKey =
-  | 'subtabActive' | 'subtabHistory' | 'sort' | 'clearHistory' | 'popupSubtitle'
-  | 'noRecords' | 'loadingTitle' | 'loadingBody'
-  | 'emptyActiveTitle' | 'emptyActiveBody' | 'emptyHistoryTitle' | 'emptyHistoryBody'
-  | 'popupLoadErrorTitle' | 'popupLoadErrorBody' | 'tryAgain'
-  | 'statusPreparing' | 'statusDownloading' | 'statusCompleted' | 'statusFailed'
-  | 'statusCancelled' | 'statusUserCancelled'
-  | 'downloading' | 'downloadStarted' | 'error' | 'errorUnsupportedUrl' | 'downloadFallback'
-  | 'typeLabel' | 'fileNameLabel' | 'sourceLabel' | 'statusLabel' | 'dateLabel' | 'errorLabel'
-  | 'cancel' | 'retry' | 'toggleDetails'
-  | 'language' | 'languageTr' | 'languageEn'
-  | 'bugTitle' | 'theme' | 'themeSystem' | 'themeLight' | 'themeDark'
-  | 'downloadAction' | 'downloadAudio' | 'downloadVideo'
-  | 'downloadImageSingle' | 'downloadImageMultiple'
-  | 'twitterUrlNotFound' | 'instagramDownloadIcon' | 'instagramPhotoUrlMissing'
-  | 'footerVersion' | 'updateAvailable' | 'updateDownload' | 'updateHowTo' | 'updateReload' | 'updateCheckNow'
-  | 'updateChecking' | 'updateLatest' | 'updateError'
-  | 'updateDownloadTitle' | 'updateHowToTitle' | 'updateReloadTitle' | 'updateCheckNowTitle'
-  | 'analyzerTitle' | 'analyzerAccountLabel' | 'analyzerUnknownAccount' | 'analyzerNoAccountBody'
-  | 'analyzerNoScanBody' | 'analyzerRunningBody' | 'analyzerCompletedBody' | 'analyzerErrorBody' | 'analyzerLastScan'
-  | 'analyzerLastScanNever' | 'analyzerOpenInstagram' | 'analyzerOpenInstagramTitle'
-  | 'analyzerStatusIdle' | 'analyzerStatusRunning' | 'analyzerStatusError'
-  | 'analyzerFreshnessFresh' | 'analyzerFreshnessAging' | 'analyzerFreshnessStale'
-  | 'analyzerNonFollowerCountLabel' | 'analyzerFollowingCountLabel' | 'analyzerWhitelistedCountLabel'
-  | 'analyzerDrawerOpen' | 'analyzerDrawerClose' | 'analyzerDrawerHint'
-  | 'analyzerDrawerSignedOut' | 'analyzerDrawerViewerUnknown'
-  | 'analyzerScanStart' | 'analyzerScanRescan' | 'analyzerScanRunning'
-  | 'analyzerScanStartTitle' | 'analyzerScanRunningTitle' | 'analyzerRunningProgress'
-  | 'analyzerTabNonWhitelisted' | 'analyzerTabWhitelisted' | 'analyzerSearchPlaceholder'
-  | 'analyzerCopyVisible' | 'analyzerCopyVisibleTitle' | 'analyzerExportJson' | 'analyzerExportJsonTitle'
-  | 'analyzerPagesLabel' | 'analyzerProcessedLabel' | 'analyzerCursorLabel' | 'analyzerLastErrorLabel'
-  | 'analyzerCursorDone' | 'analyzerResultsEmpty' | 'analyzerWhitelistAdd' | 'analyzerWhitelistRemove'
-  | 'analyzerUnfollow' | 'analyzerUnfollowTitle' | 'analyzerUnfollowConfirm'
-  | 'analyzerPrivateBadge' | 'analyzerVerifiedBadge' | 'analyzerWhitelistShort'
-  | 'analyzerHistoryPillNonFollowers' | 'analyzerHistoryPillFollowed' | 'analyzerHistoryPillUnfollowed'
-  | 'analyzerHistoryPillFollowersGained' | 'analyzerHistoryPillFollowersLost'
-  | 'analyzerHoverSource' | 'analyzerHoverProfileData' | 'analyzerHoverVisibility' | 'analyzerHoverListStatus'
-  | 'analyzerHoverDataRich' | 'analyzerHoverDataLimited' | 'analyzerHoverPublic' | 'analyzerHoverWhitelisted'
-  | 'analyzerHoverNotWhitelisted' | 'analyzerHoverPending' | 'analyzerHoverFollowing'
-  | 'analyzerHoverFollower' | 'analyzerHoverNonFollower' | 'analyzerHoverYes' | 'analyzerHoverNo'
-  | 'analyzerViewResults' | 'analyzerViewHistory' | 'analyzerBack' | 'analyzerDetail'
-  | 'analyzerWhitelistImport' | 'analyzerWhitelistExport' | 'analyzerWhitelistClear'
-  | 'analyzerFollowersUnavailable' | 'analyzerFollowerCountLabel'
-  | 'analyzerDiffFollowed' | 'analyzerDiffUnfollowed' | 'analyzerDiffFollowersGained' | 'analyzerDiffFollowersLost'
-  | 'analyzerOpenProfile' | 'analyzerOpenProfileTitle' | 'analyzerHistoryEmpty'
-  | 'analyzerWhitelistClearConfirm' | 'analyzerHistoryTooltipNonFollowers'
-  | 'analyzerHistoryTooltipFollowed' | 'analyzerHistoryTooltipUnfollowed'
-  | 'analyzerHistoryTooltipFollowersGained' | 'analyzerHistoryTooltipFollowersLost'
-  | 'dashboardSectionOverview' | 'dashboardSectionTrends' | 'dashboardSectionChanges'
-  | 'dashboardSectionCompare' | 'dashboardSectionList' | 'dashboardSectionHistory'
-  | 'dashboardChartFollowingFollowers' | 'dashboardChartNonFollowers' | 'dashboardChartNeedMore'
+  | 'subtabActive'
+  | 'subtabHistory'
+  | 'sort'
+  | 'clearHistory'
+  | 'popupSubtitle'
+  | 'noRecords'
+  | 'loadingTitle'
+  | 'loadingBody'
+  | 'emptyActiveTitle'
+  | 'emptyActiveBody'
+  | 'emptyHistoryTitle'
+  | 'emptyHistoryBody'
+  | 'popupLoadErrorTitle'
+  | 'popupLoadErrorBody'
+  | 'tryAgain'
+  | 'statusPreparing'
+  | 'statusDownloading'
+  | 'statusCompleted'
+  | 'statusFailed'
+  | 'statusCancelled'
+  | 'statusUserCancelled'
+  | 'downloading'
+  | 'downloadStarted'
+  | 'error'
+  | 'errorUnsupportedUrl'
+  | 'downloadFallback'
+  | 'typeLabel'
+  | 'fileNameLabel'
+  | 'sourceLabel'
+  | 'statusLabel'
+  | 'dateLabel'
+  | 'errorLabel'
+  | 'cancel'
+  | 'retry'
+  | 'toggleDetails'
+  | 'language'
+  | 'languageTr'
+  | 'languageEn'
+  | 'bugTitle'
+  | 'theme'
+  | 'themeSystem'
+  | 'themeLight'
+  | 'themeDark'
+  | 'downloadAction'
+  | 'downloadAudio'
+  | 'downloadVideo'
+  | 'downloadImageSingle'
+  | 'downloadImageMultiple'
+  | 'twitterUrlNotFound'
+  | 'instagramDownloadIcon'
+  | 'instagramPhotoUrlMissing'
+  | 'footerVersion'
+  | 'updateAvailable'
+  | 'updateDownload'
+  | 'updateHowTo'
+  | 'updateReload'
+  | 'updateCheckNow'
+  | 'updateChecking'
+  | 'updateLatest'
+  | 'updateError'
+  | 'updateDownloadTitle'
+  | 'updateHowToTitle'
+  | 'updateReloadTitle'
+  | 'updateCheckNowTitle'
+  | 'analyzerTitle'
+  | 'analyzerAccountLabel'
+  | 'analyzerUnknownAccount'
+  | 'analyzerNoAccountBody'
+  | 'analyzerNoScanBody'
+  | 'analyzerRunningBody'
+  | 'analyzerCompletedBody'
+  | 'analyzerErrorBody'
+  | 'analyzerLastScan'
+  | 'analyzerLastScanNever'
+  | 'analyzerOpenInstagram'
+  | 'analyzerOpenInstagramTitle'
+  | 'analyzerStatusIdle'
+  | 'analyzerStatusRunning'
+  | 'analyzerStatusError'
+  | 'analyzerFreshnessFresh'
+  | 'analyzerFreshnessAging'
+  | 'analyzerFreshnessStale'
+  | 'analyzerNonFollowerCountLabel'
+  | 'analyzerFollowingCountLabel'
+  | 'analyzerWhitelistedCountLabel'
+  | 'analyzerDrawerOpen'
+  | 'analyzerDrawerClose'
+  | 'analyzerDrawerHint'
+  | 'analyzerDrawerSignedOut'
+  | 'analyzerDrawerViewerUnknown'
+  | 'analyzerScanStart'
+  | 'analyzerScanRescan'
+  | 'analyzerScanRunning'
+  | 'analyzerScanStartTitle'
+  | 'analyzerScanRunningTitle'
+  | 'analyzerRunningProgress'
+  | 'analyzerTabNonWhitelisted'
+  | 'analyzerTabWhitelisted'
+  | 'analyzerSearchPlaceholder'
+  | 'analyzerCopyVisible'
+  | 'analyzerCopyVisibleTitle'
+  | 'analyzerExportJson'
+  | 'analyzerExportJsonTitle'
+  | 'analyzerPagesLabel'
+  | 'analyzerProcessedLabel'
+  | 'analyzerCursorLabel'
+  | 'analyzerLastErrorLabel'
+  | 'analyzerCursorDone'
+  | 'analyzerResultsEmpty'
+  | 'analyzerWhitelistAdd'
+  | 'analyzerWhitelistRemove'
+  | 'analyzerUnfollow'
+  | 'analyzerUnfollowTitle'
+  | 'analyzerUnfollowConfirm'
+  | 'analyzerPrivateBadge'
+  | 'analyzerVerifiedBadge'
+  | 'analyzerWhitelistShort'
+  | 'analyzerHistoryPillNonFollowers'
+  | 'analyzerHistoryPillFollowed'
+  | 'analyzerHistoryPillUnfollowed'
+  | 'analyzerHistoryPillFollowersGained'
+  | 'analyzerHistoryPillFollowersLost'
+  | 'analyzerHoverSource'
+  | 'analyzerHoverProfileData'
+  | 'analyzerHoverVisibility'
+  | 'analyzerHoverListStatus'
+  | 'analyzerHoverDataRich'
+  | 'analyzerHoverDataLimited'
+  | 'analyzerHoverPublic'
+  | 'analyzerHoverWhitelisted'
+  | 'analyzerHoverNotWhitelisted'
+  | 'analyzerHoverPending'
+  | 'analyzerHoverFollowing'
+  | 'analyzerHoverFollower'
+  | 'analyzerHoverNonFollower'
+  | 'analyzerHoverYes'
+  | 'analyzerHoverNo'
+  | 'analyzerViewResults'
+  | 'analyzerViewHistory'
+  | 'analyzerBack'
+  | 'analyzerDetail'
+  | 'analyzerWhitelistImport'
+  | 'analyzerWhitelistExport'
+  | 'analyzerWhitelistClear'
+  | 'analyzerFollowersUnavailable'
+  | 'analyzerFollowerCountLabel'
+  | 'analyzerDiffFollowed'
+  | 'analyzerDiffUnfollowed'
+  | 'analyzerDiffFollowersGained'
+  | 'analyzerDiffFollowersLost'
+  | 'analyzerOpenProfile'
+  | 'analyzerOpenProfileTitle'
+  | 'analyzerHistoryEmpty'
+  | 'analyzerWhitelistClearConfirm'
+  | 'analyzerHistoryTooltipNonFollowers'
+  | 'analyzerHistoryTooltipFollowed'
+  | 'analyzerHistoryTooltipUnfollowed'
+  | 'analyzerHistoryTooltipFollowersGained'
+  | 'analyzerHistoryTooltipFollowersLost'
+  | 'dashboardSectionOverview'
+  | 'dashboardSectionTrends'
+  | 'dashboardSectionChanges'
+  | 'dashboardSectionCompare'
+  | 'dashboardSectionList'
+  | 'dashboardSectionHistory'
+  | 'dashboardChartFollowingFollowers'
+  | 'dashboardChartNonFollowers'
+  | 'dashboardChartNeedMore'
   | 'dashboardChangesChartLabel'
-  | 'dashboardCompareNeedMore' | 'dashboardCompareWas' | 'dashboardCompareShow' | 'dashboardCompareHide'
+  | 'dashboardCompareNeedMore'
+  | 'dashboardCompareWas'
+  | 'dashboardCompareShow'
+  | 'dashboardCompareHide'
   | 'dashboardCompareFromHistory'
-  | 'dashboardListNonFollowers' | 'dashboardListFollowing' | 'dashboardListFollowers'
-  | 'dashboardListTotal' | 'dashboardListNoResults'
-  | 'dashboardExportCsv' | 'dashboardMore'
-  | 'dashboardOpenDashboard' | 'dashboardOpenDashboardTitle';
+  | 'dashboardListNonFollowers'
+  | 'dashboardListFollowing'
+  | 'dashboardListFollowers'
+  | 'dashboardListTotal'
+  | 'dashboardListNoResults'
+  | 'dashboardExportCsv'
+  | 'dashboardMore'
+  | 'dashboardOpenDashboard'
+  | 'dashboardOpenDashboardTitle';
 
 type I18nDictionary = Record<I18nKey, string>;
 
@@ -131,15 +257,20 @@ const messages: Record<Locale, I18nDictionary> = {
     analyzerTitle: 'Instagram Analyzer',
     analyzerAccountLabel: 'Hesap',
     analyzerUnknownAccount: 'Bilinmeyen hesap',
-    analyzerNoAccountBody: 'Instagram içinde oturum açık bir hesap algılandığında özet burada görünür.',
-    analyzerNoScanBody: 'Bu hesap için henüz tarama kaydı yok. Taramayı Instagram içinden başlatabilirsin.',
-    analyzerRunningBody: 'Tarama sürerken özet burada güncel kalır. Sayfa yenilense bile son kayıt korunur.',
-    analyzerCompletedBody: 'Son tarama bu hesap için kaydedildi. Detayları panel içinden inceleyebilirsin.',
+    analyzerNoAccountBody:
+      'Instagram içinde oturum açık bir hesap algılandığında özet burada görünür.',
+    analyzerNoScanBody:
+      'Bu hesap için henüz tarama kaydı yok. Taramayı Instagram içinden başlatabilirsin.',
+    analyzerRunningBody:
+      'Tarama sürerken özet burada güncel kalır. Sayfa yenilense bile son kayıt korunur.',
+    analyzerCompletedBody:
+      'Son tarama bu hesap için kaydedildi. Detayları panel içinden inceleyebilirsin.',
     analyzerErrorBody: 'Son tarama tamamlanamadı. Instagram içinde yeniden başlatabilirsin.',
     analyzerLastScan: 'Son tarama: {time}',
     analyzerLastScanNever: 'Son tarama yok',
-    analyzerOpenInstagram: 'Analyzer\'ı aç',
-    analyzerOpenInstagramTitle: 'Instagram sekmesini aç veya odakla, sonra analyzer panelini göster.',
+    analyzerOpenInstagram: "Analyzer'ı aç",
+    analyzerOpenInstagramTitle:
+      'Instagram sekmesini aç veya odakla, sonra analyzer panelini göster.',
     analyzerStatusIdle: 'Hazır',
     analyzerStatusRunning: 'Taranıyor',
     analyzerStatusError: 'Sorun var',
@@ -159,7 +290,8 @@ const messages: Record<Locale, I18nDictionary> = {
     analyzerScanRunning: 'Taranıyor...',
     analyzerScanStartTitle: 'Bu hesap için takip ettiğin ama seni takip etmeyen hesapları tara.',
     analyzerScanRunningTitle: 'Tarama devam ediyor. İlerleme bu panelde güncellenecek.',
-    analyzerRunningProgress: 'Tarama sürüyor. {count} hesap tarandı, {matches} takip etmeyen bulundu.',
+    analyzerRunningProgress:
+      'Tarama sürüyor. {count} hesap tarandı, {matches} takip etmeyen bulundu.',
     analyzerTabNonWhitelisted: 'Liste',
     analyzerTabWhitelisted: 'Beyaz liste',
     analyzerSearchPlaceholder: 'Kullanıcı ara',
@@ -246,7 +378,7 @@ const messages: Record<Locale, I18nDictionary> = {
     dashboardExportCsv: 'CSV indir',
     dashboardMore: 'daha fazla',
     dashboardOpenDashboard: 'Dashboard',
-    dashboardOpenDashboardTitle: 'Instagram Analyzer dashboard\'ını aç.'
+    dashboardOpenDashboardTitle: "Instagram Analyzer dashboard'ını aç.",
   },
   en: {
     subtabActive: 'Active',
@@ -316,11 +448,16 @@ const messages: Record<Locale, I18nDictionary> = {
     analyzerTitle: 'Instagram Analyzer',
     analyzerAccountLabel: 'Account',
     analyzerUnknownAccount: 'Unknown account',
-    analyzerNoAccountBody: 'A compact summary will appear here after an Instagram account is detected.',
-    analyzerNoScanBody: 'No scan is stored for this account yet. You can start the flow from inside Instagram.',
-    analyzerRunningBody: 'The scan summary stays live here. The latest checkpoint can survive a page reload.',
-    analyzerCompletedBody: 'The latest scan is stored for this account. You can review the details from the drawer.',
-    analyzerErrorBody: 'The latest scan did not finish successfully. You can restart it inside Instagram.',
+    analyzerNoAccountBody:
+      'A compact summary will appear here after an Instagram account is detected.',
+    analyzerNoScanBody:
+      'No scan is stored for this account yet. You can start the flow from inside Instagram.',
+    analyzerRunningBody:
+      'The scan summary stays live here. The latest checkpoint can survive a page reload.',
+    analyzerCompletedBody:
+      'The latest scan is stored for this account. You can review the details from the drawer.',
+    analyzerErrorBody:
+      'The latest scan did not finish successfully. You can restart it inside Instagram.',
     analyzerLastScan: 'Last scan: {time}',
     analyzerLastScanNever: 'No scan yet',
     analyzerOpenInstagram: 'Open analyzer',
@@ -338,13 +475,15 @@ const messages: Record<Locale, I18nDictionary> = {
     analyzerDrawerClose: 'Close',
     analyzerDrawerHint: 'You can manage the scan and result flow from this panel.',
     analyzerDrawerSignedOut: 'No Instagram session was detected. Sign in first to scan.',
-    analyzerDrawerViewerUnknown: 'An active account was detected but the user label is not resolved yet.',
+    analyzerDrawerViewerUnknown:
+      'An active account was detected but the user label is not resolved yet.',
     analyzerScanStart: 'Start scan',
     analyzerScanRescan: 'Scan again',
     analyzerScanRunning: 'Scanning...',
     analyzerScanStartTitle: 'Scan this account for people you follow who do not follow you back.',
     analyzerScanRunningTitle: 'The scan is in progress. Progress will keep updating in this panel.',
-    analyzerRunningProgress: 'Scan in progress. {count} accounts processed, {matches} non-followers found.',
+    analyzerRunningProgress:
+      'Scan in progress. {count} accounts processed, {matches} non-followers found.',
     analyzerTabNonWhitelisted: 'List',
     analyzerTabWhitelisted: 'Whitelist',
     analyzerSearchPlaceholder: 'Search username',
@@ -431,8 +570,8 @@ const messages: Record<Locale, I18nDictionary> = {
     dashboardExportCsv: 'Download CSV',
     dashboardMore: 'more',
     dashboardOpenDashboard: 'Dashboard',
-    dashboardOpenDashboardTitle: 'Open the Instagram Analyzer Dashboard.'
-  }
+    dashboardOpenDashboardTitle: 'Open the Instagram Analyzer Dashboard.',
+  },
 };
 
 let currentLocale: Locale | undefined;
@@ -471,65 +610,65 @@ const featureMessages: Record<string, FeatureMessage> = {
     label: { tr: 'YouTube Ses İndir', en: 'YouTube Audio Download' },
     description: {
       tr: 'YouTube paylaş paneline Ses indir kısayolu ekler.',
-      en: 'Adds an audio download shortcut to the YouTube share panel.'
-    }
+      en: 'Adds an audio download shortcut to the YouTube share panel.',
+    },
   },
   'yt-video-download': {
     label: { tr: 'YouTube Video İndir', en: 'YouTube Video Download' },
     description: {
       tr: 'YouTube paylaş paneline Video indir kısayolu ekler.',
-      en: 'Adds a video download shortcut to the YouTube share panel.'
-    }
+      en: 'Adds a video download shortcut to the YouTube share panel.',
+    },
   },
   'ig-audio-download': {
     label: { tr: 'Instagram Ses İndir', en: 'Reels Audio Download' },
     description: {
       tr: 'Instagram Reels için Ses indir kısayolu ekler.',
-      en: 'Adds an audio download shortcut for Instagram Reels.'
-    }
+      en: 'Adds an audio download shortcut for Instagram Reels.',
+    },
   },
   'ig-video-download': {
     label: { tr: 'Instagram Video İndir', en: 'Reels Video Download' },
     description: {
       tr: 'Instagram Reels için Video indir kısayolu ekler.',
-      en: 'Adds a video download shortcut for Instagram Reels.'
-    }
+      en: 'Adds a video download shortcut for Instagram Reels.',
+    },
   },
   'ig-image-download': {
     label: { tr: 'Instagram Fotoğraf İndir', en: 'Instagram Photo Download' },
     description: {
       tr: 'Instagram Reels için fotoğraf indirme kısayolu ekler.',
-      en: 'Adds a photo download shortcut for Instagram Reels.'
-    }
+      en: 'Adds a photo download shortcut for Instagram Reels.',
+    },
   },
   'ig-unfollowers': {
     label: { tr: 'Instagram Analyzer', en: 'Instagram Analyzer' },
     description: {
       tr: 'Instagram içinde compact analyzer paneli ekler.',
-      en: 'Adds a compact analyzer panel inside Instagram.'
-    }
+      en: 'Adds a compact analyzer panel inside Instagram.',
+    },
   },
   'x-audio-download': {
     label: { tr: 'Twitter Ses İndir', en: 'Twitter Audio Download' },
     description: {
       tr: 'Tweet altındaki indirme menüsüne Ses indir seçeneğini ekler.',
-      en: 'Adds an audio download option to the tweet action menu.'
-    }
+      en: 'Adds an audio download option to the tweet action menu.',
+    },
   },
   'x-video-download': {
     label: { tr: 'Twitter Video İndir', en: 'Twitter Video Download' },
     description: {
       tr: 'Tweet altındaki indirme menüsüne Video indir seçeneğini ekler.',
-      en: 'Adds a video download option to the tweet action menu.'
-    }
+      en: 'Adds a video download option to the tweet action menu.',
+    },
   },
   'x-image-download': {
     label: { tr: 'Twitter Fotoğraf İndir', en: 'Twitter Image Download' },
     description: {
       tr: 'Tweet altındaki indirme menüsüne fotoğraf indir seçeneğini ekler.',
-      en: 'Adds image download options to the tweet action menu.'
-    }
-  }
+      en: 'Adds image download options to the tweet action menu.',
+    },
+  },
 };
 
 export interface FeatureTranslation {
@@ -537,11 +676,15 @@ export interface FeatureTranslation {
   description: string;
 }
 
-export function translateFeature(feature: { id: string; label?: string; description?: string }): FeatureTranslation {
+export function translateFeature(feature: {
+  id: string;
+  label?: string;
+  description?: string;
+}): FeatureTranslation {
   const locale = getLocale();
   const msg = featureMessages[feature.id];
   return {
     label: msg?.label?.[locale] ?? msg?.label?.en ?? feature.label ?? feature.id,
-    description: msg?.description?.[locale] ?? msg?.description?.en ?? feature.description ?? ''
+    description: msg?.description?.[locale] ?? msg?.description?.en ?? feature.description ?? '',
   };
 }

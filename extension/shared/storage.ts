@@ -120,23 +120,25 @@ export interface InstagramAnalyzerState {
 export type SettingsChange = Partial<Settings>;
 export type JobUpdater = (job: DownloadJob) => void;
 export type DownloadsUpdater = (state: DownloadsState) => DownloadsState | void;
-export type InstagramAnalyzerUpdater = (state: InstagramAnalyzerState) => InstagramAnalyzerState | void;
+export type InstagramAnalyzerUpdater = (
+  state: InstagramAnalyzerState,
+) => InstagramAnalyzerState | void;
 
 const DEFAULT_SETTINGS: Settings = {
   enabled: true,
   features: {},
   language: null,
-  theme: 'system'
+  theme: 'system',
 };
 
 const DEFAULT_DOWNLOADS: DownloadsState = {
   active: [],
-  history: []
+  history: [],
 };
 
 const DEFAULT_INSTAGRAM_ANALYZER_STATE: InstagramAnalyzerState = {
   currentViewerId: null,
-  accounts: {}
+  accounts: {},
 };
 
 const DOWNLOAD_HISTORY_LIMIT = 50;
@@ -171,7 +173,9 @@ function asNullableNumber(value: unknown): number | null {
 }
 
 function asStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
 }
 
 function normalizeInstagramAnalyzerResultItem(value: unknown): InstagramAnalyzerResultItem | null {
@@ -191,7 +195,7 @@ function normalizeInstagramAnalyzerResultItem(value: unknown): InstagramAnalyzer
     fullName: asString(value['fullName']),
     isPrivate: asBoolean(value['isPrivate']),
     isVerified: asBoolean(value['isVerified']),
-    profilePictureUrl: asString(value['profilePictureUrl'])
+    profilePictureUrl: asString(value['profilePictureUrl']),
   };
 }
 
@@ -205,7 +209,9 @@ function normalizeInstagramAnalyzerResults(value: unknown): InstagramAnalyzerRes
     .filter((item): item is InstagramAnalyzerResultItem => Boolean(item));
 }
 
-function normalizeInstagramAnalyzerSnapshotUser(value: unknown): InstagramAnalyzerSnapshotUser | null {
+function normalizeInstagramAnalyzerSnapshotUser(
+  value: unknown,
+): InstagramAnalyzerSnapshotUser | null {
   if (!isRecord(value)) {
     return null;
   }
@@ -236,11 +242,13 @@ function normalizeInstagramAnalyzerScanDiff(value: unknown): InstagramAnalyzerSc
     unfollowed: normalizeInstagramAnalyzerSnapshotUsers(raw['unfollowed']),
     followersGained: normalizeInstagramAnalyzerSnapshotUsers(raw['followersGained']),
     followersLost: normalizeInstagramAnalyzerSnapshotUsers(raw['followersLost']),
-    followersAvailable: asBoolean(raw['followersAvailable'])
+    followersAvailable: asBoolean(raw['followersAvailable']),
   };
 }
 
-function normalizeInstagramAnalyzerScanHistoryEntry(value: unknown): InstagramAnalyzerScanHistoryEntry | null {
+function normalizeInstagramAnalyzerScanHistoryEntry(
+  value: unknown,
+): InstagramAnalyzerScanHistoryEntry | null {
   if (!isRecord(value)) {
     return null;
   }
@@ -258,7 +266,7 @@ function normalizeInstagramAnalyzerScanHistoryEntry(value: unknown): InstagramAn
     nonFollowerCount: Math.max(0, asNumber(value['nonFollowerCount'])),
     whitelistedCount: Math.max(0, asNumber(value['whitelistedCount'])),
     pagesCompleted: Math.max(0, asNumber(value['pagesCompleted'])),
-    diffs: normalizeInstagramAnalyzerScanDiff(value['diffs'])
+    diffs: normalizeInstagramAnalyzerScanDiff(value['diffs']),
   };
 }
 
@@ -282,7 +290,7 @@ function normalizeInstagramAnalyzerJobStatus(value: unknown): InstagramAnalyzerJ
 
 function createDefaultInstagramAnalyzerSummary(
   viewerId: string,
-  username = ''
+  username = '',
 ): InstagramAnalyzerAccountSummary {
   return {
     viewerId,
@@ -291,13 +299,13 @@ function createDefaultInstagramAnalyzerSummary(
     status: 'idle',
     followingCount: 0,
     nonFollowerCount: 0,
-    whitelistedCount: 0
+    whitelistedCount: 0,
   };
 }
 
 function normalizeInstagramAnalyzerSummary(
   value: unknown,
-  viewerId: string
+  viewerId: string,
 ): InstagramAnalyzerAccountSummary {
   const raw = isRecord(value) ? value : {};
   const normalizedViewerId = asString(raw['viewerId'], viewerId) || viewerId;
@@ -309,7 +317,7 @@ function normalizeInstagramAnalyzerSummary(
     status: normalizeInstagramAnalyzerStatus(raw['status']),
     followingCount: Math.max(0, asNumber(raw['followingCount'])),
     nonFollowerCount: Math.max(0, asNumber(raw['nonFollowerCount'])),
-    whitelistedCount: Math.max(0, asNumber(raw['whitelistedCount']))
+    whitelistedCount: Math.max(0, asNumber(raw['whitelistedCount'])),
   };
   const lastError = asString(raw['lastError']);
   if (lastError) {
@@ -321,7 +329,7 @@ function normalizeInstagramAnalyzerSummary(
 function normalizeInstagramAnalyzerJob(
   value: unknown,
   viewerId: string,
-  username: string
+  username: string,
 ): InstagramAnalyzerJob | null {
   if (!isRecord(value)) {
     return null;
@@ -341,7 +349,7 @@ function normalizeInstagramAnalyzerJob(
     updatedAt: Math.max(0, asNumber(value['updatedAt'])),
     pagesCompleted: Math.max(0, asNumber(value['pagesCompleted'])),
     processedCount: Math.max(0, asNumber(value['processedCount'])),
-    nextCursor: typeof value['nextCursor'] === 'string' ? value['nextCursor'] : null
+    nextCursor: typeof value['nextCursor'] === 'string' ? value['nextCursor'] : null,
   };
   const lastError = asString(value['lastError']);
   if (lastError) {
@@ -352,7 +360,7 @@ function normalizeInstagramAnalyzerJob(
 
 function normalizeInstagramAnalyzerAccountState(
   value: unknown,
-  viewerId: string
+  viewerId: string,
 ): InstagramAnalyzerAccountState {
   const raw = isRecord(value) ? value : {};
   const summary = normalizeInstagramAnalyzerSummary(raw['summary'], viewerId);
@@ -363,7 +371,7 @@ function normalizeInstagramAnalyzerAccountState(
     results: normalizeInstagramAnalyzerResults(raw['results']),
     history: normalizeInstagramAnalyzerHistory(raw['history']),
     followingSnapshot: normalizeInstagramAnalyzerSnapshotUsers(raw['followingSnapshot']),
-    followersSnapshot: normalizeInstagramAnalyzerSnapshotUsers(raw['followersSnapshot'])
+    followersSnapshot: normalizeInstagramAnalyzerSnapshotUsers(raw['followersSnapshot']),
   };
 }
 
@@ -382,7 +390,7 @@ function normalizeInstagramAnalyzerState(value: unknown): InstagramAnalyzerState
   const currentViewerId = asString(raw['currentViewerId']) || null;
   return {
     currentViewerId,
-    accounts
+    accounts,
   };
 }
 
@@ -394,7 +402,9 @@ export async function getSettings(): Promise<Settings> {
 }
 
 export async function setSettings(settings: Partial<Settings>): Promise<Partial<Settings>> {
-  await new Promise<void>((resolve) => chrome.storage.local.set(settings as Record<string, unknown>, resolve));
+  await new Promise<void>((resolve) =>
+    chrome.storage.local.set(settings as Record<string, unknown>, resolve),
+  );
   return settings;
 }
 
@@ -417,7 +427,7 @@ export async function setTheme(theme: string): Promise<ThemeChoice> {
 
 export async function upsertFeatureState(
   featureId: string,
-  nextState: boolean | ((current: boolean) => boolean)
+  nextState: boolean | ((current: boolean) => boolean),
 ): Promise<Partial<Settings>> {
   const current = await getSettings();
   const currentValue = Boolean(current.features?.[featureId]);
@@ -426,8 +436,8 @@ export async function upsertFeatureState(
     ...current,
     features: {
       ...current.features,
-      [featureId]: Boolean(resolved)
-    }
+      [featureId]: Boolean(resolved),
+    },
   };
   await setSettings(updated);
   return updated;
@@ -440,7 +450,7 @@ export function onSettingsChanged(callback: (change: SettingsChange) => void): v
       enabled: (changes['enabled']?.newValue as boolean | undefined) ?? undefined,
       features: (changes['features']?.newValue as Record<string, boolean> | undefined) ?? undefined,
       language: (changes['language']?.newValue as Locale | null | undefined) ?? undefined,
-      theme: (changes['theme']?.newValue as ThemeChoice | undefined) ?? undefined
+      theme: (changes['theme']?.newValue as ThemeChoice | undefined) ?? undefined,
     };
     callback(next);
   });
@@ -448,22 +458,27 @@ export function onSettingsChanged(callback: (change: SettingsChange) => void): v
 
 export async function getDownloadsState(): Promise<DownloadsState> {
   const result = await new Promise<{ downloads?: DownloadsState }>((resolve) => {
-    chrome.storage.local.get({ downloads: DEFAULT_DOWNLOADS }, resolve as (items: Record<string, unknown>) => void);
+    chrome.storage.local.get(
+      { downloads: DEFAULT_DOWNLOADS },
+      resolve as (items: Record<string, unknown>) => void,
+    );
   });
   const downloads = result.downloads ?? DEFAULT_DOWNLOADS;
   return {
     active: Array.isArray(downloads.active) ? downloads.active : [],
-    history: Array.isArray(downloads.history) ? downloads.history : []
+    history: Array.isArray(downloads.history) ? downloads.history : [],
   };
 }
 
 export async function setDownloadsState(next: DownloadsState): Promise<DownloadsState> {
   const normalized: DownloadsState = {
     active: Array.isArray(next.active) ? next.active : [],
-    history: Array.isArray(next.history) ? next.history : []
+    history: Array.isArray(next.history) ? next.history : [],
   };
   normalized.history = normalized.history.slice(-DOWNLOAD_HISTORY_LIMIT);
-  await new Promise<void>((resolve) => chrome.storage.local.set({ downloads: normalized }, resolve));
+  await new Promise<void>((resolve) =>
+    chrome.storage.local.set({ downloads: normalized }, resolve),
+  );
   return normalized;
 }
 
@@ -477,9 +492,7 @@ export async function updateDownloads(updater: DownloadsUpdater): Promise<Downlo
     return setDownloadsState(next);
   };
 
-  const nextRun = downloadsUpdateQueue
-    .catch(() => DEFAULT_DOWNLOADS)
-    .then(runUpdate);
+  const nextRun = downloadsUpdateQueue.catch(() => DEFAULT_DOWNLOADS).then(runUpdate);
 
   downloadsUpdateQueue = nextRun;
   return nextRun;
@@ -491,7 +504,7 @@ export function onDownloadsChanged(callback: (state: DownloadsState) => void): v
     const next = (changes['downloads'].newValue as DownloadsState | undefined) ?? DEFAULT_DOWNLOADS;
     callback({
       active: Array.isArray(next.active) ? next.active : [],
-      history: Array.isArray(next.history) ? next.history : []
+      history: Array.isArray(next.history) ? next.history : [],
     });
   });
 }
@@ -504,16 +517,20 @@ export async function getInstagramAnalyzerState(): Promise<InstagramAnalyzerStat
     try {
       chrome.storage.local.get(
         { instagramAnalyzer: DEFAULT_INSTAGRAM_ANALYZER_STATE },
-        resolve as (items: Record<string, unknown>) => void
+        resolve as (items: Record<string, unknown>) => void,
       );
     } catch {
       resolve({ instagramAnalyzer: DEFAULT_INSTAGRAM_ANALYZER_STATE });
     }
   });
-  return normalizeInstagramAnalyzerState(result.instagramAnalyzer ?? DEFAULT_INSTAGRAM_ANALYZER_STATE);
+  return normalizeInstagramAnalyzerState(
+    result.instagramAnalyzer ?? DEFAULT_INSTAGRAM_ANALYZER_STATE,
+  );
 }
 
-export async function setInstagramAnalyzerState(next: InstagramAnalyzerState): Promise<InstagramAnalyzerState> {
+export async function setInstagramAnalyzerState(
+  next: InstagramAnalyzerState,
+): Promise<InstagramAnalyzerState> {
   const normalized = normalizeInstagramAnalyzerState(next);
   if (!hasRuntimeContext()) {
     return normalized;
@@ -528,14 +545,18 @@ export async function setInstagramAnalyzerState(next: InstagramAnalyzerState): P
   return normalized;
 }
 
-export async function updateInstagramAnalyzer(updater: InstagramAnalyzerUpdater): Promise<InstagramAnalyzerState> {
+export async function updateInstagramAnalyzer(
+  updater: InstagramAnalyzerUpdater,
+): Promise<InstagramAnalyzerState> {
   const current = await getInstagramAnalyzerState();
   const clone: InstagramAnalyzerState = JSON.parse(JSON.stringify(current));
   const next = updater(clone) ?? clone;
   return setInstagramAnalyzerState(next);
 }
 
-export function onInstagramAnalyzerChanged(callback: (state: InstagramAnalyzerState) => void): void {
+export function onInstagramAnalyzerChanged(
+  callback: (state: InstagramAnalyzerState) => void,
+): void {
   if (!hasRuntimeContext()) {
     return;
   }
@@ -545,7 +566,10 @@ export function onInstagramAnalyzerChanged(callback: (state: InstagramAnalyzerSt
   });
 }
 
-export function createInstagramAnalyzerAccountState(viewerId: string, username = ''): InstagramAnalyzerAccountState {
+export function createInstagramAnalyzerAccountState(
+  viewerId: string,
+  username = '',
+): InstagramAnalyzerAccountState {
   return {
     summary: createDefaultInstagramAnalyzerSummary(viewerId, username),
     job: null,
@@ -553,6 +577,6 @@ export function createInstagramAnalyzerAccountState(viewerId: string, username =
     results: [],
     history: [],
     followingSnapshot: [],
-    followersSnapshot: []
+    followersSnapshot: [],
   };
 }

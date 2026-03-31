@@ -10,7 +10,15 @@ export default {
   apply: () => {
     const cleanup = registerTwitterMenuProvider(
       'twitter-audio',
-      ({ tweetUrl, tweetTitle, hasVideo }: { tweetUrl: string; tweetTitle: string; hasVideo: boolean }) => {
+      ({
+        tweetUrl,
+        tweetTitle,
+        hasVideo,
+      }: {
+        tweetUrl: string;
+        tweetTitle: string;
+        hasVideo: boolean;
+      }) => {
         if (!tweetUrl || !hasVideo) return [];
 
         return [
@@ -18,21 +26,21 @@ export default {
             label: t('downloadAudio'),
             onClick: async () => {
               await startMp3Download({ tweetUrl, tweetTitle });
-            }
-          }
+            },
+          },
         ];
-      }
+      },
     );
 
     return () => {
       cleanup();
     };
-  }
+  },
 };
 
 async function startMp3Download({
   tweetUrl,
-  tweetTitle
+  tweetTitle,
 }: {
   tweetUrl: string;
   tweetTitle: string;
@@ -42,7 +50,7 @@ async function startMp3Download({
       type: MESSAGE_TYPES.X_AUDIO_DOWNLOAD,
       openPopup: true,
       tweetUrl,
-      tweetTitle: tweetTitle || 'twitter-audio'
+      tweetTitle: tweetTitle || 'twitter-audio',
     });
   } catch (error) {
     console.error('Error sending audio download message:', error);

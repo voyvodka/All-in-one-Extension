@@ -13,8 +13,16 @@
  *   - extension/_locales/ (recursive)
  */
 
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, watch, writeFileSync } from 'node:fs';
-import { dirname, join, resolve, relative } from 'node:path';
+import {
+  copyFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  watch,
+  writeFileSync,
+} from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -46,7 +54,7 @@ function copyDir(relDir) {
     cpSync(src, dest, {
       recursive: true,
       force: true,
-      filter: (p) => !p.endsWith('.DS_Store')
+      filter: (p) => !p.endsWith('.DS_Store'),
     });
     console.log(`[watch-static] copied dir: ${relDir}`);
   } catch (err) {
@@ -59,7 +67,9 @@ function copyDir(relDir) {
 function applyDevBranding() {
   if (!isDevBrand) return;
 
-  const localeFiles = ['en', 'tr'].map((locale) => join(destDir, '_locales', locale, 'messages.json'));
+  const localeFiles = ['en', 'tr'].map((locale) =>
+    join(destDir, '_locales', locale, 'messages.json'),
+  );
 
   for (const localePath of localeFiles) {
     if (!existsSync(localePath)) continue;
@@ -69,7 +79,10 @@ function applyDevBranding() {
       messages.extName.message = `${messages.extName.message} Dev`;
     }
     if (messages.extDescription?.message) {
-      messages.extDescription.message = messages.extDescription.message.replace(/\s+\[Dev Build\]$/, '');
+      messages.extDescription.message = messages.extDescription.message.replace(
+        /\s+\[Dev Build\]$/,
+        '',
+      );
       messages.extDescription.message = `${messages.extDescription.message} [Dev Build]`;
     }
     writeFileSync(localePath, `${JSON.stringify(messages, null, 2)}\n`);
@@ -97,10 +110,7 @@ const watchedFiles = [
 ];
 
 // Directories to watch recursively
-const watchedDirs = [
-  'icons',
-  '_locales',
-];
+const watchedDirs = ['icons', '_locales'];
 
 // Watch individual files
 for (const relPath of watchedFiles) {

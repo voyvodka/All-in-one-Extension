@@ -6,7 +6,7 @@ import {
   safeSendMessage,
   findInstagramMediaSources,
   detectInstagramScope,
-  INSTAGRAM_DOWNLOAD_MENU_ATTR
+  INSTAGRAM_DOWNLOAD_MENU_ATTR,
 } from '../../instagram/shared.js';
 
 interface ImageInfo {
@@ -33,7 +33,7 @@ interface ProviderContext {
 
 const NAV_LABELS: Record<string, string[]> = {
   next: ['Next', 'Sonraki', 'İleri'],
-  prev: ['Previous', 'Önceki', 'Geri', 'Back', 'Go back']
+  prev: ['Previous', 'Önceki', 'Geri', 'Back', 'Go back'],
 };
 
 const NAV_BUTTON_SELECTOR = 'button, div[role="button"]';
@@ -61,32 +61,38 @@ export default {
         if (primaryImage) {
           options.push({
             label: t('downloadImageSingle'),
-            action: () => startSingleImageDownload({ reelUrl, reelTitle, image: primaryImage })
+            action: () => startSingleImageDownload({ reelUrl, reelTitle, image: primaryImage }),
           });
         }
         // Show bulk download when carousel has multiple slides OR when
         // multiple distinct images are found in the DOM.
-        const showBulk = (isCarousel && carouselTotal > 1) || (Array.isArray(images) && images.length > 1);
+        const showBulk =
+          (isCarousel && carouselTotal > 1) || (Array.isArray(images) && images.length > 1);
         if (showBulk) {
           options.push({
             label: t('downloadImageMultiple'),
             action: () =>
-              startBulkImageDownload({ article: activeArticle, reelUrl, reelTitle, fallbackImages: images })
+              startBulkImageDownload({
+                article: activeArticle,
+                reelUrl,
+                reelTitle,
+                fallbackImages: images,
+              }),
           });
         }
         return options;
-      }
+      },
     );
 
     return () => {
       cleanupProvider?.();
     };
-  }
+  },
 };
 
 function pickPrimaryImage({
   bestImage,
-  visibleImage
+  visibleImage,
 }: {
   bestImage?: ImageInfo | null;
   visibleImage?: ImageInfo | null;
@@ -97,7 +103,7 @@ function pickPrimaryImage({
 async function startSingleImageDownload({
   reelUrl,
   reelTitle,
-  image
+  image,
 }: {
   reelUrl: string;
   reelTitle: string;
@@ -113,9 +119,9 @@ async function startSingleImageDownload({
       directMedia: {
         url: image.url,
         type: 'image',
-        ext: image.ext || 'jpg'
+        ext: image.ext || 'jpg',
       },
-      imageUrl: image.url
+      imageUrl: image.url,
     });
   } catch (error) {
     console.error('Error sending image download message:', error);
@@ -126,7 +132,7 @@ async function startBulkImageDownload({
   article,
   reelUrl,
   reelTitle,
-  fallbackImages = []
+  fallbackImages = [],
 }: {
   article: Element | null;
   reelUrl: string;
@@ -151,7 +157,7 @@ async function startBulkImageDownload({
       openPopup: true,
       reelUrl,
       reelTitle: reelTitle || 'instagram-reel',
-      imageUrls: urls
+      imageUrls: urls,
     });
   } catch (error) {
     console.error('Bulk image zip send failed:', error);
@@ -228,7 +234,7 @@ async function collectCarouselImages(article: Element | null): Promise<ImageInfo
       scopeRoot.closest?.('div[role="dialog"]') ?? null,
       document.querySelector('div[role="dialog"]'),
       document.querySelector('main[role="main"]'),
-      document.querySelector('main')
+      document.querySelector('main'),
     ].filter(Boolean) as Element[];
 
     const seenRoots = new Set<Element>();
@@ -246,8 +252,7 @@ async function collectCarouselImages(article: Element | null): Promise<ImageInfo
       });
     });
 
-    return mediaCandidates
-      .sort((a, b) => b.area - a.area)[0]?.rect ?? null;
+    return mediaCandidates.sort((a, b) => b.area - a.area)[0]?.rect ?? null;
   };
 
   const scoreButtonByGeometry = (btn: Element, direction: 'next' | 'prev'): number => {
@@ -269,45 +274,54 @@ async function collectCarouselImages(article: Element | null): Promise<ImageInfo
       return Number.POSITIVE_INFINITY;
     }
 
-    const centerX = rect.left + (rect.width / 2);
-    const centerY = rect.top + (rect.height / 2);
-    const midY = mediaRect.top + (mediaRect.height / 2);
-    const bandTop = mediaRect.top + (mediaRect.height * 0.15);
-    const bandBottom = mediaRect.bottom - (mediaRect.height * 0.15);
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const midY = mediaRect.top + mediaRect.height / 2;
+    const bandTop = mediaRect.top + mediaRect.height * 0.15;
+    const bandBottom = mediaRect.bottom - mediaRect.height * 0.15;
     if (centerY < bandTop || centerY > bandBottom) {
       return Number.POSITIVE_INFINITY;
     }
 
-    const onWrongSide = direction === 'prev'
-      ? centerX > (mediaRect.left + (mediaRect.width * 0.45))
-      : centerX < (mediaRect.right - (mediaRect.width * 0.45));
+    const onWrongSide =
+      direction === 'prev'
+        ? centerX > mediaRect.left + mediaRect.width * 0.45
+        : centerX < mediaRect.right - mediaRect.width * 0.45;
     if (onWrongSide) {
       return Number.POSITIVE_INFINITY;
     }
 
-    const edgeDistance = direction === 'prev'
-      ? Math.abs(centerX - mediaRect.left)
-      : Math.abs(centerX - mediaRect.right);
+    const edgeDistance =
+      direction === 'prev'
+        ? Math.abs(centerX - mediaRect.left)
+        : Math.abs(centerX - mediaRect.right);
     const maxEdgeDistance = Math.max(96, mediaRect.width * 0.2);
     if (edgeDistance > maxEdgeDistance) {
       return Number.POSITIVE_INFINITY;
     }
 
     const yDistance = Math.abs(centerY - midY);
-    return edgeDistance + (yDistance * 1.5);
+    return edgeDistance + yDistance * 1.5;
   };
 
   const findButtonByGeometry = (direction: 'next' | 'prev'): Element | null => {
-    const localCandidates = Array.from(scopeRoot?.querySelectorAll?.(NAV_BUTTON_SELECTOR) ?? [])
-      .filter((btn) => Number.isFinite(scoreButtonByGeometry(btn, direction)));
-    const local = localCandidates
-      .sort((a, b) => scoreButtonByGeometry(a, direction) - scoreButtonByGeometry(b, direction))[0] ?? null;
+    const localCandidates = Array.from(
+      scopeRoot?.querySelectorAll?.(NAV_BUTTON_SELECTOR) ?? [],
+    ).filter((btn) => Number.isFinite(scoreButtonByGeometry(btn, direction)));
+    const local =
+      localCandidates.sort(
+        (a, b) => scoreButtonByGeometry(a, direction) - scoreButtonByGeometry(b, direction),
+      )[0] ?? null;
     if (local) return local;
 
-    const globalCandidates = Array.from(document.querySelectorAll(NAV_BUTTON_SELECTOR))
-      .filter((btn) => Number.isFinite(scoreButtonByGeometry(btn, direction)));
-    return globalCandidates
-      .sort((a, b) => scoreButtonByGeometry(a, direction) - scoreButtonByGeometry(b, direction))[0] ?? null;
+    const globalCandidates = Array.from(document.querySelectorAll(NAV_BUTTON_SELECTOR)).filter(
+      (btn) => Number.isFinite(scoreButtonByGeometry(btn, direction)),
+    );
+    return (
+      globalCandidates.sort(
+        (a, b) => scoreButtonByGeometry(a, direction) - scoreButtonByGeometry(b, direction),
+      )[0] ?? null
+    );
   };
 
   const findButton = (labels: string[], direction: 'next' | 'prev'): Element | null => {
@@ -317,7 +331,7 @@ async function collectCarouselImages(article: Element | null): Promise<ImageInfo
 
     if (selector) {
       const localCandidates = Array.from(scopeRoot?.querySelectorAll?.(selector) ?? []).filter(
-        (btn) => !isInStoryTray(btn)
+        (btn) => !isInStoryTray(btn),
       );
       const local = pickClosest(localCandidates);
       if (local) return local;
@@ -332,8 +346,7 @@ async function collectCarouselImages(article: Element | null): Promise<ImageInfo
     return findButtonByGeometry(direction);
   };
 
-  const delay = (ms: number): Promise<void> =>
-    new Promise((resolve) => setTimeout(resolve, ms));
+  const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
   const clickNav = (btn: Element): void => {
     if (!btn) return;
@@ -342,7 +355,7 @@ async function collectCarouselImages(article: Element | null): Promise<ImageInfo
         bubbles: true,
         cancelable: true,
         view: window,
-        button: 0
+        button: 0,
       });
       btn.dispatchEvent(evt);
     });

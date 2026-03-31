@@ -10,11 +10,14 @@ const manifestPath = join(rootDir, 'extension/manifest.json');
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 
 // Feature registry: prefer compiled .js in dist, fallback to source .ts regex
-const featureRegistryDistPath = join(rootDir, 'extension-dist/shared/contracts/feature-registry.js');
+const featureRegistryDistPath = join(
+  rootDir,
+  'extension-dist/shared/contracts/feature-registry.js',
+);
 const featureRegistrySrcPath = join(rootDir, 'extension/shared/contracts/feature-registry.ts');
 const featureRegistryFallbackPath = join(rootDir, 'extension/shared/contracts/feature-registry.js');
 
-let featureRegistrySource = '';
+let featureRegistrySource;
 if (existsSync(featureRegistryDistPath)) {
   featureRegistrySource = readFileSync(featureRegistryDistPath, 'utf8');
 } else if (existsSync(featureRegistrySrcPath)) {
@@ -41,13 +44,14 @@ if (!Array.isArray(manifest.content_scripts) || !manifest.content_scripts.length
   throw new Error('Manifest must define at least one content script.');
 }
 
-const resources = manifest.web_accessible_resources?.flatMap((entry) => entry.resources || []) || [];
+const resources =
+  manifest.web_accessible_resources?.flatMap((entry) => entry.resources || []) || [];
 const requiredResources = [
   'features/index.js',
   'shared/storage.js',
   'shared/i18n.js',
   'shared/contracts/feature-registry.js',
-  'shared/contracts/message-types.js'
+  'shared/contracts/message-types.js',
 ];
 
 for (const resource of requiredResources) {
@@ -58,7 +62,7 @@ for (const resource of requiredResources) {
 
 const registryModulePaths = Array.from(
   featureRegistrySource.matchAll(/modulePath:\s*['"]([^'"]+)['"]/g),
-  (match) => match[1]
+  (match) => match[1],
 );
 
 if (!registryModulePaths.length) {
@@ -82,7 +86,9 @@ for (const modulePath of registryModulePaths) {
 
   if (distAvailable) {
     if (!existsSync(distPath)) {
-      throw new Error(`Feature module not found in extension-dist: ${modulePath} — did you run yarn build?`);
+      throw new Error(
+        `Feature module not found in extension-dist: ${modulePath} — did you run yarn build?`,
+      );
     }
   } else {
     if (!existsSync(srcPath) && !existsSync(srcTsPath)) {
@@ -97,7 +103,7 @@ const requiredFiles = [
   'background/index.js',
   'popup/popup.html',
   'shared/contracts/feature-registry.js',
-  'shared/contracts/message-types.js'
+  'shared/contracts/message-types.js',
 ];
 
 for (const relPath of requiredFiles) {
@@ -106,9 +112,7 @@ for (const relPath of requiredFiles) {
   const srcTsPath = srcPath.replace(/\.js$/, '.ts');
 
   const exists =
-    (distAvailable && existsSync(distPath)) ||
-    existsSync(srcPath) ||
-    existsSync(srcTsPath);
+    (distAvailable && existsSync(distPath)) || existsSync(srcPath) || existsSync(srcTsPath);
 
   if (!exists) {
     throw new Error(`Required runtime file is missing: ${relPath}`);

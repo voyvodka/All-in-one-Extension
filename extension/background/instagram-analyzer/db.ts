@@ -14,8 +14,10 @@ function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
 function transactionDone(transaction: IDBTransaction): Promise<void> {
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error ?? new Error('IndexedDB transaction failed'));
-    transaction.onabort = () => reject(transaction.error ?? new Error('IndexedDB transaction aborted'));
+    transaction.onerror = () =>
+      reject(transaction.error ?? new Error('IndexedDB transaction failed'));
+    transaction.onabort = () =>
+      reject(transaction.error ?? new Error('IndexedDB transaction aborted'));
   });
 }
 
@@ -32,19 +34,25 @@ async function openDatabase(): Promise<IDBDatabase> {
   return requestToPromise(request);
 }
 
-export async function getDurableAnalyzerAccount(viewerId: string): Promise<InstagramAnalyzerDurableAccount | null> {
+export async function getDurableAnalyzerAccount(
+  viewerId: string,
+): Promise<InstagramAnalyzerDurableAccount | null> {
   const database = await openDatabase();
   try {
     const transaction = database.transaction(ACCOUNTS_STORE, 'readonly');
     const store = transaction.objectStore(ACCOUNTS_STORE);
-    const result = await requestToPromise(store.get(viewerId) as IDBRequest<InstagramAnalyzerDurableAccount | undefined>);
+    const result = await requestToPromise(
+      store.get(viewerId) as IDBRequest<InstagramAnalyzerDurableAccount | undefined>,
+    );
     return result ?? null;
   } finally {
     database.close();
   }
 }
 
-export async function putDurableAnalyzerAccount(account: InstagramAnalyzerDurableAccount): Promise<void> {
+export async function putDurableAnalyzerAccount(
+  account: InstagramAnalyzerDurableAccount,
+): Promise<void> {
   const database = await openDatabase();
   try {
     const transaction = database.transaction(ACCOUNTS_STORE, 'readwrite');

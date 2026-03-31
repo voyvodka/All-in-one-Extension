@@ -1,6 +1,15 @@
-import { buildTimestampFile, normalizeTwitterUrl, inferExtFromUrl } from '../../../background/utils.js';
+import {
+  buildTimestampFile,
+  normalizeTwitterUrl,
+  inferExtFromUrl,
+} from '../../../background/utils.js';
 import { buildZip, uint8ToBase64 } from '../../../background/downloads/zip.js';
-import { createJob, addJob, updateJob, registerDownloadId } from '../../../background/downloads/store.js';
+import {
+  createJob,
+  addJob,
+  updateJob,
+  registerDownloadId,
+} from '../../../background/downloads/store.js';
 import { getMp3DownloadUrl, getMp4DownloadUrl } from '../../../background/providers/loaderTo.js';
 import { MESSAGE_TYPES } from '../../../shared/contracts/message-types.js';
 import type { ProgressEvent } from '../../../background/providers/loaderTo.js';
@@ -13,11 +22,11 @@ export interface DownloadResult {
 export async function startTwitterDownload(
   kind: string,
   tweetUrl: string,
-  tweetTitle: string
+  tweetTitle: string,
 ): Promise<DownloadResult> {
   const normalizedUrl = normalizeTwitterUrl(tweetUrl);
   const effectiveUrl = normalizedUrl || tweetUrl;
-  let tweetId = '';
+  let tweetId: string;
   try {
     tweetId = new URL(effectiveUrl).pathname.split('/').filter(Boolean).pop() ?? '';
   } catch {
@@ -32,7 +41,7 @@ export async function startTwitterDownload(
     type: kind,
     title: baseTitle,
     fileName,
-    sourceUrl: effectiveUrl
+    sourceUrl: effectiveUrl,
   });
   await addJob(job);
 
@@ -46,7 +55,7 @@ export async function startTwitterDownload(
             j.progress = Math.max(j.progress || 0, Math.min(99, Math.round(progress.progress)));
           });
         }
-      }
+      },
     );
 
     const result = await new Promise<DownloadResult>((resolve) => {
@@ -54,7 +63,7 @@ export async function startTwitterDownload(
         {
           url: downloadUrl,
           filename: fileName,
-          saveAs: true
+          saveAs: true,
         },
         (downloadId) => {
           if (chrome.runtime.lastError) {
@@ -79,7 +88,7 @@ export async function startTwitterDownload(
             });
             resolve({ success: false, error: 'USER_CANCELED' });
           }
-        }
+        },
       );
     });
 
@@ -104,7 +113,7 @@ export interface TwitterImageDownloadParams {
 export async function startTwitterImageDownload({
   tweetUrl,
   tweetTitle,
-  imageUrl
+  imageUrl,
 }: TwitterImageDownloadParams): Promise<DownloadResult> {
   const normalizedUrl = normalizeTwitterUrl(tweetUrl ?? '');
   const effectiveTweetUrl = normalizedUrl || tweetUrl || imageUrl || '';
@@ -119,7 +128,7 @@ export async function startTwitterImageDownload({
     title: baseTitle,
     fileName,
     sourceUrl: effectiveTweetUrl,
-    mediaUrl: imageUrl
+    mediaUrl: imageUrl,
   });
   await addJob(job);
 
@@ -128,7 +137,7 @@ export async function startTwitterImageDownload({
       {
         url: imageUrl,
         filename: fileName,
-        saveAs: true
+        saveAs: true,
       },
       (downloadId) => {
         if (chrome.runtime.lastError) {
@@ -154,7 +163,7 @@ export async function startTwitterImageDownload({
           });
           resolve({ success: false, error: 'USER_CANCELED' });
         }
-      }
+      },
     );
   });
 }
@@ -168,7 +177,7 @@ export interface TwitterImagesZipParams {
 export async function startTwitterImagesZip({
   tweetUrl,
   tweetTitle,
-  imageUrls
+  imageUrls,
 }: TwitterImagesZipParams): Promise<DownloadResult> {
   const uniqueUrls = Array.from(new Set((imageUrls ?? []).filter(Boolean)));
   if (!uniqueUrls.length) {
@@ -184,7 +193,7 @@ export async function startTwitterImagesZip({
     title: baseTitle,
     fileName,
     sourceUrl: tweetUrl,
-    retryImageUrls: uniqueUrls
+    retryImageUrls: uniqueUrls,
   });
   await addJob(job);
 
@@ -197,7 +206,7 @@ export async function startTwitterImagesZip({
         const ext = inferExtFromUrl(url, 'jpg');
         const name = `IMG_${ts + idx}.${ext}`;
         return { name, data: buf };
-      })
+      }),
     );
 
     const zipBytes = buildZip(fetched);
@@ -208,7 +217,7 @@ export async function startTwitterImagesZip({
         {
           url: dataUrl,
           filename: fileName,
-          saveAs: true
+          saveAs: true,
         },
         (downloadId) => {
           if (chrome.runtime.lastError) {
@@ -234,7 +243,7 @@ export async function startTwitterImagesZip({
             });
             resolve({ success: false, error: 'USER_CANCELED' });
           }
-        }
+        },
       );
     });
 

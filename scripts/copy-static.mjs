@@ -47,7 +47,7 @@ function copyDir(relPath, filter) {
   cpSync(src, dest, {
     recursive: true,
     force: true,
-    filter: filter ?? ((p) => !p.endsWith('.DS_Store'))
+    filter: filter ?? ((p) => !p.endsWith('.DS_Store')),
   });
   console.log(`[copy-static] Copied dir: ${relPath}`);
 }
@@ -55,7 +55,9 @@ function copyDir(relPath, filter) {
 function applyDevBranding() {
   if (!isDevBrand) return;
 
-  const localeFiles = ['en', 'tr'].map((locale) => join(destDir, '_locales', locale, 'messages.json'));
+  const localeFiles = ['en', 'tr'].map((locale) =>
+    join(destDir, '_locales', locale, 'messages.json'),
+  );
 
   for (const localePath of localeFiles) {
     if (!existsSync(localePath)) continue;

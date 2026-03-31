@@ -15,10 +15,19 @@
     "package:extension:nested": "AIO_SOURCE_DIR=extension-dist node scripts/package-extension.mjs",
     "package:extension:unpacked": "AIO_SOURCE_DIR=extension-dist AIO_PACKAGE_LAYOUT=flat node scripts/package-extension.mjs",
     "package:extension:unpacked:dev": "yarn build:dev && AIO_SOURCE_DIR=extension-dev-dist AIO_PACKAGE_LAYOUT=flat AIO_UNPACKED_FOLDER_NAME='All-in-One Toolkit Dev' AIO_PACKAGE_SUFFIX=dev node scripts/package-extension.mjs",
-    "release:verify": "node scripts/release-verify.mjs"
+    "release:verify": "node scripts/release-verify.mjs",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/chrome": "^0.1.38",
-    "typescript": "^6.0.2"
+    "eslint": "^10.1.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.1",
+    "typescript": "^6.0.2",
+    "typescript-eslint": "^8.58.0"
   }
 }

@@ -1,6 +1,11 @@
 import { buildTimestampFile, inferExtFromUrl } from '../../../background/utils.js';
 import { buildZip, uint8ToBase64 } from '../../../background/downloads/zip.js';
-import { createJob, addJob, updateJob, registerDownloadId } from '../../../background/downloads/store.js';
+import {
+  createJob,
+  addJob,
+  updateJob,
+  registerDownloadId,
+} from '../../../background/downloads/store.js';
 import { getMp3DownloadUrl, getMp4DownloadUrl } from '../../../background/providers/loaderTo.js';
 import { MESSAGE_TYPES } from '../../../shared/contracts/message-types.js';
 import type { ProgressEvent } from '../../../background/providers/loaderTo.js';
@@ -24,9 +29,9 @@ export async function startInstagramDownload(
   kind: string,
   reelUrl: string,
   reelTitle: string,
-  options: InstagramDownloadOptions = {}
+  options: InstagramDownloadOptions = {},
 ): Promise<DownloadResult> {
-  let reelId = '';
+  let reelId: string;
   try {
     reelId = new URL(reelUrl).pathname.split('/').filter(Boolean).pop() ?? '';
   } catch {
@@ -46,7 +51,7 @@ export async function startInstagramDownload(
     title: baseTitle,
     fileName,
     sourceUrl: reelUrl,
-    mediaUrl
+    mediaUrl,
   });
   await addJob(job);
 
@@ -65,7 +70,7 @@ export async function startInstagramDownload(
         {
           url: downloadUrl,
           filename: fileName,
-          saveAs: true
+          saveAs: true,
         },
         (downloadId) => {
           if (chrome.runtime.lastError) {
@@ -90,14 +95,13 @@ export async function startInstagramDownload(
             });
             resolve({ success: false, error: 'USER_CANCELED' });
           }
-        }
+        },
       );
     });
 
   try {
     const downloadUrl =
-      mediaUrl ??
-      (await (isMp4 ? getMp4DownloadUrl : getMp3DownloadUrl)(reelUrl, handleProgress));
+      mediaUrl ?? (await (isMp4 ? getMp4DownloadUrl : getMp3DownloadUrl)(reelUrl, handleProgress));
     const result = await startBrowserDownload(downloadUrl);
     return result;
   } catch (error) {
@@ -120,7 +124,7 @@ export interface InstagramImagesZipParams {
 export async function startInstagramImagesZip({
   reelUrl,
   reelTitle,
-  imageUrls
+  imageUrls,
 }: InstagramImagesZipParams): Promise<DownloadResult> {
   const uniqueUrls = Array.from(new Set((imageUrls ?? []).filter(Boolean)));
   if (!uniqueUrls.length) {
@@ -135,7 +139,7 @@ export async function startInstagramImagesZip({
     title: baseTitle,
     fileName,
     sourceUrl: reelUrl,
-    retryImageUrls: uniqueUrls
+    retryImageUrls: uniqueUrls,
   });
   await addJob(job);
 
@@ -148,7 +152,7 @@ export async function startInstagramImagesZip({
         const ext = inferExtFromUrl(url, 'jpg');
         const name = `IMG_${ts + idx}.${ext}`;
         return { name, data: buf };
-      })
+      }),
     );
 
     const zipBytes = buildZip(fetched);
@@ -159,7 +163,7 @@ export async function startInstagramImagesZip({
         {
           url: dataUrl,
           filename: fileName,
-          saveAs: true
+          saveAs: true,
         },
         (downloadId) => {
           if (chrome.runtime.lastError) {
@@ -185,7 +189,7 @@ export async function startInstagramImagesZip({
             });
             resolve({ success: false, error: 'USER_CANCELED' });
           }
-        }
+        },
       );
     });
 

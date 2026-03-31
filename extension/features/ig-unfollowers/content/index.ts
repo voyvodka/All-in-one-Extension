@@ -3,7 +3,7 @@ import {
   createInstagramAnalyzerAccountState,
   getInstagramAnalyzerState,
   getSettings,
-  updateInstagramAnalyzer
+  updateInstagramAnalyzer,
 } from '../../../shared/storage.js';
 import { toggleDashboard } from './dashboard.js';
 import type {
@@ -14,7 +14,7 @@ import type {
   InstagramAnalyzerSnapshotUser,
   InstagramAnalyzerState,
   Settings,
-  ThemeChoice
+  ThemeChoice,
 } from '../../../shared/storage.js';
 import { MESSAGE_TYPES } from '../../../shared/contracts/message-types.js';
 
@@ -75,7 +75,7 @@ function getPathUsername(): string {
     'create',
     'developer',
     'about',
-    'legal'
+    'legal',
   ]);
   return blocked.has(candidate) ? '' : candidate;
 }
@@ -106,10 +106,14 @@ function escapeHtml(value: string): string {
 }
 
 function isContextInvalidatedError(error: unknown): boolean {
-  return /context invalidated/i.test(String((error as { message?: string } | null)?.message ?? error ?? ''));
+  return /context invalidated/i.test(
+    String((error as { message?: string } | null)?.message ?? error ?? ''),
+  );
 }
 
-async function sendAnalyzerMessage(payload: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+async function sendAnalyzerMessage(
+  payload: Record<string, unknown>,
+): Promise<Record<string, unknown> | null> {
   if (!chrome?.runtime?.id) {
     return { success: false, error: 'Uzanti yeniden yuklendi. Sayfayi yenileyip tekrar dene.' };
   }
@@ -125,13 +129,18 @@ async function sendAnalyzerMessage(payload: Record<string, unknown>): Promise<Re
       });
     } catch (error) {
       if (isContextInvalidatedError(error)) {
-        resolve({ success: false, error: 'Uzanti yeniden yuklendi. Sayfayi yenileyip tekrar dene.' });
+        resolve({
+          success: false,
+          error: 'Uzanti yeniden yuklendi. Sayfayi yenileyip tekrar dene.',
+        });
         return;
       }
 
       resolve({
         success: false,
-        error: String((error as { message?: string } | null)?.message ?? error ?? 'Mesaj gonderilemedi')
+        error: String(
+          (error as { message?: string } | null)?.message ?? error ?? 'Mesaj gonderilemedi',
+        ),
       });
     }
   });
@@ -145,17 +154,20 @@ async function unfollowInstagramUser(targetId: string, csrfToken: string): Promi
     throw new Error('Instagram oturumu dogrulanamadi');
   }
 
-  const response = await fetch(`https://www.instagram.com/web/friendships/${encodeURIComponent(targetId)}/unfollow/`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'content-type': 'application/x-www-form-urlencoded',
-      'x-csrftoken': csrfToken,
-      'x-ig-app-id': IG_APP_ID,
-      'x-requested-with': 'XMLHttpRequest'
+  const response = await fetch(
+    `https://www.instagram.com/web/friendships/${encodeURIComponent(targetId)}/unfollow/`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        'x-csrftoken': csrfToken,
+        'x-ig-app-id': IG_APP_ID,
+        'x-requested-with': 'XMLHttpRequest',
+      },
+      body: '',
     },
-    body: ''
-  });
+  );
 
   const rawText = await response.text();
   let data: Record<string, unknown> | null = null;
@@ -173,7 +185,9 @@ async function unfollowInstagramUser(targetId: string, csrfToken: string): Promi
       (typeof data?.['status'] === 'string' && data['status']) ||
       rawText.slice(0, 160).replace(/\s+/g, ' ') ||
       response.statusText;
-    throw new Error(message || `Instagram takibi birakma istegi basarisiz oldu (${response.status})`);
+    throw new Error(
+      message || `Instagram takibi birakma istegi basarisiz oldu (${response.status})`,
+    );
   }
 }
 
@@ -189,14 +203,14 @@ function parseRgb(color: string): [number, number, number] | null {
     return [
       parseInt(hex[0] + hex[0], 16),
       parseInt(hex[1] + hex[1], 16),
-      parseInt(hex[2] + hex[2], 16)
+      parseInt(hex[2] + hex[2], 16),
     ];
   }
   if (/^[a-f0-9]{6}$/i.test(hex)) {
     return [
       parseInt(hex.slice(0, 2), 16),
       parseInt(hex.slice(2, 4), 16),
-      parseInt(hex.slice(4, 6), 16)
+      parseInt(hex.slice(4, 6), 16),
     ];
   }
   return null;
@@ -210,12 +224,10 @@ function getLuminance(color: string): number | null {
 
   const [red, green, blue] = rgb.map((value) => {
     const normalized = value / 255;
-    return normalized <= 0.03928
-      ? normalized / 12.92
-      : Math.pow((normalized + 0.055) / 1.055, 2.4);
+    return normalized <= 0.03928 ? normalized / 12.92 : Math.pow((normalized + 0.055) / 1.055, 2.4);
   }) as [number, number, number];
 
-  return (0.2126 * red) + (0.7152 * green) + (0.0722 * blue);
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 }
 
 function inferSiteTheme(): DrawerTheme | null {
@@ -230,11 +242,15 @@ function inferSiteTheme(): DrawerTheme | null {
 
   const backgroundCandidates = [
     window.getComputedStyle(document.body).backgroundColor,
-    rootStyle.backgroundColor
+    rootStyle.backgroundColor,
   ];
 
   for (const backgroundColor of backgroundCandidates) {
-    if (!backgroundColor || backgroundColor === 'rgba(0, 0, 0, 0)' || backgroundColor === 'transparent') {
+    if (
+      !backgroundColor ||
+      backgroundColor === 'rgba(0, 0, 0, 0)' ||
+      backgroundColor === 'transparent'
+    ) {
       continue;
     }
     const luminance = getLuminance(backgroundColor);
@@ -287,7 +303,7 @@ function truncateCursor(cursor: string | null): string {
 
 function resolveActiveAccount(
   state: InstagramAnalyzerState,
-  viewerId: string | null
+  viewerId: string | null,
 ): InstagramAnalyzerAccountState | null {
   if (viewerId && state.accounts[viewerId]) {
     return state.accounts[viewerId] ?? null;
@@ -300,7 +316,7 @@ function resolveActiveAccount(
 
 function mergeDurableAccountData(
   account: InstagramAnalyzerAccountState,
-  durableAccount: InstagramAnalyzerDurableAccount | null
+  durableAccount: InstagramAnalyzerDurableAccount | null,
 ): InstagramAnalyzerAccountState {
   if (!durableAccount) {
     return account;
@@ -317,7 +333,11 @@ function mergeDurableAccountData(
   return account;
 }
 
-function getDisplayAccount(account: InstagramAnalyzerAccountState | null, viewerId: string | null, username: string): string {
+function getDisplayAccount(
+  account: InstagramAnalyzerAccountState | null,
+  viewerId: string | null,
+  username: string,
+): string {
   const resolvedUsername = username || account?.summary.username || account?.job?.username || '';
   if (resolvedUsername) {
     return `@${resolvedUsername}`;
@@ -346,7 +366,9 @@ function getStatusLabel(account: InstagramAnalyzerAccountState | null): string {
   return t('analyzerStatusIdle');
 }
 
-function getStatusTone(account: InstagramAnalyzerAccountState | null): 'neutral' | 'info' | 'success' | 'warning' | 'error' {
+function getStatusTone(
+  account: InstagramAnalyzerAccountState | null,
+): 'neutral' | 'info' | 'success' | 'warning' | 'error' {
   if (account?.job?.status === 'running' || account?.summary.status === 'running') {
     return 'info';
   }
@@ -365,25 +387,34 @@ function matchesSearch(item: InstagramAnalyzerResultItem, query: string): boolea
     return true;
   }
   const normalizedQuery = normalizeText(query);
-  return normalizeText(item.username).includes(normalizedQuery) || normalizeText(item.fullName).includes(normalizedQuery);
+  return (
+    normalizeText(item.username).includes(normalizedQuery) ||
+    normalizeText(item.fullName).includes(normalizedQuery)
+  );
 }
 
 function sortResults(results: InstagramAnalyzerResultItem[]): InstagramAnalyzerResultItem[] {
   return [...results].sort((left, right) => left.username.localeCompare(right.username));
 }
 
-function sortSnapshotUsers(items: InstagramAnalyzerSnapshotUser[]): InstagramAnalyzerSnapshotUser[] {
+function sortSnapshotUsers(
+  items: InstagramAnalyzerSnapshotUser[],
+): InstagramAnalyzerSnapshotUser[] {
   return [...items].sort((left, right) => left.username.localeCompare(right.username));
 }
 
-function paginate<T>(items: T[], page: number, pageSize: number): { items: T[]; page: number; totalPages: number } {
+function paginate<T>(
+  items: T[],
+  page: number,
+  pageSize: number,
+): { items: T[]; page: number; totalPages: number } {
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
   const normalizedPage = Math.min(Math.max(1, page), totalPages);
   const start = (normalizedPage - 1) * pageSize;
   return {
     items: items.slice(start, start + pageSize),
     page: normalizedPage,
-    totalPages
+    totalPages,
   };
 }
 
@@ -416,11 +447,16 @@ function getKnownUserMap(account: InstagramAnalyzerAccountState | null): Map<str
   return userMap;
 }
 
-function getHistoryEntries(account: InstagramAnalyzerAccountState | null): InstagramAnalyzerScanHistoryEntry[] {
+function getHistoryEntries(
+  account: InstagramAnalyzerAccountState | null,
+): InstagramAnalyzerScanHistoryEntry[] {
   return account?.history ?? [];
 }
 
-function getHistoryDiffItems(entry: InstagramAnalyzerScanHistoryEntry | null, tab: HistoryDiffTab): InstagramAnalyzerSnapshotUser[] {
+function getHistoryDiffItems(
+  entry: InstagramAnalyzerScanHistoryEntry | null,
+  tab: HistoryDiffTab,
+): InstagramAnalyzerSnapshotUser[] {
   if (!entry) {
     return [];
   }
@@ -431,7 +467,7 @@ function getHistoryDiffItems(entry: InstagramAnalyzerScanHistoryEntry | null, ta
 function getVisibleResults(
   account: InstagramAnalyzerAccountState | null,
   activeTab: ResultTab,
-  searchQuery: string
+  searchQuery: string,
 ): InstagramAnalyzerResultItem[] {
   if (!account) {
     return [];
@@ -455,7 +491,7 @@ function getDrawerBody(
   account: InstagramAnalyzerAccountState | null,
   viewerId: string | null,
   username: string,
-  localActionError: string | null
+  localActionError: string | null,
 ): string {
   if (localActionError) {
     return localActionError;
@@ -465,7 +501,10 @@ function getDrawerBody(
   }
   if (account?.job?.status === 'running' || account?.summary.status === 'running') {
     return t('analyzerRunningProgress')
-      .replace('{count}', String(account?.job?.processedCount ?? account?.summary.followingCount ?? 0))
+      .replace(
+        '{count}',
+        String(account?.job?.processedCount ?? account?.summary.followingCount ?? 0),
+      )
       .replace('{matches}', String(account?.summary.nonFollowerCount ?? 0));
   }
   if (account?.summary.status === 'error') {
@@ -480,7 +519,11 @@ function getDrawerBody(
   return t('analyzerDrawerHint');
 }
 
-function getScanActionConfig(account: InstagramAnalyzerAccountState | null, viewerId: string | null, isPending: boolean): {
+function getScanActionConfig(
+  account: InstagramAnalyzerAccountState | null,
+  viewerId: string | null,
+  isPending: boolean,
+): {
   disabled: boolean;
   label: string;
   title: string;
@@ -489,27 +532,27 @@ function getScanActionConfig(account: InstagramAnalyzerAccountState | null, view
     return {
       disabled: true,
       label: t('analyzerScanStart'),
-      title: t('analyzerDrawerSignedOut')
+      title: t('analyzerDrawerSignedOut'),
     };
   }
   if (isPending || account?.job?.status === 'running' || account?.summary.status === 'running') {
     return {
       disabled: true,
       label: t('analyzerScanRunning'),
-      title: t('analyzerScanRunningTitle')
+      title: t('analyzerScanRunningTitle'),
     };
   }
   if (account?.summary.lastScannedAt) {
     return {
       disabled: false,
       label: t('analyzerScanRescan'),
-      title: t('analyzerScanStartTitle')
+      title: t('analyzerScanStartTitle'),
     };
   }
   return {
     disabled: false,
     label: t('analyzerScanStart'),
-    title: t('analyzerScanStartTitle')
+    title: t('analyzerScanStartTitle'),
   };
 }
 
@@ -1253,7 +1296,7 @@ function createUi(shadowRoot: ShadowRoot): UiElements {
     root: shadowRoot.querySelector('.root') as HTMLElement,
     launcher: shadowRoot.querySelector('.launcher') as HTMLButtonElement,
     dashboardBtn: shadowRoot.querySelector('.dashboard-btn') as HTMLButtonElement,
-    panel: shadowRoot.querySelector('.panel') as HTMLElement
+    panel: shadowRoot.querySelector('.panel') as HTMLElement,
   };
 }
 
@@ -1318,14 +1361,18 @@ export default {
     };
 
     const captureUiState = (): void => {
-      const activeElement = shadowRoot.activeElement instanceof HTMLElement ? shadowRoot.activeElement : null;
+      const activeElement =
+        shadowRoot.activeElement instanceof HTMLElement ? shadowRoot.activeElement : null;
       const searchInput = panel.querySelector('.search') as HTMLInputElement | null;
       shouldRestoreSearchFocus = activeElement === searchInput;
       searchSelectionStart = searchInput?.selectionStart ?? 0;
       searchSelectionEnd = searchInput?.selectionEnd ?? 0;
-      resultListScrollTop = (panel.querySelector('.result-list') as HTMLElement | null)?.scrollTop ?? 0;
-      historyListScrollTop = (panel.querySelector('.history-scroll') as HTMLElement | null)?.scrollTop ?? 0;
-      historyDetailScrollTop = (panel.querySelector('.history-diff-list') as HTMLElement | null)?.scrollTop ?? 0;
+      resultListScrollTop =
+        (panel.querySelector('.result-list') as HTMLElement | null)?.scrollTop ?? 0;
+      historyListScrollTop =
+        (panel.querySelector('.history-scroll') as HTMLElement | null)?.scrollTop ?? 0;
+      historyDetailScrollTop =
+        (panel.querySelector('.history-diff-list') as HTMLElement | null)?.scrollTop ?? 0;
     };
 
     const restoreUiState = (): void => {
@@ -1346,7 +1393,10 @@ export default {
         const searchInput = panel.querySelector('.search') as HTMLInputElement | null;
         if (searchInput) {
           searchInput.focus();
-          const end = Math.min(searchInput.value.length, searchSelectionEnd || searchInput.value.length);
+          const end = Math.min(
+            searchInput.value.length,
+            searchSelectionEnd || searchInput.value.length,
+          );
           const start = Math.min(searchInput.value.length, searchSelectionStart || end);
           searchInput.setSelectionRange(start, end);
         }
@@ -1397,19 +1447,22 @@ export default {
 
       const response = await sendAnalyzerMessage({
         type: MESSAGE_TYPES.IG_ANALYZER_GET_DURABLE_ACCOUNT,
-        viewerId
+        viewerId,
       });
 
       if (!response || response['success'] !== true) {
         return;
       }
 
-      const durableAccount = (response['account'] as InstagramAnalyzerDurableAccount | undefined) ?? null;
+      const durableAccount =
+        (response['account'] as InstagramAnalyzerDurableAccount | undefined) ?? null;
       if (!durableAccount) {
         return;
       }
 
-      const targetAccount = analyzerState.accounts[viewerId] ?? createInstagramAnalyzerAccountState(viewerId, durableAccount.username);
+      const targetAccount =
+        analyzerState.accounts[viewerId] ??
+        createInstagramAnalyzerAccountState(viewerId, durableAccount.username);
       analyzerState.accounts[viewerId] = mergeDurableAccountData(targetAccount, durableAccount);
       durableViewerId = viewerId;
       durableLastScannedAt = nextLastScannedAt;
@@ -1427,7 +1480,7 @@ export default {
       const response = await sendAnalyzerMessage({
         type: MESSAGE_TYPES.IG_ANALYZER_RESOLVE_VIEWER,
         viewerId,
-        csrfToken
+        csrfToken,
       });
       return typeof response?.['username'] === 'string' ? response['username'] : '';
     };
@@ -1439,11 +1492,14 @@ export default {
 
       try {
         const nextViewerId = getCookieValue('ds_user_id') || null;
-        const storageUsername = nextViewerId ? analyzerState.accounts[nextViewerId]?.summary.username || '' : '';
-        const domUsername = nextViewerId ? detectViewerUsername() : '';
-        const resolvedUsername = nextViewerId && !domUsername && !storageUsername
-          ? await resolveViewerUsername(nextViewerId, getCookieValue('csrftoken'))
+        const storageUsername = nextViewerId
+          ? analyzerState.accounts[nextViewerId]?.summary.username || ''
           : '';
+        const domUsername = nextViewerId ? detectViewerUsername() : '';
+        const resolvedUsername =
+          nextViewerId && !domUsername && !storageUsername
+            ? await resolveViewerUsername(nextViewerId, getCookieValue('csrftoken'))
+            : '';
         const nextUsername = domUsername || storageUsername || resolvedUsername;
         const hasChanged = nextViewerId !== activeViewerId || nextUsername !== activeUsername;
         const needsAccountSeed = Boolean(nextViewerId && !analyzerState.accounts[nextViewerId]);
@@ -1461,7 +1517,9 @@ export default {
             return state;
           }
 
-          const account = state.accounts[nextViewerId] ?? createInstagramAnalyzerAccountState(nextViewerId, nextUsername);
+          const account =
+            state.accounts[nextViewerId] ??
+            createInstagramAnalyzerAccountState(nextViewerId, nextUsername);
           if (nextUsername) {
             account.summary.username = nextUsername;
             if (account.job) {
@@ -1494,7 +1552,9 @@ export default {
 
       try {
         analyzerState = await updateInstagramAnalyzer((state) => {
-          const account = state.accounts[viewerId] ?? createInstagramAnalyzerAccountState(viewerId, activeUsername);
+          const account =
+            state.accounts[viewerId] ??
+            createInstagramAnalyzerAccountState(viewerId, activeUsername);
           const whitelist = new Set(account.whitelist);
           if (whitelist.has(resultId)) {
             whitelist.delete(resultId);
@@ -1502,7 +1562,9 @@ export default {
             whitelist.add(resultId);
           }
           account.whitelist = Array.from(whitelist).sort();
-          account.summary.whitelistedCount = knownResults.filter((item) => whitelist.has(item.id)).length;
+          account.summary.whitelistedCount = knownResults.filter((item) =>
+            whitelist.has(item.id),
+          ).length;
           state.accounts[viewerId] = account;
           return state;
         });
@@ -1513,7 +1575,9 @@ export default {
           hydratedAccount.history = knownHistory;
           hydratedAccount.followingSnapshot = knownFollowingSnapshot;
           hydratedAccount.followersSnapshot = knownFollowersSnapshot;
-          hydratedAccount.summary.whitelistedCount = knownResults.filter((item) => hydratedAccount.whitelist.includes(item.id)).length;
+          hydratedAccount.summary.whitelistedCount = knownResults.filter((item) =>
+            hydratedAccount.whitelist.includes(item.id),
+          ).length;
         }
         render();
       } catch (error) {
@@ -1532,10 +1596,11 @@ export default {
       const knownHistory = currentAccount?.history ?? [];
       const knownFollowingSnapshot = currentAccount?.followingSnapshot ?? [];
       const knownFollowersSnapshot = currentAccount?.followersSnapshot ?? [];
-      const targetUser = knownResults.find((item) => item.id === resultId)
-        ?? knownFollowingSnapshot.find((item) => item.id === resultId)
-        ?? knownFollowersSnapshot.find((item) => item.id === resultId)
-        ?? null;
+      const targetUser =
+        knownResults.find((item) => item.id === resultId) ??
+        knownFollowingSnapshot.find((item) => item.id === resultId) ??
+        knownFollowersSnapshot.find((item) => item.id === resultId) ??
+        null;
       const username = targetUser?.username ?? resultId;
 
       if (!window.confirm(t('analyzerUnfollowConfirm').replace('{username}', username))) {
@@ -1552,20 +1617,30 @@ export default {
           type: MESSAGE_TYPES.IG_ANALYZER_REMOVE_RESULT,
           viewerId,
           targetId: resultId,
-          username: activeUsername || currentAccount?.summary.username || ''
+          username: activeUsername || currentAccount?.summary.username || '',
         });
         if (durableResponse?.['success'] !== true) {
-          throw new Error(typeof durableResponse?.['error'] === 'string' ? durableResponse['error'] : t('analyzerErrorBody'));
+          throw new Error(
+            typeof durableResponse?.['error'] === 'string'
+              ? durableResponse['error']
+              : t('analyzerErrorBody'),
+          );
         }
 
         analyzerState = await updateInstagramAnalyzer((state) => {
-          const account = state.accounts[viewerId] ?? createInstagramAnalyzerAccountState(viewerId, activeUsername);
+          const account =
+            state.accounts[viewerId] ??
+            createInstagramAnalyzerAccountState(viewerId, activeUsername);
           account.results = account.results.filter((item) => item.id !== resultId);
-          account.followingSnapshot = account.followingSnapshot.filter((item) => item.id !== resultId);
+          account.followingSnapshot = account.followingSnapshot.filter(
+            (item) => item.id !== resultId,
+          );
           account.whitelist = account.whitelist.filter((id) => id !== resultId);
           account.summary.nonFollowerCount = account.results.length;
           account.summary.followingCount = account.followingSnapshot.length;
-          account.summary.whitelistedCount = account.results.filter((item) => account.whitelist.includes(item.id)).length;
+          account.summary.whitelistedCount = account.results.filter((item) =>
+            account.whitelist.includes(item.id),
+          ).length;
           state.accounts[viewerId] = account;
           return state;
         });
@@ -1574,19 +1649,28 @@ export default {
         if (hydratedAccount) {
           hydratedAccount.results = knownResults.filter((item) => item.id !== resultId);
           hydratedAccount.history = knownHistory;
-          hydratedAccount.followingSnapshot = knownFollowingSnapshot.filter((item) => item.id !== resultId);
+          hydratedAccount.followingSnapshot = knownFollowingSnapshot.filter(
+            (item) => item.id !== resultId,
+          );
           hydratedAccount.followersSnapshot = knownFollowersSnapshot;
           hydratedAccount.whitelist = hydratedAccount.whitelist.filter((id) => id !== resultId);
           hydratedAccount.summary.nonFollowerCount = hydratedAccount.results.length;
           hydratedAccount.summary.followingCount = hydratedAccount.followingSnapshot.length;
-          hydratedAccount.summary.whitelistedCount = hydratedAccount.results.filter((item) => hydratedAccount.whitelist.includes(item.id)).length;
+          hydratedAccount.summary.whitelistedCount = hydratedAccount.results.filter((item) =>
+            hydratedAccount.whitelist.includes(item.id),
+          ).length;
         }
 
-        if (activeTab === 'whitelisted' && !(analyzerState.accounts[viewerId]?.whitelist.length ?? 0)) {
+        if (
+          activeTab === 'whitelisted' &&
+          !(analyzerState.accounts[viewerId]?.whitelist.length ?? 0)
+        ) {
           activeTab = 'non-whitelisted';
         }
       } catch (error) {
-        localActionError = String((error as { message?: string } | null)?.message ?? t('analyzerErrorBody'));
+        localActionError = String(
+          (error as { message?: string } | null)?.message ?? t('analyzerErrorBody'),
+        );
         handlePotentialInvalidation(error);
       } finally {
         pendingUnfollowIds.delete(resultId);
@@ -1612,14 +1696,13 @@ export default {
         type: MESSAGE_TYPES.IG_ANALYZER_START_SCAN,
         viewerId: activeViewerId,
         username: activeUsername || account?.summary.username || '',
-        csrfToken: getCookieValue('csrftoken')
+        csrfToken: getCookieValue('csrftoken'),
       });
 
       isScanRequestPending = false;
       if (!response?.success) {
-        localActionError = typeof response?.['error'] === 'string'
-          ? response['error']
-          : t('analyzerErrorBody');
+        localActionError =
+          typeof response?.['error'] === 'string' ? response['error'] : t('analyzerErrorBody');
       } else if (typeof response?.['error'] === 'string' && response['error']) {
         localActionError = response['error'];
       }
@@ -1636,7 +1719,9 @@ export default {
       try {
         await copyToClipboard(visibleResults.map((item) => `@${item.username}`).join('\n'));
       } catch (error) {
-        localActionError = String((error as { message?: string } | null)?.message ?? t('analyzerErrorBody'));
+        localActionError = String(
+          (error as { message?: string } | null)?.message ?? t('analyzerErrorBody'),
+        );
         render();
       }
     };
@@ -1648,7 +1733,12 @@ export default {
         return;
       }
 
-      const accountLabel = (activeUsername || account?.summary.username || activeViewerId || 'instagram').replace(/[^a-z0-9_-]/gi, '-');
+      const accountLabel = (
+        activeUsername ||
+        account?.summary.username ||
+        activeViewerId ||
+        'instagram'
+      ).replace(/[^a-z0-9_-]/gi, '-');
       const dateLabel = new Date().toISOString().slice(0, 10);
       downloadJson(`instagram-analyzer-${accountLabel}-${dateLabel}.json`, {
         viewerId: activeViewerId,
@@ -1656,7 +1746,7 @@ export default {
         exportedAt: Date.now(),
         filter: activeTab,
         searchQuery,
-        results: visibleResults
+        results: visibleResults,
       });
     };
 
@@ -1669,9 +1759,14 @@ export default {
       const knownUsers = getKnownUserMap(account);
       const whitelist = account.whitelist.map((id) => ({
         id,
-        username: knownUsers.get(id) ?? ''
+        username: knownUsers.get(id) ?? '',
       }));
-      const accountLabel = (activeUsername || account.summary.username || activeViewerId || 'instagram').replace(/[^a-z0-9_-]/gi, '-');
+      const accountLabel = (
+        activeUsername ||
+        account.summary.username ||
+        activeViewerId ||
+        'instagram'
+      ).replace(/[^a-z0-9_-]/gi, '-');
       downloadJson(`instagram-whitelist-${accountLabel}.json`, whitelist);
     };
 
@@ -1692,7 +1787,9 @@ export default {
       const knownFollowersSnapshot = currentAccount?.followersSnapshot ?? [];
       try {
         analyzerState = await updateInstagramAnalyzer((state) => {
-          const account = state.accounts[viewerId] ?? createInstagramAnalyzerAccountState(viewerId, activeUsername);
+          const account =
+            state.accounts[viewerId] ??
+            createInstagramAnalyzerAccountState(viewerId, activeUsername);
           account.whitelist = [];
           account.summary.whitelistedCount = 0;
           state.accounts[viewerId] = account;
@@ -1729,51 +1826,67 @@ export default {
       input.style.display = 'none';
       document.body.appendChild(input);
 
-      input.addEventListener('change', async () => {
-        const file = input.files?.[0];
-        input.remove();
-        if (!file) {
-          return;
-        }
-
-        try {
-          const raw = await file.text();
-          const parsed = JSON.parse(raw) as unknown;
-          const importedIds = Array.isArray(parsed)
-            ? parsed.flatMap((item) => {
-              if (typeof item === 'string') {
-                return item;
-              }
-              if (item && typeof item === 'object' && typeof (item as { id?: unknown }).id === 'string') {
-                return (item as { id: string }).id;
-              }
-              return [] as string[];
-            })
-            : [];
-
-          analyzerState = await updateInstagramAnalyzer((state) => {
-            const account = state.accounts[viewerId] ?? createInstagramAnalyzerAccountState(viewerId, activeUsername);
-            const whitelist = new Set(account.whitelist);
-            importedIds.forEach((id) => whitelist.add(id));
-            account.whitelist = Array.from(whitelist).sort();
-            account.summary.whitelistedCount = knownResults.filter((item) => whitelist.has(item.id)).length;
-            state.accounts[viewerId] = account;
-            return state;
-          });
-          const hydratedAccount = analyzerState.accounts[viewerId];
-          if (hydratedAccount) {
-            hydratedAccount.results = knownResults;
-            hydratedAccount.history = knownHistory;
-            hydratedAccount.followingSnapshot = knownFollowingSnapshot;
-            hydratedAccount.followersSnapshot = knownFollowersSnapshot;
-            hydratedAccount.summary.whitelistedCount = knownResults.filter((item) => hydratedAccount.whitelist.includes(item.id)).length;
+      input.addEventListener(
+        'change',
+        async () => {
+          const file = input.files?.[0];
+          input.remove();
+          if (!file) {
+            return;
           }
-          render();
-        } catch (error) {
-          localActionError = String((error as { message?: string } | null)?.message ?? t('analyzerErrorBody'));
-          render();
-        }
-      }, { once: true });
+
+          try {
+            const raw = await file.text();
+            const parsed = JSON.parse(raw) as unknown;
+            const importedIds = Array.isArray(parsed)
+              ? parsed.flatMap((item) => {
+                  if (typeof item === 'string') {
+                    return item;
+                  }
+                  if (
+                    item &&
+                    typeof item === 'object' &&
+                    typeof (item as { id?: unknown }).id === 'string'
+                  ) {
+                    return (item as { id: string }).id;
+                  }
+                  return [] as string[];
+                })
+              : [];
+
+            analyzerState = await updateInstagramAnalyzer((state) => {
+              const account =
+                state.accounts[viewerId] ??
+                createInstagramAnalyzerAccountState(viewerId, activeUsername);
+              const whitelist = new Set(account.whitelist);
+              importedIds.forEach((id) => whitelist.add(id));
+              account.whitelist = Array.from(whitelist).sort();
+              account.summary.whitelistedCount = knownResults.filter((item) =>
+                whitelist.has(item.id),
+              ).length;
+              state.accounts[viewerId] = account;
+              return state;
+            });
+            const hydratedAccount = analyzerState.accounts[viewerId];
+            if (hydratedAccount) {
+              hydratedAccount.results = knownResults;
+              hydratedAccount.history = knownHistory;
+              hydratedAccount.followingSnapshot = knownFollowingSnapshot;
+              hydratedAccount.followersSnapshot = knownFollowersSnapshot;
+              hydratedAccount.summary.whitelistedCount = knownResults.filter((item) =>
+                hydratedAccount.whitelist.includes(item.id),
+              ).length;
+            }
+            render();
+          } catch (error) {
+            localActionError = String(
+              (error as { message?: string } | null)?.message ?? t('analyzerErrorBody'),
+            );
+            render();
+          }
+        },
+        { once: true },
+      );
 
       input.click();
     };
@@ -1790,7 +1903,8 @@ export default {
       const historyEntries = getHistoryEntries(account);
       const pagedHistory = paginate(historyEntries, historyPage, HISTORY_PAGE_SIZE);
       historyPage = pagedHistory.page;
-      const selectedHistoryEntry = historyEntries.find((entry) => entry.scanId === selectedHistoryScanId) ?? null;
+      const selectedHistoryEntry =
+        historyEntries.find((entry) => entry.scanId === selectedHistoryScanId) ?? null;
       const historyDiffItems = getHistoryDiffItems(selectedHistoryEntry, selectedHistoryDiffTab);
       const pagedHistoryDiff = paginate(historyDiffItems, historyDiffPage, HISTORY_DIFF_PAGE_SIZE);
       historyDiffPage = pagedHistoryDiff.page;
@@ -1805,34 +1919,47 @@ export default {
       const scanAction = getScanActionConfig(account, activeViewerId, isScanRequestPending);
       const body = getDrawerBody(account, activeViewerId, activeUsername, localActionError);
       const lastError = account?.job?.lastError || account?.summary.lastError || '-';
-      const cursorLabel = account?.job?.status === 'running'
-        ? truncateCursor(account.job?.nextCursor ?? null)
-        : (account?.summary.lastScannedAt ? t('analyzerCursorDone') : '-');
+      const cursorLabel =
+        account?.job?.status === 'running'
+          ? truncateCursor(account.job?.nextCursor ?? null)
+          : account?.summary.lastScannedAt
+            ? t('analyzerCursorDone')
+            : '-';
       const whitelistSet = new Set(account?.whitelist ?? []);
       const isWhitelistTab = activeTab === 'whitelisted';
-      const isHistoryDetailEmpty = !selectedHistoryEntry
-        || (!selectedHistoryEntry.diffs.followersAvailable && (selectedHistoryDiffTab === 'followersGained' || selectedHistoryDiffTab === 'followersLost'))
-        || !pagedHistoryDiff.items.length;
+      const isHistoryDetailEmpty =
+        !selectedHistoryEntry ||
+        (!selectedHistoryEntry.diffs.followersAvailable &&
+          (selectedHistoryDiffTab === 'followersGained' ||
+            selectedHistoryDiffTab === 'followersLost')) ||
+        !pagedHistoryDiff.items.length;
       const renderResultItems = (): string => {
         if (!pagedResults.items.length) {
           return `<div class="empty">${t('analyzerResultsEmpty')}</div>`;
         }
 
-        return pagedResults.items.map((item) => {
-          const hasAvatar = Boolean(item.profilePictureUrl);
-          const displayName = item.fullName || `@${item.username}`;
-          const isUnfollowPending = pendingUnfollowIds.has(item.id);
-          const badges = [
-            item.isPrivate ? `<span class="mini-badge">${t('analyzerPrivateBadge')}</span>` : '',
-            item.isVerified ? `<span class="mini-badge">${t('analyzerVerifiedBadge')}</span>` : ''
-          ].filter(Boolean).join('');
+        return pagedResults.items
+          .map((item) => {
+            const hasAvatar = Boolean(item.profilePictureUrl);
+            const displayName = item.fullName || `@${item.username}`;
+            const isUnfollowPending = pendingUnfollowIds.has(item.id);
+            const badges = [
+              item.isPrivate ? `<span class="mini-badge">${t('analyzerPrivateBadge')}</span>` : '',
+              item.isVerified
+                ? `<span class="mini-badge">${t('analyzerVerifiedBadge')}</span>`
+                : '',
+            ]
+              .filter(Boolean)
+              .join('');
 
-          return `
+            return `
             <div class="result-item">
               <div class="avatar">
-                ${hasAvatar
-                  ? `<img class="avatar-img" alt="${escapeHtml(item.username)}" src="${escapeHtml(item.profilePictureUrl)}" />`
-                  : escapeHtml(item.username.slice(0, 1).toUpperCase())}
+                ${
+                  hasAvatar
+                    ? `<img class="avatar-img" alt="${escapeHtml(item.username)}" src="${escapeHtml(item.profilePictureUrl)}" />`
+                    : escapeHtml(item.username.slice(0, 1).toUpperCase())
+                }
               </div>
               <div class="result-copy">
                 <div class="result-main">
@@ -1847,7 +1974,8 @@ export default {
               </div>
             </div>
           `;
-        }).join('');
+          })
+          .join('');
       };
 
       const renderPageControls = (page: number, totalPages: number, action: string): string => {
@@ -1865,8 +1993,9 @@ export default {
           return `<div class="empty empty-fill">${t('analyzerHistoryEmpty')}</div>`;
         }
 
-        return pagedHistory.items.map((entry) => {
-          return `
+        return pagedHistory.items
+          .map((entry) => {
+            return `
             <div class="history-item">
               <div class="history-item-top">
                 <div class="history-item-title">${escapeHtml(formatDateTime(entry.scannedAt))}</div>
@@ -1881,7 +2010,8 @@ export default {
               </div>
             </div>
           `;
-        }).join('');
+          })
+          .join('');
       };
 
       const renderHistoryDetailList = (): string => {
@@ -1889,7 +2019,11 @@ export default {
           return `<div class="empty empty-fill">${t('analyzerResultsEmpty')}</div>`;
         }
 
-        if (!selectedHistoryEntry.diffs.followersAvailable && (selectedHistoryDiffTab === 'followersGained' || selectedHistoryDiffTab === 'followersLost')) {
+        if (
+          !selectedHistoryEntry.diffs.followersAvailable &&
+          (selectedHistoryDiffTab === 'followersGained' ||
+            selectedHistoryDiffTab === 'followersLost')
+        ) {
           return `<div class="empty empty-fill">${t('analyzerFollowersUnavailable')}</div>`;
         }
 
@@ -1897,8 +2031,9 @@ export default {
           return `<div class="empty empty-fill">${t('analyzerResultsEmpty')}</div>`;
         }
 
-        return pagedHistoryDiff.items.map((item) => {
-          return `
+        return pagedHistoryDiff.items
+          .map((item) => {
+            return `
             <div class="result-item">
               <div class="avatar">${escapeHtml(item.username.slice(0, 1).toUpperCase())}</div>
               <div class="result-copy">
@@ -1910,7 +2045,8 @@ export default {
               <div class="row-actions"></div>
             </div>
           `;
-        }).join('');
+          })
+          .join('');
       };
 
       const resultsView = `
@@ -1924,19 +2060,22 @@ export default {
             <button class="tab" type="button" data-tab="whitelisted" data-active="${String(activeTab === 'whitelisted')}">${t('analyzerTabWhitelisted')}</button>
           </div>
           <div class="actions">
-            ${isWhitelistTab
-              ? `<button class="action import-whitelist-action" type="button" ${activeViewerId ? '' : 'disabled'}>${t('analyzerWhitelistImport')}</button>
+            ${
+              isWhitelistTab
+                ? `<button class="action import-whitelist-action" type="button" ${activeViewerId ? '' : 'disabled'}>${t('analyzerWhitelistImport')}</button>
                  <button class="action export-whitelist-action" type="button" ${account?.whitelist.length ? '' : 'disabled'}>${t('analyzerWhitelistExport')}</button>
                  <button class="action clear-whitelist-action" type="button" ${account?.whitelist.length ? '' : 'disabled'}>${t('analyzerWhitelistClear')}</button>`
-              : `<button class="action primary scan-action" type="button" ${scanAction.disabled ? 'disabled' : ''} title="${escapeHtml(scanAction.title)}">${escapeHtml(scanAction.label)}</button>
+                : `<button class="action primary scan-action" type="button" ${scanAction.disabled ? 'disabled' : ''} title="${escapeHtml(scanAction.title)}">${escapeHtml(scanAction.label)}</button>
                  <button class="action copy-action" type="button" ${visibleResults.length ? '' : 'disabled'} title="${escapeHtml(t('analyzerCopyVisibleTitle'))}">${t('analyzerCopyVisible')}</button>
-                 <button class="action export-action" type="button" ${visibleResults.length ? '' : 'disabled'} title="${escapeHtml(t('analyzerExportJsonTitle'))}">${t('analyzerExportJson')}</button>`}
+                 <button class="action export-action" type="button" ${visibleResults.length ? '' : 'disabled'} title="${escapeHtml(t('analyzerExportJsonTitle'))}">${t('analyzerExportJson')}</button>`
+            }
           </div>
           <div class="result-list${pagedResults.items.length ? '' : ' is-empty'}">${renderResultItems()}</div>
         </div>
       `;
 
-      const historyView = selectedHistoryEntry ? `
+      const historyView = selectedHistoryEntry
+        ? `
         <div class="panel-body">
           <div class="history-detail-header">
             <button class="ghost-btn history-back" type="button">← ${t('analyzerBack')}</button>
@@ -1959,7 +2098,8 @@ export default {
           ${renderPageControls(pagedHistoryDiff.page, pagedHistoryDiff.totalPages, 'history-diff')}
           <div class="history-diff-list${isHistoryDetailEmpty ? ' is-empty' : ''}">${renderHistoryDetailList()}</div>
         </div>
-      ` : `
+      `
+        : `
         <div class="panel-body">
           ${renderPageControls(pagedHistory.page, pagedHistory.totalPages, 'history')}
           <div class="history-scroll${pagedHistory.items.length ? '' : ' is-empty'}">${renderHistoryList()}</div>
@@ -2057,17 +2197,23 @@ export default {
         exportVisibleResults();
       });
 
-      const importWhitelistButton = panel.querySelector('.import-whitelist-action') as HTMLButtonElement | null;
+      const importWhitelistButton = panel.querySelector(
+        '.import-whitelist-action',
+      ) as HTMLButtonElement | null;
       importWhitelistButton?.addEventListener('click', () => {
         void importWhitelist();
       });
 
-      const exportWhitelistButton = panel.querySelector('.export-whitelist-action') as HTMLButtonElement | null;
+      const exportWhitelistButton = panel.querySelector(
+        '.export-whitelist-action',
+      ) as HTMLButtonElement | null;
       exportWhitelistButton?.addEventListener('click', () => {
         exportWhitelist();
       });
 
-      const clearWhitelistButton = panel.querySelector('.clear-whitelist-action') as HTMLButtonElement | null;
+      const clearWhitelistButton = panel.querySelector(
+        '.clear-whitelist-action',
+      ) as HTMLButtonElement | null;
       clearWhitelistButton?.addEventListener('click', () => {
         void clearWhitelist();
       });
@@ -2103,14 +2249,16 @@ export default {
         });
       });
 
-      panel.querySelectorAll<HTMLButtonElement>('[data-action="view-history"]').forEach((button) => {
-        button.addEventListener('click', () => {
-          selectedHistoryScanId = button.dataset['scanId'] ?? null;
-          selectedHistoryDiffTab = 'followed';
-          historyDiffPage = 1;
-          render();
+      panel
+        .querySelectorAll<HTMLButtonElement>('[data-action="view-history"]')
+        .forEach((button) => {
+          button.addEventListener('click', () => {
+            selectedHistoryScanId = button.dataset['scanId'] ?? null;
+            selectedHistoryDiffTab = 'followed';
+            historyDiffPage = 1;
+            render();
+          });
         });
-      });
 
       const historyBackButton = panel.querySelector('.history-back') as HTMLButtonElement | null;
       historyBackButton?.addEventListener('click', () => {
@@ -2126,14 +2274,16 @@ export default {
         });
       });
 
-      panel.querySelectorAll<HTMLButtonElement>('[data-action="toggle-whitelist"]').forEach((button) => {
-        button.addEventListener('click', () => {
-          const resultId = button.dataset['id'];
-          if (resultId) {
-            void toggleWhitelist(resultId);
-          }
+      panel
+        .querySelectorAll<HTMLButtonElement>('[data-action="toggle-whitelist"]')
+        .forEach((button) => {
+          button.addEventListener('click', () => {
+            const resultId = button.dataset['id'];
+            if (resultId) {
+              void toggleWhitelist(resultId);
+            }
+          });
         });
-      });
 
       panel.querySelectorAll<HTMLButtonElement>('[data-action="unfollow"]').forEach((button) => {
         button.addEventListener('click', () => {
@@ -2147,7 +2297,10 @@ export default {
       restoreUiState();
     };
 
-    const handleStorageChange = (changes: Record<string, chrome.storage.StorageChange>, area: string): void => {
+    const handleStorageChange = (
+      changes: Record<string, chrome.storage.StorageChange>,
+      area: string,
+    ): void => {
       if (area !== 'local') {
         return;
       }
@@ -2162,7 +2315,7 @@ export default {
     const handleRuntimeMessage = (
       message: { type?: string },
       _sender: chrome.runtime.MessageSender,
-      sendResponse: (response?: unknown) => void
+      sendResponse: (response?: unknown) => void,
     ): boolean | undefined => {
       if (message?.type !== MESSAGE_TYPES.IG_ANALYZER_OPEN) {
         return undefined;
@@ -2192,10 +2345,16 @@ export default {
         activeUsername,
         analyzerState,
         themeChoice: currentTheme,
-        onScan: () => { void startScan(); },
-        onToggleWhitelist: (id) => { void toggleWhitelist(id); },
-        onUnfollow: (id) => { void unfollowResult(id); },
-        isUnfollowPending: (id) => pendingUnfollowIds.has(id)
+        onScan: () => {
+          void startScan();
+        },
+        onToggleWhitelist: (id) => {
+          void toggleWhitelist(id);
+        },
+        onUnfollow: (id) => {
+          void unfollowResult(id);
+        },
+        isUnfollowPending: (id) => pendingUnfollowIds.has(id),
       });
     });
 
@@ -2219,5 +2378,5 @@ export default {
     void syncViewer();
 
     return cleanup;
-  }
+  },
 };

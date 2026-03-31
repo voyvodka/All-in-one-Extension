@@ -3,7 +3,7 @@ import {
   isYoutube,
   createYoutubeShareTarget,
   getYoutubeVideoId,
-  getYoutubeVideoTitle
+  getYoutubeVideoTitle,
 } from '../../youtube/shared.js';
 import { MESSAGE_TYPES } from '../../../shared/contracts/message-types.js';
 
@@ -27,7 +27,7 @@ export default {
     function injectButtons(): void {
       const selectors = [
         'ytd-unified-share-panel-renderer #contents',
-        'yt-third-party-share-target-section-renderer #contents'
+        'yt-third-party-share-target-section-renderer #contents',
       ];
       const containers = document.querySelectorAll(selectors.join(', '));
 
@@ -36,7 +36,7 @@ export default {
         const node = createYoutubeShareTarget(container as HTMLElement, {
           attr: MP3_ATTR,
           label: t('downloadAudio'),
-          onClick: handleClick
+          onClick: handleClick,
         });
         if (!node) return;
         container.prepend(node);
@@ -68,7 +68,7 @@ export default {
           type: MESSAGE_TYPES.YT_AUDIO_DOWNLOAD,
           openPopup: true,
           videoId,
-          videoTitle: videoTitle || videoId
+          videoTitle: videoTitle || videoId,
         });
 
         if (response?.success) {
@@ -86,5 +86,5 @@ export default {
         }, 2500);
       }
     }
-  }
+  },
 };

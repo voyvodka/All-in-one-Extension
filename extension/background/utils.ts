@@ -21,13 +21,11 @@ export function buildTimestampFile(
   kind: string,
   ext: string,
   ts: number = Date.now(),
-  suffix?: string
+  suffix?: string,
 ): string {
   const base = buildTimestampBase(kind, ts);
   const cleanExt = (ext || '').replace(/[^a-z0-9]/gi, '') || 'bin';
-  const cleanSuffix = suffix
-    ? `_${String(suffix).replace(/[^a-z0-9_-]+/gi, '')}`
-    : '';
+  const cleanSuffix = suffix ? `_${String(suffix).replace(/[^a-z0-9_-]+/gi, '')}` : '';
   return `${base}${cleanSuffix}.${cleanExt}`;
 }
 

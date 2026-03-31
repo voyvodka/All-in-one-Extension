@@ -9,6 +9,7 @@ Source code is TypeScript in `extension/`. A lightweight build step compiles to 
 3. Chrome loads `extension-dist/` via "Load unpacked"
 
 Three fragile DOM integration files stay as plain JavaScript with companion `.d.ts` declarations:
+
 - `extension/features/youtube/shared.js`
 - `extension/features/instagram/shared.js`
 - `extension/features/twitter/shared.js`
@@ -54,6 +55,7 @@ The analyzer is split into two independent UI surfaces that share the same stora
 Both surfaces mount into isolated shadow DOM hosts (`aio-instagram-analyzer-host`, `aio-ig-dashboard-host`) so they never conflict with Instagram's own DOM.
 
 Storage is split:
+
 - `chrome.storage.local` — lightweight account summaries, job state, whitelist, scan metadata
 - `IndexedDB` (via background message `IG_ANALYZER_GET_DURABLE_ACCOUNT`) — full result arrays, following/followers snapshots, and history diff payloads for large accounts
 

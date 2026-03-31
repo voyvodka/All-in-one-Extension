@@ -1,5 +1,5 @@
 export {
   featureDescriptors,
   contentFeatureDescriptors,
-  featureModulePaths
+  featureModulePaths,
 } from '../shared/contracts/feature-registry.js';

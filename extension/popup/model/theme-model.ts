@@ -4,7 +4,7 @@ export type ResolvedTheme = 'light' | 'dark';
 
 export function resolveTheme(
   theme: ThemeChoice | string,
-  prefersDarkMedia: MediaQueryList | null
+  prefersDarkMedia: MediaQueryList | null,
 ): ResolvedTheme {
   if (theme === 'light' || theme === 'dark') return theme;
   return prefersDarkMedia?.matches ? 'dark' : 'light';
@@ -21,7 +21,7 @@ export function syncSystemThemeListener({
   chosenTheme,
   mediaQueryList,
   currentHandler,
-  onSystemChange
+  onSystemChange,
 }: SyncSystemThemeListenerParams): (() => void) | null {
   if (!mediaQueryList) return null;
 

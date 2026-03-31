@@ -19,10 +19,7 @@
       "32": "icons/icon_32.png"
     }
   },
-  "permissions": [
-    "storage",
-    "downloads"
-  ],
+  "permissions": ["storage", "downloads"],
   "host_permissions": [
     "https://*.youtube.com/*",
     "https://youtu.be/*",
@@ -52,9 +49,7 @@
         "https://*.x.com/*",
         "https://x.com/*"
       ],
-      "js": [
-        "content.js"
-      ],
+      "js": ["content.js"],
       "type": "module",
       "run_at": "document_idle"
     }

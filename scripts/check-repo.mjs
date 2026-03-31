@@ -11,7 +11,7 @@ const requiredFiles = [
   'docs/ARCHITECTURE.md',
   'docs/RELEASE.md',
   'extension/PRIVACY_POLICY.md',
-  'extension/terms.md'
+  'extension/terms.md',
 ];
 
 for (const relativePath of requiredFiles) {
@@ -34,7 +34,7 @@ const blockedPathPatterns = [
   /(^|\/)credentials(\..+)?\.json$/i,
   /(^|\/)service-account(\..+)?\.json$/i,
   /\.pem$/i,
-  /\.p12$/i
+  /\.p12$/i,
 ];
 
 function walk(dirPath) {

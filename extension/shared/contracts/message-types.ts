@@ -18,7 +18,7 @@ export const MESSAGE_TYPES = Object.freeze({
   X_AUDIO_DOWNLOAD: 'x-audio-download',
   X_VIDEO_DOWNLOAD: 'x-video-download',
   X_IMAGE_DOWNLOAD: 'x-image-download',
-  X_IMAGE_ZIP_DOWNLOAD: 'x-image-zip-download'
+  X_IMAGE_ZIP_DOWNLOAD: 'x-image-zip-download',
 } as const);
 
 export type MessageType = (typeof MESSAGE_TYPES)[keyof typeof MESSAGE_TYPES];
@@ -45,5 +45,5 @@ export const DOWNLOAD_MESSAGE_TYPES = new Set<DownloadMessageType>([
   MESSAGE_TYPES.X_AUDIO_DOWNLOAD,
   MESSAGE_TYPES.X_VIDEO_DOWNLOAD,
   MESSAGE_TYPES.X_IMAGE_DOWNLOAD,
-  MESSAGE_TYPES.X_IMAGE_ZIP_DOWNLOAD
+  MESSAGE_TYPES.X_IMAGE_ZIP_DOWNLOAD,
 ]);

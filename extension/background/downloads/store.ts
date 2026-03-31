@@ -43,7 +43,7 @@ export function createJob({
   sourceUrl,
   fileName,
   mediaUrl,
-  retryImageUrls
+  retryImageUrls,
 }: CreateJobParams): DownloadJob {
   return {
     id: crypto.randomUUID
@@ -58,7 +58,7 @@ export function createJob({
     status: 'preparing',
     progress: 0,
     createdAt: Date.now(),
-    updatedAt: Date.now()
+    updatedAt: Date.now(),
   };
 }
 
@@ -70,10 +70,7 @@ export async function addJob(job: DownloadJob): Promise<DownloadJob> {
   return job;
 }
 
-export async function updateJob(
-  jobId: string,
-  updater: (job: DownloadJob) => void
-): Promise<void> {
+export async function updateJob(jobId: string, updater: (job: DownloadJob) => void): Promise<void> {
   await updateDownloads((state) => {
     const idx = state.active.findIndex((item) => item.id === jobId);
     if (idx === -1) return state;

@@ -4,9 +4,7 @@ export const isTwitter = (url) => {
   try {
     const { hostname, pathname } = new URL(url);
     const hostMatch =
-      hostname.endsWith('twitter.com') ||
-      hostname === 'x.com' ||
-      hostname.endsWith('.x.com');
+      hostname.endsWith('twitter.com') || hostname === 'x.com' || hostname.endsWith('.x.com');
     const pathMatch = /\/status\//.test(pathname);
     const homeMatch = pathname === '/' || pathname.startsWith('/home');
     return hostMatch && (pathMatch || homeMatch);
@@ -57,10 +55,7 @@ export function getTweetTitle(scope) {
   const fallbackTitle = document.title?.replace(/\s*-?\s*(Twitter|X)$/i, '').trim();
   const title = rawText || ogTitle || twitterTitle || fallbackTitle || 'twitter-video';
 
-  return [
-    title.replace(/\s+/g, ' ').trim().slice(0, 80),
-    tweetId
-  ]
+  return [title.replace(/\s+/g, ' ').trim().slice(0, 80), tweetId]
     .filter(Boolean)
     .join('-')
     .replace(/[^\w\-ğüşöçıİĞÜŞÖÇ]+/gi, '-')
@@ -79,7 +74,7 @@ let openMenu = null;
 let injectingMenuButtons = false;
 
 export function registerTwitterMenuProvider(id, buildOptions) {
-  if (!id || typeof buildOptions !== 'function') return () => { };
+  if (!id || typeof buildOptions !== 'function') return () => {};
 
   menuProviders.set(id, buildOptions);
   ensureDownloadHoverStyles();
@@ -111,15 +106,12 @@ function ensureMenuObserver() {
           return true;
         }
 
-        if (
-          el.matches?.('div[role="dialog"]') ||
-          el.querySelector?.('div[role="dialog"]')
-        ) {
+        if (el.matches?.('div[role="dialog"]') || el.querySelector?.('div[role="dialog"]')) {
           return true;
         }
 
         return false;
-      })
+      }),
     );
 
     if (!hasTweetNode) return;
@@ -144,14 +136,10 @@ function teardownMenuUi() {
 }
 
 function getTwitterActionContainers() {
-  const articles = Array.from(
-    document.querySelectorAll('article[data-testid="tweet"]')
-  );
+  const articles = Array.from(document.querySelectorAll('article[data-testid="tweet"]'));
 
   const fullscreenGroups = Array.from(
-    document.querySelectorAll(
-      'div[role="dialog"] div[role="group"] button[data-testid="reply"]'
-    )
+    document.querySelectorAll('div[role="dialog"] div[role="group"] button[data-testid="reply"]'),
   )
     .map((btn) => btn.closest('div[role="group"]'))
     .filter(Boolean);
@@ -213,9 +201,11 @@ function tweetHasMedia(article) {
   if (!article) return false;
   const hasVideo = !!article.querySelector('video, div[data-testid="videoComponent"]');
   const hasImage =
-    !!article.querySelector('div[data-testid="tweetPhoto"] img[src], img[src*="twimg.com/media"]') ||
     !!article.querySelector(
-      'div[data-testid="tweetPhoto"] div[style*="background-image"], div[style*="twimg.com/media"]'
+      'div[data-testid="tweetPhoto"] img[src], img[src*="twimg.com/media"]',
+    ) ||
+    !!article.querySelector(
+      'div[data-testid="tweetPhoto"] div[style*="background-image"], div[style*="twimg.com/media"]',
     );
   return hasVideo || hasImage;
 }
@@ -242,7 +232,7 @@ function createActionBarDownloadButton(templateButton, label) {
     if (path) {
       path.setAttribute(
         'd',
-        'M11.99 16l-5.7-5.7L7.7 8.88l3.29 3.3V2.59h2v9.59l3.3-3.3 1.41 1.42-5.71 5.7zM21 15l-.02 3.51c0 1.38-1.12 2.49-2.5 2.49H5.5C4.11 21 3 19.88 3 18.5V15h2v3.5c0 .28.22.5.5.5h12.98c.28 0 .5-.22.5-.5L19 15h2z'
+        'M11.99 16l-5.7-5.7L7.7 8.88l3.29 3.3V2.59h2v9.59l3.3-3.3 1.41 1.42-5.71 5.7zM21 15l-.02 3.51c0 1.38-1.12 2.49-2.5 2.49H5.5C4.11 21 3 19.88 3 18.5V15h2v3.5c0 .28.22.5.5.5h12.98c.28 0 .5-.22.5-.5L19 15h2z',
       );
     }
   }
@@ -270,11 +260,10 @@ function insertActionButtonNear(anchorButton, newButton) {
     wrapper.appendChild(newButton);
   }
 
-  const children = Array.from(rowContainer.children).filter(el => el.tagName === 'DIV');
+  const children = Array.from(rowContainer.children).filter((el) => el.tagName === 'DIV');
   const lastDiv = children[children.length - 1];
 
-  if (lastDiv !== wrapper)
-    lastDiv.classList.add('r-18u37iz', 'r-1h0z5md', 'r-1wron08');
+  if (lastDiv !== wrapper) lastDiv.classList.add('r-18u37iz', 'r-1h0z5md', 'r-1wron08');
 
   const alreadyInserted =
     rowContainer === wrapper.parentElement && wrapper.previousElementSibling === row;
@@ -407,7 +396,7 @@ function resolveTheme() {
         text: 'rgb(239,243,244)',
         hover: 'rgba(255,255,255,0.06)',
         border: 'rgba(255,255,255,0.08)',
-        shadow: '0 12px 32px rgba(0,0,0,0.6)'
+        shadow: '0 12px 32px rgba(0,0,0,0.6)',
       };
     }
   } catch {
@@ -419,7 +408,7 @@ function resolveTheme() {
     text: '#111',
     hover: 'rgba(0,0,0,0.04)',
     border: 'rgba(0,0,0,0.12)',
-    shadow: '0 12px 32px rgba(0,0,0,0.15)'
+    shadow: '0 12px 32px rgba(0,0,0,0.15)',
   };
 }
 
@@ -525,7 +514,7 @@ function renderMenu(button, options) {
     padding: '4px 0',
     boxShadow: theme.shadow,
     border: `1px solid ${theme.border}`,
-    zIndex: '2147483647'
+    zIndex: '2147483647',
   });
 
   options.forEach((opt) => {
@@ -543,7 +532,7 @@ function renderMenu(button, options) {
       cursor: opt.disabled ? 'not-allowed' : 'pointer',
       color: theme.text,
       fontSize: '14px',
-      whiteSpace: 'nowrap'
+      whiteSpace: 'nowrap',
     });
 
     item.textContent = opt.label;
@@ -607,8 +596,7 @@ function closeMenu() {
   openMenu.button?.setAttribute('aria-expanded', 'false');
   openMenu.menu?.remove();
 
-  if (openMenu.onDocClick)
-    document.removeEventListener('click', openMenu.onDocClick, true);
+  if (openMenu.onDocClick) document.removeEventListener('click', openMenu.onDocClick, true);
 
   if (openMenu.onScrollOrResize) {
     window.removeEventListener('scroll', openMenu.onScrollOrResize, true);

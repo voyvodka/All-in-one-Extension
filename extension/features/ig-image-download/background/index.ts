@@ -1,5 +1,10 @@
 import { t } from '../../../shared/i18n.js';
-import { createJob, addJob, updateJob, registerDownloadId } from '../../../background/downloads/store.js';
+import {
+  createJob,
+  addJob,
+  updateJob,
+  registerDownloadId,
+} from '../../../background/downloads/store.js';
 import { buildTimestampFile, inferExtFromUrl } from '../../../background/utils.js';
 import { MESSAGE_TYPES } from '../../../shared/contracts/message-types.js';
 
@@ -17,7 +22,7 @@ export interface InstagramImageDownloadParams {
 export async function startInstagramImageDownload({
   reelUrl,
   reelTitle,
-  mediaUrl
+  mediaUrl,
 }: InstagramImageDownloadParams): Promise<DownloadResult> {
   if (!mediaUrl) {
     return { success: false, error: t('instagramPhotoUrlMissing') };
@@ -32,7 +37,7 @@ export async function startInstagramImageDownload({
     title: baseTitle,
     fileName,
     sourceUrl: reelUrl,
-    mediaUrl
+    mediaUrl,
   });
   await addJob(job);
 
@@ -41,7 +46,7 @@ export async function startInstagramImageDownload({
       {
         url: mediaUrl,
         filename: fileName,
-        saveAs: true
+        saveAs: true,
       },
       (downloadId) => {
         if (chrome.runtime.lastError) {
@@ -66,7 +71,7 @@ export async function startInstagramImageDownload({
           });
           resolve({ success: false, error: 'USER_CANCELED' });
         }
-      }
+      },
     );
   });
 }

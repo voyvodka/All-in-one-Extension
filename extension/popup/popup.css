@@ -1,5 +1,9 @@
 /* ── Reset & tokens ──────────────────────────────────────────────── */
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 :root {
   --font-sans: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
@@ -52,7 +56,8 @@
   --c-info-muted: #14263c;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   min-height: 100%;
 }
@@ -106,7 +111,9 @@ body {
   flex-shrink: 0;
 }
 
-.inline-select { display: contents; }
+.inline-select {
+  display: contents;
+}
 
 .mini-select {
   height: 26px;
@@ -155,7 +162,9 @@ body {
   color: inherit;
 }
 
-.sort-icon .sort-arrow { fill: currentColor; }
+.sort-icon .sort-arrow {
+  fill: currentColor;
+}
 .sort-icon .sort-lines {
   fill: none;
   stroke: currentColor;
@@ -380,8 +389,12 @@ body {
   flex-shrink: 0;
 }
 
-.download-group { display: none; }
-.download-group.active { display: block; }
+.download-group {
+  display: none;
+}
+.download-group.active {
+  display: block;
+}
 
 .download-list {
   display: flex;
@@ -471,12 +484,32 @@ body {
   flex-shrink: 0;
 }
 
-.skeleton-stack { flex: 1; display: grid; gap: 4px; }
-.skeleton-line { height: 6px; border-radius: var(--radius-pill); }
-.skeleton-line.short { width: 38%; }
-.skeleton-line.long { width: 82%; }
-.skeleton-pill { width: 36px; height: 14px; border-radius: var(--radius-pill); margin-left: auto; }
-.skeleton-bar { width: 100%; height: 5px; border-radius: var(--radius-pill); }
+.skeleton-stack {
+  flex: 1;
+  display: grid;
+  gap: 4px;
+}
+.skeleton-line {
+  height: 6px;
+  border-radius: var(--radius-pill);
+}
+.skeleton-line.short {
+  width: 38%;
+}
+.skeleton-line.long {
+  width: 82%;
+}
+.skeleton-pill {
+  width: 36px;
+  height: 14px;
+  border-radius: var(--radius-pill);
+  margin-left: auto;
+}
+.skeleton-bar {
+  width: 100%;
+  height: 5px;
+  border-radius: var(--radius-pill);
+}
 
 /* ── Download card — dense row layout ─────────────────────────────── */
 .download-card {
@@ -500,7 +533,9 @@ body {
   min-height: 32px;
 }
 
-.download-row:hover { background: var(--c-surface-2); }
+.download-row:hover {
+  background: var(--c-surface-2);
+}
 
 /* Status dot — small colored circle */
 .status-dot {
@@ -509,10 +544,18 @@ body {
   border-radius: 50%;
   flex-shrink: 0;
 }
-.status-dot.info    { background: var(--c-info); }
-.status-dot.success { background: var(--c-success); }
-.status-dot.warning { background: var(--c-warning); }
-.status-dot.error   { background: var(--c-error); }
+.status-dot.info {
+  background: var(--c-info);
+}
+.status-dot.success {
+  background: var(--c-success);
+}
+.status-dot.warning {
+  background: var(--c-warning);
+}
+.status-dot.error {
+  background: var(--c-error);
+}
 
 /* Center: title + optional inline progress/error */
 .row-center {
@@ -602,7 +645,9 @@ body {
   white-space: nowrap;
 }
 
-.link-btn:hover { border-color: var(--c-border-strong); }
+.link-btn:hover {
+  border-color: var(--c-border-strong);
+}
 
 .chevron {
   width: 22px;
@@ -619,7 +664,9 @@ body {
   justify-content: center;
 }
 
-.chevron:hover { border-color: var(--c-border-strong); }
+.chevron:hover {
+  border-color: var(--c-border-strong);
+}
 
 .download-card[data-expanded='true'] .chevron {
   transform: rotate(180deg);
@@ -687,7 +734,9 @@ body {
   background: var(--c-surface-2);
 }
 
-.detail-item.is-wide { grid-column: 1 / -1; }
+.detail-item.is-wide {
+  grid-column: 1 / -1;
+}
 
 .detail-k {
   color: var(--c-text-3);
@@ -705,7 +754,9 @@ body {
   overflow-wrap: anywhere;
 }
 
-.detail-v.is-error { color: var(--c-error); }
+.detail-v.is-error {
+  color: var(--c-error);
+}
 
 /* ── Footer ──────────────────────────────────────────────────────── */
 .app-footer {
@@ -743,7 +794,9 @@ body {
   max-width: 220px;
 }
 
-.footer-update:empty { display: none; }
+.footer-update:empty {
+  display: none;
+}
 
 .footer-update-main,
 .footer-update-secondary {
@@ -797,7 +850,9 @@ body {
   border-color: var(--c-border-strong);
 }
 
-.footer-update .update-link:hover { text-decoration: underline; }
+.footer-update .update-link:hover {
+  text-decoration: underline;
+}
 
 .footer-update .footer-status {
   font-size: 9px;
@@ -834,7 +889,9 @@ body {
 
 /* ── Reduced motion ──────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;

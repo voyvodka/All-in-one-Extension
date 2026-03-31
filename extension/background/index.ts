@@ -1,16 +1,28 @@
 import { getYoutubeIdFromUrl, inferExtFromUrl } from './utils.js';
 import { getSettings, getDownloadsState } from '../shared/storage.js';
-import { clearHistory, getJobIdByDownloadId, loadDownloadMap, updateJob } from './downloads/store.js';
+import {
+  clearHistory,
+  getJobIdByDownloadId,
+  loadDownloadMap,
+  updateJob,
+} from './downloads/store.js';
 import {
   getInstagramAnalyzerDurableAccount,
   removeInstagramAnalyzerResult,
   resolveInstagramViewerUsername,
-  startInstagramAnalyzerScan
+  startInstagramAnalyzerScan,
 } from './instagram-analyzer/index.js';
 import { startYoutubeDownload } from '../features/youtube-download/background/index.js';
-import { startInstagramDownload, startInstagramImagesZip } from '../features/instagram-download/background/index.js';
+import {
+  startInstagramDownload,
+  startInstagramImagesZip,
+} from '../features/instagram-download/background/index.js';
 import { startInstagramImageDownload } from '../features/ig-image-download/background/index.js';
-import { startTwitterDownload, startTwitterImageDownload, startTwitterImagesZip } from '../features/twitter-download/background/index.js';
+import {
+  startTwitterDownload,
+  startTwitterImageDownload,
+  startTwitterImagesZip,
+} from '../features/twitter-download/background/index.js';
 import { MESSAGE_TYPES } from '../shared/contracts/message-types.js';
 
 loadDownloadMap().catch((err) => console.error('Failed to load download map', err));
@@ -89,7 +101,10 @@ function queryTabs(queryInfo: chrome.tabs.QueryInfo): Promise<chrome.tabs.Tab[]>
   });
 }
 
-function updateTab(tabId: number, updateProperties: chrome.tabs.UpdateProperties): Promise<chrome.tabs.Tab | undefined> {
+function updateTab(
+  tabId: number,
+  updateProperties: chrome.tabs.UpdateProperties,
+): Promise<chrome.tabs.Tab | undefined> {
   return new Promise((resolve, reject) => {
     chrome.tabs.update(tabId, updateProperties, (tab) => {
       if (chrome.runtime.lastError) {
@@ -190,7 +205,10 @@ async function handleRetryDownload(jobId: string): Promise<DownloadResult> {
     return { success: false, error: 'Kayıt bulunamadı' };
   }
 
-  if (previous.type === MESSAGE_TYPES.YT_AUDIO_DOWNLOAD || previous.type === MESSAGE_TYPES.YT_VIDEO_DOWNLOAD) {
+  if (
+    previous.type === MESSAGE_TYPES.YT_AUDIO_DOWNLOAD ||
+    previous.type === MESSAGE_TYPES.YT_VIDEO_DOWNLOAD
+  ) {
     const videoId = getYoutubeIdFromUrl(previous.sourceUrl);
     if (!videoId) {
       return { success: false, error: 'Video ID bulunamadı' };
@@ -200,19 +218,28 @@ async function handleRetryDownload(jobId: string): Promise<DownloadResult> {
   }
 
   if (previous.type === MESSAGE_TYPES.IG_AUDIO_DOWNLOAD) {
-    return startInstagramDownload(MESSAGE_TYPES.IG_AUDIO_DOWNLOAD, previous.sourceUrl, previous.title || previous.fileName);
+    return startInstagramDownload(
+      MESSAGE_TYPES.IG_AUDIO_DOWNLOAD,
+      previous.sourceUrl,
+      previous.title || previous.fileName,
+    );
   }
 
   if (previous.type === MESSAGE_TYPES.IG_VIDEO_DOWNLOAD) {
-    return startInstagramDownload(MESSAGE_TYPES.IG_VIDEO_DOWNLOAD, previous.sourceUrl, previous.title || previous.fileName, {
-      directMedia: previous.mediaUrl
-        ? {
-          url: previous.mediaUrl,
-          type: 'video',
-          ext: inferExtFromUrl(previous.mediaUrl, 'mp4')
-        }
-        : null
-    });
+    return startInstagramDownload(
+      MESSAGE_TYPES.IG_VIDEO_DOWNLOAD,
+      previous.sourceUrl,
+      previous.title || previous.fileName,
+      {
+        directMedia: previous.mediaUrl
+          ? {
+              url: previous.mediaUrl,
+              type: 'video',
+              ext: inferExtFromUrl(previous.mediaUrl, 'mp4'),
+            }
+          : null,
+      },
+    );
   }
 
   if (previous.type === MESSAGE_TYPES.IG_IMAGE_DOWNLOAD) {
@@ -224,7 +251,7 @@ async function handleRetryDownload(jobId: string): Promise<DownloadResult> {
     return startInstagramImageDownload({
       reelUrl: previous.sourceUrl || mediaUrl,
       reelTitle: previous.title || previous.fileName,
-      mediaUrl
+      mediaUrl,
     });
   }
 
@@ -236,16 +263,24 @@ async function handleRetryDownload(jobId: string): Promise<DownloadResult> {
     return startInstagramImagesZip({
       reelUrl: previous.sourceUrl,
       reelTitle: previous.title || previous.fileName,
-      imageUrls: previous.retryImageUrls
+      imageUrls: previous.retryImageUrls,
     });
   }
 
   if (previous.type === MESSAGE_TYPES.X_AUDIO_DOWNLOAD) {
-    return startTwitterDownload(MESSAGE_TYPES.X_AUDIO_DOWNLOAD, previous.sourceUrl, previous.title || previous.fileName);
+    return startTwitterDownload(
+      MESSAGE_TYPES.X_AUDIO_DOWNLOAD,
+      previous.sourceUrl,
+      previous.title || previous.fileName,
+    );
   }
 
   if (previous.type === MESSAGE_TYPES.X_VIDEO_DOWNLOAD) {
-    return startTwitterDownload(MESSAGE_TYPES.X_VIDEO_DOWNLOAD, previous.sourceUrl, previous.title || previous.fileName);
+    return startTwitterDownload(
+      MESSAGE_TYPES.X_VIDEO_DOWNLOAD,
+      previous.sourceUrl,
+      previous.title || previous.fileName,
+    );
   }
 
   if (previous.type === MESSAGE_TYPES.X_IMAGE_DOWNLOAD) {
@@ -257,7 +292,7 @@ async function handleRetryDownload(jobId: string): Promise<DownloadResult> {
     return startTwitterImageDownload({
       tweetUrl: previous.sourceUrl,
       tweetTitle: previous.title || previous.fileName,
-      imageUrl
+      imageUrl,
     });
   }
 
@@ -269,7 +304,7 @@ async function handleRetryDownload(jobId: string): Promise<DownloadResult> {
     return startTwitterImagesZip({
       tweetUrl: previous.sourceUrl,
       tweetTitle: previous.title || previous.fileName,
-      imageUrls: previous.retryImageUrls
+      imageUrls: previous.retryImageUrls,
     });
   }
 
@@ -278,7 +313,7 @@ async function handleRetryDownload(jobId: string): Promise<DownloadResult> {
 
 async function handleOpenInstagramAnalyzer(fallbackUrl: string): Promise<DownloadResult> {
   const instagramTabs = await queryTabs({
-    url: ['https://*.instagram.com/*']
+    url: ['https://*.instagram.com/*'],
   });
   const targetTab = instagramTabs.find((tab) => typeof tab.id === 'number');
 
@@ -299,7 +334,7 @@ async function handleOpenInstagramAnalyzer(fallbackUrl: string): Promise<Downloa
       console.warn('Failed to open analyzer drawer in content script', error);
       return {
         success: false,
-        error: normalizeAnalyzerOpenError(error)
+        error: normalizeAnalyzerOpenError(error),
       };
     }
   }
@@ -314,7 +349,7 @@ async function handleOpenInstagramAnalyzer(fallbackUrl: string): Promise<Downloa
       console.warn('Failed to auto-open analyzer drawer in new tab', error);
       return {
         success: false,
-        error: normalizeAnalyzerOpenError(error)
+        error: normalizeAnalyzerOpenError(error),
       };
     }
   }
@@ -340,14 +375,15 @@ function strArray(message: BaseMessage, key: string): string[] {
 function optObj(message: BaseMessage, key: string): Record<string, unknown> | null {
   const v = message?.[key];
   return v != null && typeof v === 'object' && !Array.isArray(v)
-    ? v as Record<string, unknown>
+    ? (v as Record<string, unknown>)
     : null;
 }
 
 const messageHandlers: Record<string, MessageHandler> = {
   [MESSAGE_TYPES.GET_SETTINGS]: async () => getSettings(),
   [MESSAGE_TYPES.GET_DOWNLOADS]: async () => getDownloadsState(),
-  [MESSAGE_TYPES.IG_ANALYZER_OPEN]: async (message) => handleOpenInstagramAnalyzer(str(message, 'fallbackUrl')),
+  [MESSAGE_TYPES.IG_ANALYZER_OPEN]: async (message) =>
+    handleOpenInstagramAnalyzer(str(message, 'fallbackUrl')),
   [MESSAGE_TYPES.IG_ANALYZER_GET_DURABLE_ACCOUNT]: async (message) => {
     const viewerId = str(message, 'viewerId');
     if (!viewerId) return { success: false, error: 'Viewer ID eksik.' };
@@ -357,8 +393,13 @@ const messageHandlers: Record<string, MessageHandler> = {
   [MESSAGE_TYPES.IG_ANALYZER_REMOVE_RESULT]: async (message) => {
     const viewerId = str(message, 'viewerId');
     const targetId = str(message, 'targetId');
-    if (!viewerId || !targetId) return { success: false, error: 'Viewer veya hedef hesap bilgisi eksik.' };
-    const account = await removeInstagramAnalyzerResult(viewerId, targetId, str(message, 'username'));
+    if (!viewerId || !targetId)
+      return { success: false, error: 'Viewer veya hedef hesap bilgisi eksik.' };
+    const account = await removeInstagramAnalyzerResult(
+      viewerId,
+      targetId,
+      str(message, 'username'),
+    );
     return { success: true, account };
   },
   [MESSAGE_TYPES.IG_ANALYZER_RESOLVE_VIEWER]: async (message) => {
@@ -373,36 +414,62 @@ const messageHandlers: Record<string, MessageHandler> = {
     return startInstagramAnalyzerScan({
       viewerId,
       username: str(message, 'username'),
-      csrfToken: str(message, 'csrfToken')
+      csrfToken: str(message, 'csrfToken'),
     });
   },
   [MESSAGE_TYPES.YT_AUDIO_DOWNLOAD]: async (message) => {
     maybeOpenPopup(message);
     const videoId = str(message, 'videoId');
     if (!videoId) return { success: false, error: 'Missing videoId' };
-    return startYoutubeDownload(MESSAGE_TYPES.YT_AUDIO_DOWNLOAD, videoId, str(message, 'videoTitle'));
+    return startYoutubeDownload(
+      MESSAGE_TYPES.YT_AUDIO_DOWNLOAD,
+      videoId,
+      str(message, 'videoTitle'),
+    );
   },
   [MESSAGE_TYPES.YT_VIDEO_DOWNLOAD]: async (message) => {
     maybeOpenPopup(message);
     const videoId = str(message, 'videoId');
     if (!videoId) return { success: false, error: 'Missing videoId' };
-    return startYoutubeDownload(MESSAGE_TYPES.YT_VIDEO_DOWNLOAD, videoId, str(message, 'videoTitle'));
+    return startYoutubeDownload(
+      MESSAGE_TYPES.YT_VIDEO_DOWNLOAD,
+      videoId,
+      str(message, 'videoTitle'),
+    );
   },
   [MESSAGE_TYPES.IG_AUDIO_DOWNLOAD]: async (message) => {
     maybeOpenPopup(message);
     const reelUrl = str(message, 'reelUrl');
     if (!reelUrl) return { success: false, error: 'Missing reelUrl' };
-    return startInstagramDownload(MESSAGE_TYPES.IG_AUDIO_DOWNLOAD, reelUrl, str(message, 'reelTitle'), {
-      directMedia: optObj(message, 'directMedia') as { url?: string; type?: string; ext?: string } | null
-    });
+    return startInstagramDownload(
+      MESSAGE_TYPES.IG_AUDIO_DOWNLOAD,
+      reelUrl,
+      str(message, 'reelTitle'),
+      {
+        directMedia: optObj(message, 'directMedia') as {
+          url?: string;
+          type?: string;
+          ext?: string;
+        } | null,
+      },
+    );
   },
   [MESSAGE_TYPES.IG_VIDEO_DOWNLOAD]: async (message) => {
     maybeOpenPopup(message);
     const reelUrl = str(message, 'reelUrl');
     if (!reelUrl) return { success: false, error: 'Missing reelUrl' };
-    return startInstagramDownload(MESSAGE_TYPES.IG_VIDEO_DOWNLOAD, reelUrl, str(message, 'reelTitle'), {
-      directMedia: optObj(message, 'directMedia') as { url?: string; type?: string; ext?: string } | null
-    });
+    return startInstagramDownload(
+      MESSAGE_TYPES.IG_VIDEO_DOWNLOAD,
+      reelUrl,
+      str(message, 'reelTitle'),
+      {
+        directMedia: optObj(message, 'directMedia') as {
+          url?: string;
+          type?: string;
+          ext?: string;
+        } | null,
+      },
+    );
   },
   [MESSAGE_TYPES.IG_IMAGE_DOWNLOAD]: async (message) => {
     maybeOpenPopup(message);
@@ -414,31 +481,40 @@ const messageHandlers: Record<string, MessageHandler> = {
     return startInstagramImageDownload({
       reelUrl,
       reelTitle: str(message, 'reelTitle'),
-      mediaUrl
+      mediaUrl,
     });
   },
   [MESSAGE_TYPES.IG_IMAGE_ZIP_DOWNLOAD]: async (message) => {
     maybeOpenPopup(message);
     const reelUrl = str(message, 'reelUrl');
     const imageUrls = strArray(message, 'imageUrls');
-    if (!reelUrl || !imageUrls.length) return { success: false, error: 'Missing reelUrl or imageUrls' };
+    if (!reelUrl || !imageUrls.length)
+      return { success: false, error: 'Missing reelUrl or imageUrls' };
     return startInstagramImagesZip({
       reelUrl,
       reelTitle: str(message, 'reelTitle'),
-      imageUrls
+      imageUrls,
     });
   },
   [MESSAGE_TYPES.X_AUDIO_DOWNLOAD]: async (message) => {
     maybeOpenPopup(message);
     const tweetUrl = str(message, 'tweetUrl');
     if (!tweetUrl) return { success: false, error: 'Missing tweetUrl' };
-    return startTwitterDownload(MESSAGE_TYPES.X_AUDIO_DOWNLOAD, tweetUrl, str(message, 'tweetTitle'));
+    return startTwitterDownload(
+      MESSAGE_TYPES.X_AUDIO_DOWNLOAD,
+      tweetUrl,
+      str(message, 'tweetTitle'),
+    );
   },
   [MESSAGE_TYPES.X_VIDEO_DOWNLOAD]: async (message) => {
     maybeOpenPopup(message);
     const tweetUrl = str(message, 'tweetUrl');
     if (!tweetUrl) return { success: false, error: 'Missing tweetUrl' };
-    return startTwitterDownload(MESSAGE_TYPES.X_VIDEO_DOWNLOAD, tweetUrl, str(message, 'tweetTitle'));
+    return startTwitterDownload(
+      MESSAGE_TYPES.X_VIDEO_DOWNLOAD,
+      tweetUrl,
+      str(message, 'tweetTitle'),
+    );
   },
   [MESSAGE_TYPES.X_IMAGE_DOWNLOAD]: async (message) => {
     maybeOpenPopup(message);
@@ -448,18 +524,19 @@ const messageHandlers: Record<string, MessageHandler> = {
     return startTwitterImageDownload({
       tweetUrl,
       tweetTitle: str(message, 'tweetTitle'),
-      imageUrl
+      imageUrl,
     });
   },
   [MESSAGE_TYPES.X_IMAGE_ZIP_DOWNLOAD]: async (message) => {
     maybeOpenPopup(message);
     const tweetUrl = str(message, 'tweetUrl');
     const imageUrls = strArray(message, 'imageUrls');
-    if (!tweetUrl || !imageUrls.length) return { success: false, error: 'Missing tweetUrl or imageUrls' };
+    if (!tweetUrl || !imageUrls.length)
+      return { success: false, error: 'Missing tweetUrl or imageUrls' };
     return startTwitterImagesZip({
       tweetUrl,
       tweetTitle: str(message, 'tweetTitle'),
-      imageUrls
+      imageUrls,
     });
   },
   [MESSAGE_TYPES.CANCEL_DOWNLOAD]: async (message) => {
@@ -483,14 +560,14 @@ const messageHandlers: Record<string, MessageHandler> = {
     const jobId = str(message, 'jobId');
     if (!jobId) return { success: false, error: 'Missing jobId' };
     return handleRetryDownload(jobId);
-  }
+  },
 };
 
 chrome.runtime.onMessage.addListener(
   (
     message: BaseMessage,
     _sender: chrome.runtime.MessageSender,
-    sendResponse: (response: unknown) => void
+    sendResponse: (response: unknown) => void,
   ) => {
     const handler = messageHandlers[message?.['type'] as string];
     if (!handler) return undefined;
@@ -503,5 +580,5 @@ chrome.runtime.onMessage.addListener(
       });
 
     return true;
-  }
+  },
 );

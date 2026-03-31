@@ -78,21 +78,17 @@ export function getYoutubeVideoId() {
 
 export function getYoutubeVideoTitle() {
   const titleElement = document.querySelector(
-    'h1.style-scope.ytd-watch-metadata yt-formatted-string'
+    'h1.style-scope.ytd-watch-metadata yt-formatted-string',
   );
   if (titleElement) return titleElement.textContent.trim();
 
   const fallbackTitle = document.querySelector('h1.ytd-video-primary-info-renderer');
   if (fallbackTitle) return fallbackTitle.textContent.trim();
 
-  const shortsTitle = document.querySelector(
-    'yt-formatted-string.ytd-reel-player-header-renderer'
-  );
+  const shortsTitle = document.querySelector('yt-formatted-string.ytd-reel-player-header-renderer');
   if (shortsTitle) return shortsTitle.textContent.trim();
 
-  const metaOgTitle = document
-    .querySelector('meta[property="og:title"]')
-    ?.getAttribute('content');
+  const metaOgTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content');
   if (metaOgTitle) return metaOgTitle.trim();
 
   const metaTitle = document.querySelector('meta[name="title"]')?.getAttribute('content');
@@ -204,8 +200,8 @@ function setCustomIcon(node, attr) {
   ─────────────────────────────────────────────────────────────────── */
   function buildIconWrapper(extraClasses) {
     const span = document.createElement('span');
-    span.className = (extraClasses ? extraClasses + ' ' : '') +
-      'yt-icon-shape ytSpecIconShapeHost aio-yt-icon';
+    span.className =
+      (extraClasses ? extraClasses + ' ' : '') + 'yt-icon-shape ytSpecIconShapeHost aio-yt-icon';
 
     const div = document.createElement('div');
     div.style.cssText = 'width:100%;height:100%;display:block';
@@ -256,8 +252,7 @@ function buildFallbackTarget(label, attr) {
        </div>
      </span> */
   const iconWrapper = document.createElement('span');
-  iconWrapper.className =
-    'yt-icon-shape style-scope yt-icon ytSpecIconShapeHost aio-yt-icon';
+  iconWrapper.className = 'yt-icon-shape style-scope yt-icon ytSpecIconShapeHost aio-yt-icon';
 
   const innerDiv = document.createElement('div');
   innerDiv.style.cssText = 'width:100%;height:100%;display:block';

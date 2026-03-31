@@ -1,9 +1,5 @@
 export type Platform = 'youtube' | 'instagram' | 'twitter';
-export type Kind =
-  | 'audio-download'
-  | 'video-download'
-  | 'image-download'
-  | 'account-analysis';
+export type Kind = 'audio-download' | 'video-download' | 'image-download' | 'account-analysis';
 export type Surface = 'content' | 'background';
 
 export interface FeatureDescriptor {
@@ -22,7 +18,7 @@ export const featureDescriptors: readonly FeatureDescriptor[] = Object.freeze([
     kind: 'audio-download',
     modulePath: 'features/yt-audio-download/content/index.js',
     settingsKey: 'yt-audio-download',
-    surfaces: ['content', 'background']
+    surfaces: ['content', 'background'],
   },
   {
     id: 'yt-video-download',
@@ -30,7 +26,7 @@ export const featureDescriptors: readonly FeatureDescriptor[] = Object.freeze([
     kind: 'video-download',
     modulePath: 'features/yt-video-download/content/index.js',
     settingsKey: 'yt-video-download',
-    surfaces: ['content', 'background']
+    surfaces: ['content', 'background'],
   },
   {
     id: 'ig-audio-download',
@@ -38,7 +34,7 @@ export const featureDescriptors: readonly FeatureDescriptor[] = Object.freeze([
     kind: 'audio-download',
     modulePath: 'features/ig-audio-download/content/index.js',
     settingsKey: 'ig-audio-download',
-    surfaces: ['content', 'background']
+    surfaces: ['content', 'background'],
   },
   {
     id: 'ig-video-download',
@@ -46,7 +42,7 @@ export const featureDescriptors: readonly FeatureDescriptor[] = Object.freeze([
     kind: 'video-download',
     modulePath: 'features/ig-video-download/content/index.js',
     settingsKey: 'ig-video-download',
-    surfaces: ['content', 'background']
+    surfaces: ['content', 'background'],
   },
   {
     id: 'ig-image-download',
@@ -54,7 +50,7 @@ export const featureDescriptors: readonly FeatureDescriptor[] = Object.freeze([
     kind: 'image-download',
     modulePath: 'features/ig-image-download/content/index.js',
     settingsKey: 'ig-image-download',
-    surfaces: ['content', 'background']
+    surfaces: ['content', 'background'],
   },
   {
     id: 'ig-unfollowers',
@@ -62,7 +58,7 @@ export const featureDescriptors: readonly FeatureDescriptor[] = Object.freeze([
     kind: 'account-analysis',
     modulePath: 'features/ig-unfollowers/content/index.js',
     settingsKey: 'ig-unfollowers',
-    surfaces: ['content']
+    surfaces: ['content'],
   },
   {
     id: 'x-audio-download',
@@ -70,7 +66,7 @@ export const featureDescriptors: readonly FeatureDescriptor[] = Object.freeze([
     kind: 'audio-download',
     modulePath: 'features/x-audio-download/content/index.js',
     settingsKey: 'x-audio-download',
-    surfaces: ['content', 'background']
+    surfaces: ['content', 'background'],
   },
   {
     id: 'x-video-download',
@@ -78,7 +74,7 @@ export const featureDescriptors: readonly FeatureDescriptor[] = Object.freeze([
     kind: 'video-download',
     modulePath: 'features/x-video-download/content/index.js',
     settingsKey: 'x-video-download',
-    surfaces: ['content', 'background']
+    surfaces: ['content', 'background'],
   },
   {
     id: 'x-image-download',
@@ -86,20 +82,20 @@ export const featureDescriptors: readonly FeatureDescriptor[] = Object.freeze([
     kind: 'image-download',
     modulePath: 'features/x-image-download/content/index.js',
     settingsKey: 'x-image-download',
-    surfaces: ['content', 'background']
-  }
+    surfaces: ['content', 'background'],
+  },
 ]);
 
 export const contentFeatureDescriptors: readonly FeatureDescriptor[] = featureDescriptors.filter(
-  (descriptor) => descriptor.surfaces.includes('content')
+  (descriptor) => descriptor.surfaces.includes('content'),
 );
 
 export const featureModulePaths: string[] = contentFeatureDescriptors.map(
-  (descriptor) => descriptor.modulePath
+  (descriptor) => descriptor.modulePath,
 );
 
 export const featureDescriptorsById: ReadonlyMap<string, FeatureDescriptor> = new Map(
-  featureDescriptors.map((descriptor) => [descriptor.id, descriptor])
+  featureDescriptors.map((descriptor) => [descriptor.id, descriptor]),
 );
 
 export function getFeatureDescriptor(featureId: string): FeatureDescriptor | null {

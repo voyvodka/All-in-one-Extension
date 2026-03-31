@@ -29,27 +29,34 @@ if (allowedProtocols.has(location.protocol)) {
     let i18n: typeof import('./shared/i18n.js') | undefined;
 
     try {
-      const featureManifestModule = await import(chrome.runtime.getURL('features/index.js') as string);
+      const featureManifestModule = await import(
+        chrome.runtime.getURL('features/index.js') as string
+      );
       featureDescriptors =
-        (featureManifestModule as { contentFeatureDescriptors?: FeatureDescriptor[]; featureDescriptors?: FeatureDescriptor[] })
-          .contentFeatureDescriptors ??
-        (featureManifestModule as { featureDescriptors?: FeatureDescriptor[] }).featureDescriptors ??
+        (
+          featureManifestModule as {
+            contentFeatureDescriptors?: FeatureDescriptor[];
+            featureDescriptors?: FeatureDescriptor[];
+          }
+        ).contentFeatureDescriptors ??
+        (featureManifestModule as { featureDescriptors?: FeatureDescriptor[] })
+          .featureDescriptors ??
         [];
 
       const featureModules = await Promise.all(
-        featureDescriptors.map((descriptor) =>
-          import(chrome.runtime.getURL(descriptor.modulePath) as string)
-        )
+        featureDescriptors.map(
+          (descriptor) => import(chrome.runtime.getURL(descriptor.modulePath) as string),
+        ),
       );
 
       features = featureModules.map((module, index) => ({
         ...(module as { default: FeatureModule }).default,
-        descriptor: featureDescriptors[index] ?? null
+        descriptor: featureDescriptors[index] ?? null,
       }));
 
       [storage, i18n] = await Promise.all([
         import(chrome.runtime.getURL('shared/storage.js') as string),
-        import(chrome.runtime.getURL('shared/i18n.js') as string)
+        import(chrome.runtime.getURL('shared/i18n.js') as string),
       ]);
     } catch (err) {
       console.error('All-in-One: import failed', err);
@@ -104,8 +111,11 @@ if (allowedProtocols.has(location.protocol)) {
               feature.apply({
                 features,
                 settings: currentSettings,
-                descriptor: feature.descriptor
-              }) ?? (() => { /* noop */ });
+                descriptor: feature.descriptor,
+              }) ??
+              (() => {
+                /* noop */
+              });
             activeCleanups.set(feature.id, cleanup);
           } catch (err) {
             console.error('Failed to start feature', feature.id, err);

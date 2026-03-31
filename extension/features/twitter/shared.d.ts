@@ -23,6 +23,8 @@ export declare function getTweetUrl(scope?: Element | null): string;
 export declare function getTweetTitle(scope?: Element | null): string;
 export declare function registerTwitterMenuProvider(
   id: string,
-  provider: (context: TwitterMenuProviderContext) => TwitterMenuItem[]
+  provider: (context: TwitterMenuProviderContext) => TwitterMenuItem[],
 ): () => void;
-export declare function safeSendMessage(message: Record<string, unknown>): Promise<{ success: boolean; error?: string } | null>;
+export declare function safeSendMessage(
+  message: Record<string, unknown>,
+): Promise<{ success: boolean; error?: string } | null>;

@@ -45,9 +45,11 @@ async function fetchLoaderJson(url: string, context: string): Promise<LoaderResp
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (err instanceof Error && err.name === 'AbortError') {
-      throw new Error(`${context} - Request timed out after ${LOADER_REQUEST_TIMEOUT_MS}ms`);
+      throw new Error(`${context} - Request timed out after ${LOADER_REQUEST_TIMEOUT_MS}ms`, {
+        cause: err,
+      });
     }
-    throw new Error(`${context} - Network error: ${message}`);
+    throw new Error(`${context} - Network error: ${message}`, { cause: err });
   } finally {
     clearTimeout(timer);
   }
@@ -68,7 +70,7 @@ async function fetchLoaderJson(url: string, context: string): Promise<LoaderResp
 
 function resolveLoaderError(
   data: LoaderResponse,
-  fallback = 'Conversion failed: no file returned'
+  fallback = 'Conversion failed: no file returned',
 ): string {
   const msg = (data?.text ?? data?.message ?? data?.status ?? fallback ?? '').trim();
   if (/unsupported\s+url/i.test(msg)) {
@@ -88,7 +90,7 @@ function resolveLoaderError(
  */
 async function pollForDownloadUrl(
   jobId: string,
-  onProgress?: (event: ProgressEvent) => void
+  onProgress?: (event: ProgressEvent) => void,
 ): Promise<string> {
   const maxNormalAttempts = 60;
   const maxInitBonusAttempts = 30;
@@ -159,13 +161,13 @@ async function pollForDownloadUrl(
   }
 
   throw new Error(
-    `Timed out while waiting for download link. Last status: ${lastStatus ?? 'unknown'}`
+    `Timed out while waiting for download link. Last status: ${lastStatus ?? 'unknown'}`,
   );
 }
 
 export async function getMp3DownloadUrl(
   videoUrl: string,
-  onProgress?: (event: ProgressEvent) => void
+  onProgress?: (event: ProgressEvent) => void,
 ): Promise<string> {
   const startUrl = `${LOADER_BASE_URL}/ajax/download.php?format=mp3&url=${encodeURIComponent(videoUrl)}`;
   const startData = await fetchLoaderJson(startUrl, 'Failed to start conversion');
@@ -190,7 +192,7 @@ export async function getMp3DownloadUrl(
 
 export async function getMp4DownloadUrl(
   videoUrl: string,
-  onProgress?: (event: ProgressEvent) => void
+  onProgress?: (event: ProgressEvent) => void,
 ): Promise<string> {
   const startUrl = `${LOADER_BASE_URL}/ajax/download.php?format=1080&url=${encodeURIComponent(videoUrl)}`;
   const startData = await fetchLoaderJson(startUrl, 'Failed to start conversion');

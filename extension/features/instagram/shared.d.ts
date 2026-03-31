@@ -52,15 +52,13 @@ export declare const INSTAGRAM_DOWNLOAD_MENU_ATTR: string;
 
 export declare function registerInstagramMenuProvider(
   id: string,
-  provider: (context: InstagramMenuProviderContext) => InstagramMenuItem[]
+  provider: (context: InstagramMenuProviderContext) => InstagramMenuItem[],
 ): () => void;
 
 export declare function safeSendMessage(
-  message: Record<string, unknown>
+  message: Record<string, unknown>,
 ): Promise<{ success: boolean; error?: string } | null>;
 
-export declare function findInstagramMediaSources(
-  scope: Element | Document
-): InstagramMediaSources;
+export declare function findInstagramMediaSources(scope: Element | Document): InstagramMediaSources;
 
 export declare function detectInstagramScope(): InstagramScopeResult;

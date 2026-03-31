@@ -15,5 +15,5 @@ export declare function getYoutubeVideoId(): string | null;
 export declare function getYoutubeVideoTitle(): string | null;
 export declare function createYoutubeShareTarget(
   container: HTMLElement,
-  options: YoutubeShareTargetOptions
+  options: YoutubeShareTargetOptions,
 ): HTMLElement | null;

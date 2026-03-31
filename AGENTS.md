@@ -104,14 +104,14 @@ These files stay as plain JavaScript with `.d.ts` declarations. They depend on l
 
 ### Naming
 
-| Element                | Convention         | Example                          |
-|------------------------|--------------------|----------------------------------|
-| Variables / functions  | `camelCase`        | `safeSendMessage`, `downloadJob` |
-| Constants              | `UPPER_SNAKE_CASE` | `MESSAGE_TYPES`, `DOWNLOAD_HISTORY_LIMIT` |
-| File names             | `kebab-case`       | `message-types.ts`, `download-view-model.ts` |
-| Feature directories    | `kebab-case`       | `features/youtube/audio/`        |
-| CSS classes            | `kebab-case`       | `.download-card`, `.tab-active`  |
-| Interfaces / Types     | `PascalCase`       | `Settings`, `DownloadJob`, `FeatureDescriptor` |
+| Element               | Convention         | Example                                        |
+| --------------------- | ------------------ | ---------------------------------------------- |
+| Variables / functions | `camelCase`        | `safeSendMessage`, `downloadJob`               |
+| Constants             | `UPPER_SNAKE_CASE` | `MESSAGE_TYPES`, `DOWNLOAD_HISTORY_LIMIT`      |
+| File names            | `kebab-case`       | `message-types.ts`, `download-view-model.ts`   |
+| Feature directories   | `kebab-case`       | `features/youtube/audio/`                      |
+| CSS classes           | `kebab-case`       | `.download-card`, `.tab-active`                |
+| Interfaces / Types    | `PascalCase`       | `Settings`, `DownloadJob`, `FeatureDescriptor` |
 
 ### Functions
 

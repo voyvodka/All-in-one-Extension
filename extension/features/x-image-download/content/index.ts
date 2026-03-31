@@ -25,10 +25,9 @@ export default {
         const images = findTweetImages(scope);
         if (!images.length) return [];
 
-        const label =
-          isFullscreen
-            ? t('downloadImageSingle')
-            : images.length > 1
+        const label = isFullscreen
+          ? t('downloadImageSingle')
+          : images.length > 1
             ? t('downloadImageMultiple')
             : t('downloadImageSingle');
 
@@ -43,7 +42,7 @@ export default {
                     openPopup: true,
                     tweetUrl,
                     tweetTitle,
-                    imageUrl: images[0]
+                    imageUrl: images[0],
                   });
                   return;
                 }
@@ -54,7 +53,7 @@ export default {
                     openPopup: true,
                     tweetUrl,
                     tweetTitle,
-                    imageUrl: images[0]
+                    imageUrl: images[0],
                   });
                 } else {
                   await safeSendMessage({
@@ -62,22 +61,22 @@ export default {
                     openPopup: true,
                     tweetUrl,
                     tweetTitle,
-                    imageUrls: images
+                    imageUrls: images,
                   });
                 }
               } catch (err) {
                 console.error('twitter image download failed', err);
               }
-            }
-          }
+            },
+          },
         ];
-      }
+      },
     );
 
     return () => {
       cleanup();
     };
-  }
+  },
 };
 
 function findTweetImages(article: Element): string[] {

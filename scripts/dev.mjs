@@ -44,25 +44,21 @@ const tsc = spawn(
     cwd: rootDir,
     stdio: 'inherit',
     shell: false,
-  }
+  },
 );
 attachExitHandler(tsc, 'tsc --watch');
 
 // ── watch-static ─────────────────────────────────────────────────────────────
-const watcher = spawn(
-  'node',
-  [resolve(scriptDir, 'watch-static.mjs')],
-  {
-    cwd: rootDir,
-    stdio: 'inherit',
-    shell: false,
-    env: {
-      ...process.env,
-      AIO_DEST_DIR: destDir,
-      AIO_DEV_BRAND: isDevBrand ? '1' : '0'
-    }
-  }
-);
+const watcher = spawn('node', [resolve(scriptDir, 'watch-static.mjs')], {
+  cwd: rootDir,
+  stdio: 'inherit',
+  shell: false,
+  env: {
+    ...process.env,
+    AIO_DEST_DIR: destDir,
+    AIO_DEV_BRAND: isDevBrand ? '1' : '0',
+  },
+});
 attachExitHandler(watcher, 'watch-static');
 
 // ── Ctrl+C → kill both ───────────────────────────────────────────────────────
@@ -74,4 +70,6 @@ function shutdown() {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
-console.log(`[dev] Started tsc --watch + watch-static -> ${destDir}${isDevBrand ? ' (dev brand)' : ''}. Press Ctrl+C to stop.\n`);
+console.log(
+  `[dev] Started tsc --watch + watch-static -> ${destDir}${isDevBrand ? ' (dev brand)' : ''}. Press Ctrl+C to stop.\n`,
+);

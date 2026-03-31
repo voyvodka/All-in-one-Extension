@@ -1,7 +1,7 @@
 import type {
   InstagramAnalyzerAccountState,
   InstagramAnalyzerState,
-  InstagramAnalyzerStatus
+  InstagramAnalyzerStatus,
 } from '../../shared/storage.js';
 
 export interface AnalyzerBadgeInfo {
@@ -67,8 +67,9 @@ function selectAccount(state: InstagramAnalyzerState): AccountSelection {
     }
   }
 
-  const latestEntry = Object.entries(state.accounts)
-    .sort(([, left], [, right]) => getAccountSortTime(right) - getAccountSortTime(left))[0];
+  const latestEntry = Object.entries(state.accounts).sort(
+    ([, left], [, right]) => getAccountSortTime(right) - getAccountSortTime(left),
+  )[0];
 
   if (!latestEntry) {
     return { account: null, viewerId: null };
@@ -76,7 +77,7 @@ function selectAccount(state: InstagramAnalyzerState): AccountSelection {
 
   return {
     viewerId: latestEntry[0],
-    account: latestEntry[1]
+    account: latestEntry[1],
   };
 }
 
@@ -84,7 +85,7 @@ function getBadge(
   status: InstagramAnalyzerStatus,
   lastScannedAt: number | null,
   now: number,
-  t: TranslateFn
+  t: TranslateFn,
 ): AnalyzerBadgeInfo {
   if (status === 'running') {
     return { label: t('analyzerStatusRunning'), tone: 'info' };
@@ -107,7 +108,11 @@ function getBadge(
   return { label: t('analyzerFreshnessFresh'), tone: 'success' };
 }
 
-function getBody(status: InstagramAnalyzerStatus, lastError: string | undefined, t: TranslateFn): string {
+function getBody(
+  status: InstagramAnalyzerStatus,
+  lastError: string | undefined,
+  t: TranslateFn,
+): string {
   if (status === 'running') {
     return t('analyzerRunningBody');
   }
@@ -131,7 +136,7 @@ export function createInstagramAnalyzerViewModel({
   localeCode,
   now = Date.now(),
   state,
-  t
+  t,
 }: CreateInstagramAnalyzerViewModelParams): InstagramAnalyzerViewModel {
   const { account, viewerId } = selectAccount(state);
   if (!account || !viewerId) {
@@ -143,7 +148,7 @@ export function createInstagramAnalyzerViewModel({
       lastScanLabel: t('analyzerLastScanNever'),
       metrics: [],
       openUrl: 'https://www.instagram.com/',
-      selectedViewerId: null
+      selectedViewerId: null,
     };
   }
 
@@ -162,7 +167,10 @@ export function createInstagramAnalyzerViewModel({
     ? `https://www.instagram.com/${encodeURIComponent(username)}/`
     : 'https://www.instagram.com/';
   const lastScanLabel = summary.lastScannedAt
-    ? t('analyzerLastScan').replace('{time}', formatRelativeTime(summary.lastScannedAt, localeCode, now))
+    ? t('analyzerLastScan').replace(
+        '{time}',
+        formatRelativeTime(summary.lastScannedAt, localeCode, now),
+      )
     : t('analyzerLastScanNever');
 
   return {
@@ -174,18 +182,18 @@ export function createInstagramAnalyzerViewModel({
     metrics: [
       {
         label: t('analyzerNonFollowerCountLabel'),
-        value: String(summary.nonFollowerCount)
+        value: String(summary.nonFollowerCount),
       },
       {
         label: t('analyzerFollowingCountLabel'),
-        value: String(summary.followingCount)
+        value: String(summary.followingCount),
       },
       {
         label: t('analyzerWhitelistedCountLabel'),
-        value: String(summary.whitelistedCount)
-      }
+        value: String(summary.whitelistedCount),
+      },
     ],
     openUrl,
-    selectedViewerId: viewerId
+    selectedViewerId: viewerId,
   };
 }

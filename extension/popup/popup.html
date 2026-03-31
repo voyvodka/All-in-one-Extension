@@ -1,78 +1,84 @@
 <!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>All-in-One Toolkit</title>
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
 
-<head>
-  <meta charset="UTF-8" />
-  <title>All-in-One Toolkit</title>
-  <link rel="stylesheet" href="./popup.css" />
-</head>
-
-<body>
-  <div id="app" class="app-shell">
-    <!-- ── Sticky header ─────────────────────────────────────── -->
-    <header class="app-header">
-      <div class="header-top">
-        <h1>All-in-One Toolkit</h1>
-        <div class="header-actions">
-          <label class="inline-select" for="language-select">
-            <select id="language-select" class="mini-select" title="" aria-label="">
-              <option value="tr">TR</option>
-              <option value="en">EN</option>
-            </select>
-          </label>
-          <label class="inline-select" for="theme-select">
-            <select id="theme-select" class="mini-select" title="" aria-label="">
-              <option value="system">☀️🌙</option>
-              <option value="light">☀️</option>
-              <option value="dark">🌙</option>
-            </select>
-          </label>
-          <button id="bug-btn" class="icon-btn" title="" type="button" aria-label="">🐞</button>
+  <body>
+    <div id="app" class="app-shell">
+      <!-- ── Sticky header ─────────────────────────────────────── -->
+      <header class="app-header">
+        <div class="header-top">
+          <h1>All-in-One Toolkit</h1>
+          <div class="header-actions">
+            <label class="inline-select" for="language-select">
+              <select id="language-select" class="mini-select" title="" aria-label="">
+                <option value="tr">TR</option>
+                <option value="en">EN</option>
+              </select>
+            </label>
+            <label class="inline-select" for="theme-select">
+              <select id="theme-select" class="mini-select" title="" aria-label="">
+                <option value="system">☀️🌙</option>
+                <option value="light">☀️</option>
+                <option value="dark">🌙</option>
+              </select>
+            </label>
+            <button id="bug-btn" class="icon-btn" title="" type="button" aria-label="">🐞</button>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
 
-    <!-- ── Scrollable body ───────────────────────────────────── -->
-    <section class="app-body">
-      <section id="instagram-analyzer" class="analyzer-panel" aria-live="polite"></section>
+      <!-- ── Scrollable body ───────────────────────────────────── -->
+      <section class="app-body">
+        <section id="instagram-analyzer" class="analyzer-panel" aria-live="polite"></section>
 
-      <div class="downloads-toolbar">
-        <div class="download-subtabs">
-          <button class="subtab active" data-subtab="active" type="button">
-            <span class="subtab-label" data-subtab-label="active"></span>
-            <span id="active-count" class="subtab-count">0</span>
-          </button>
-          <button class="subtab" data-subtab="history" type="button">
-            <span class="subtab-label" data-subtab-label="history"></span>
-            <span id="history-count" class="subtab-count">0</span>
-          </button>
+        <div class="downloads-toolbar">
+          <div class="download-subtabs">
+            <button class="subtab active" data-subtab="active" type="button">
+              <span class="subtab-label" data-subtab-label="active"></span>
+              <span id="active-count" class="subtab-count">0</span>
+            </button>
+            <button class="subtab" data-subtab="history" type="button">
+              <span class="subtab-label" data-subtab-label="history"></span>
+              <span id="history-count" class="subtab-count">0</span>
+            </button>
+          </div>
+          <div class="download-actions">
+            <button
+              id="sort-downloads"
+              class="icon-btn rotate"
+              title=""
+              aria-label=""
+              type="button"
+            >
+              <svg class="sort-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path class="sort-arrow" d="M7 3.5L3.5 8H6v12h2V8h2.5L7 3.5z" />
+                <path class="sort-lines" d="M12 8h8M12 12h6M12 16h4" />
+              </svg>
+            </button>
+            <button id="clear-history" class="icon-btn" title="" aria-label="" type="button">
+              🗑
+            </button>
+          </div>
         </div>
-        <div class="download-actions">
-          <button id="sort-downloads" class="icon-btn rotate" title="" aria-label="" type="button">
-            <svg class="sort-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path class="sort-arrow" d="M7 3.5L3.5 8H6v12h2V8h2.5L7 3.5z" />
-              <path class="sort-lines" d="M12 8h8M12 12h6M12 16h4" />
-            </svg>
-          </button>
-          <button id="clear-history" class="icon-btn" title="" aria-label="" type="button">🗑</button>
+
+        <div class="download-group active" data-subtab="active">
+          <div id="download-active" class="download-list" aria-live="polite"></div>
         </div>
-      </div>
+        <div class="download-group" data-subtab="history">
+          <div id="download-history" class="download-list" aria-live="polite"></div>
+        </div>
+      </section>
 
-      <div class="download-group active" data-subtab="active">
-        <div id="download-active" class="download-list" aria-live="polite"></div>
-      </div>
-      <div class="download-group" data-subtab="history">
-        <div id="download-history" class="download-list" aria-live="polite"></div>
-      </div>
-    </section>
-
-    <!-- ── Sticky footer ─────────────────────────────────────── -->
-    <footer id="app-footer" class="app-footer">
-      <span id="footer-version" class="footer-version"></span>
-      <span id="footer-update" class="footer-update"></span>
-    </footer>
-  </div>
-  <script type="module" src="./popup.js"></script>
-</body>
-
+      <!-- ── Sticky footer ─────────────────────────────────────── -->
+      <footer id="app-footer" class="app-footer">
+        <span id="footer-version" class="footer-version"></span>
+        <span id="footer-update" class="footer-update"></span>
+      </footer>
+    </div>
+    <script type="module" src="./popup.js"></script>
+  </body>
 </html>

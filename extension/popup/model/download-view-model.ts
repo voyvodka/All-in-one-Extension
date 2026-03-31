@@ -94,7 +94,7 @@ const STATUS_MAP: Record<DownloadStatus, Omit<StatusInfo, 'label'> & { labelKey:
   downloading: { icon: '⬇️', labelKey: 'statusDownloading', tone: 'info' },
   completed: { icon: '✅', labelKey: 'statusCompleted', tone: 'success' },
   failed: { icon: '⚠️', labelKey: 'statusFailed', tone: 'error' },
-  cancelled: { icon: '⚠️', labelKey: 'statusCancelled', tone: 'warning' }
+  cancelled: { icon: '⚠️', labelKey: 'statusCancelled', tone: 'warning' },
 };
 
 export interface CreateDownloadViewModelParams {
@@ -105,14 +105,11 @@ export interface CreateDownloadViewModelParams {
 
 export function createDownloadViewModel(
   job: DownloadJob,
-  { expandedJobId, localeCode, t }: CreateDownloadViewModelParams
+  { expandedJobId, localeCode, t }: CreateDownloadViewModelParams,
 ): DownloadViewModel {
   const displayError = getDisplayError(job, t);
   const displayName =
-    job.fileName ??
-    job.title ??
-    getFallbackFromUrl(job.sourceUrl) ??
-    t('downloadFallback');
+    job.fileName ?? job.title ?? getFallbackFromUrl(job.sourceUrl) ?? t('downloadFallback');
   const pill = getPill(job);
   const progress = getProgress(job);
 
@@ -120,14 +117,12 @@ export function createDownloadViewModel(
   const statusInfo: StatusInfo = {
     icon: statusDef.icon,
     label: t(statusDef.labelKey),
-    tone: statusDef.tone
+    tone: statusDef.tone,
   };
 
   const statusLabel = `${statusInfo.label}${progress > 0 && progress < 100 ? ` (${progress}%)` : ''}`;
   const statusSummary =
-    progress > 0 && progress < 100
-      ? `${statusInfo.label} · ${progress}%`
-      : statusInfo.label;
+    progress > 0 && progress < 100 ? `${statusInfo.label} · ${progress}%` : statusInfo.label;
 
   const updatedAt = job.updatedAt ?? job.createdAt;
   const dateText = updatedAt
@@ -146,6 +141,6 @@ export function createDownloadViewModel(
     statusSummary,
     dateText,
     sourceLabel,
-    expanded: expandedJobId === job.id
+    expanded: expandedJobId === job.id,
   };
 }

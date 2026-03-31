@@ -27,13 +27,13 @@ function buildAriaSelectors(labels) {
   const icons = labels.map((label) => `svg[aria-label="${label}"]`);
   const buttons = labels.flatMap((label) => [
     `[role="button"][aria-label="${label}"]`,
-    `button[aria-label="${label}"]`
+    `button[aria-label="${label}"]`,
   ]);
   return {
     labels,
     icons,
     buttons,
-    all: [...icons, ...buttons]
+    all: [...icons, ...buttons],
   };
 }
 
@@ -44,10 +44,17 @@ const ACTION_BAR_MAX_BUTTONS = 12;
 // These are navigation / media-control SVG labels that should never count as
 // social action buttons.
 const NAV_CONTROL_SVG_LABELS = new Set([
-  'previous', 'next', 'back', 'close',
-  'play', 'pause',
-  'audio is muted', 'audio is on', 'toggle audio',
-  'down chevron icon', 'chevron down',
+  'previous',
+  'next',
+  'back',
+  'close',
+  'play',
+  'pause',
+  'audio is muted',
+  'audio is on',
+  'toggle audio',
+  'down chevron icon',
+  'chevron down',
 ]);
 
 function normalizeComparableText(value) {
@@ -91,7 +98,10 @@ function isKnownSaveButton(button) {
 
 function isLikelyActionButton(button) {
   if (!button?.matches?.(ACTION_BUTTON_SELECTOR)) return false;
-  if (button.hasAttribute?.(INSTAGRAM_DOWNLOAD_MENU_ATTR) || button.closest?.(`[${INSTAGRAM_DOWNLOAD_MENU_ATTR}]`)) {
+  if (
+    button.hasAttribute?.(INSTAGRAM_DOWNLOAD_MENU_ATTR) ||
+    button.closest?.(`[${INSTAGRAM_DOWNLOAD_MENU_ATTR}]`)
+  ) {
     return false;
   }
   if (!button.querySelector?.('svg')) return false;
@@ -101,14 +111,15 @@ function isLikelyActionButton(button) {
   // Instagram keeps SVG aria-labels in English regardless of UI language —
   // use this as a language-agnostic way to exclude nav/media-control buttons.
   const svgLabel = normalizeComparableText(
-    button.querySelector('svg')?.getAttribute('aria-label') || ''
+    button.querySelector('svg')?.getAttribute('aria-label') || '',
   );
   if (svgLabel && NAV_CONTROL_SVG_LABELS.has(svgLabel)) return false;
 
   const label = getElementLabel(button);
   if (label.length > 48) return false;
 
-  const rect = typeof button.getBoundingClientRect === 'function' ? button.getBoundingClientRect() : null;
+  const rect =
+    typeof button.getBoundingClientRect === 'function' ? button.getBoundingClientRect() : null;
   if (rect && rect.width > 0 && rect.height > 0) {
     if (rect.width > 180 || rect.height > 120) return false;
   }
@@ -149,14 +160,17 @@ function scoreActionBarCandidate(node, { requireSingleShare = false } = {}) {
   }
 
   const childGroups = getDirectChildButtonGroups(node);
-  const primaryGroupCount = childGroups.reduce((max, group) => Math.max(max, group.buttons.length), 0);
+  const primaryGroupCount = childGroups.reduce(
+    (max, group) => Math.max(max, group.buttons.length),
+    0,
+  );
   const shareCount = buttons.filter((button) => isKnownShareButton(button)).length;
   const hasKnownSave = buttons.some((button) => isKnownSaveButton(button));
   const mediaCount = node.querySelectorAll('img, video, picture').length;
   const textLength = normalizeComparableText(node.textContent || '').replace(/\b\d+\b/g, '').length;
 
   let score = 0;
-  score += Math.max(0, 14 - (Math.abs(count - 4) * 3));
+  score += Math.max(0, 14 - Math.abs(count - 4) * 3);
   score += Math.min(8, primaryGroupCount * 3);
   if (childGroups.length >= 2) score += 4;
   if (node.tagName === 'SECTION') score += 5;
@@ -196,8 +210,9 @@ function pickTemplateButton(actionBar) {
   const shareButton = findShareButton(actionBar);
   if (shareButton) return shareButton;
 
-  const childGroups = getDirectChildButtonGroups(actionBar)
-    .sort((a, b) => b.buttons.length - a.buttons.length);
+  const childGroups = getDirectChildButtonGroups(actionBar).sort(
+    (a, b) => b.buttons.length - a.buttons.length,
+  );
   const primaryGroup = childGroups[0];
   if (primaryGroup?.buttons?.length) {
     return primaryGroup.buttons[primaryGroup.buttons.length - 1];
@@ -215,7 +230,7 @@ const ACTION_ARIA_LABELS = [
   'Unlike',
   'Beğen',
   'Comment',
-  'Save'
+  'Save',
 ];
 const SHARE_ARIA_LABELS = ['Share', 'Share Post', 'Paylaş'];
 const ACTION_SELECTORS = buildAriaSelectors(ACTION_ARIA_LABELS);
@@ -325,7 +340,13 @@ function findPermalinkInScope(scope) {
   for (const a of anchors) {
     const href = a.getAttribute('href');
     if (!href) continue;
-    if (!href.includes('/reel/') && !href.includes('/reels/') && !href.includes('/p/') && !href.includes('/tv/')) continue;
+    if (
+      !href.includes('/reel/') &&
+      !href.includes('/reels/') &&
+      !href.includes('/p/') &&
+      !href.includes('/tv/')
+    )
+      continue;
     const normalized = normalizeReelUrl(href);
     if (!normalized) continue;
     if (!firstCandidate) firstCandidate = normalized;
@@ -361,7 +382,9 @@ export function getReelUrl(scopeHint = null) {
   })();
   if (fromDialogOrArticle) return fromDialogOrArticle;
 
-  const og = normalizeReelUrl(document.querySelector('meta[property="og:url"]')?.getAttribute('content'));
+  const og = normalizeReelUrl(
+    document.querySelector('meta[property="og:url"]')?.getAttribute('content'),
+  );
   if (og) return og;
 
   const canonical = normalizeReelUrl(document.querySelector('link[rel="canonical"]')?.href);
@@ -373,10 +396,15 @@ export function getReelUrl(scopeHint = null) {
 export function getReelTitle() {
   const titleFromDialog = (() => {
     const dialog = document.querySelector('div[role="dialog"]');
-    const article = dialog?.closest('article') || dialog?.querySelector('article') || document.querySelector('article');
+    const article =
+      dialog?.closest('article') ||
+      dialog?.querySelector('article') ||
+      document.querySelector('article');
     if (!article) return null;
 
-    const caption = article.querySelector('h1, h2, h3, [data-testid="post-comment-root"] span[dir]')?.textContent;
+    const caption = article.querySelector(
+      'h1, h2, h3, [data-testid="post-comment-root"] span[dir]',
+    )?.textContent;
     if (caption) return caption.trim();
 
     const altText = article.querySelector('img[alt]')?.getAttribute('alt');
@@ -389,7 +417,9 @@ export function getReelTitle() {
   const ogTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content');
   if (ogTitle) return ogTitle.trim();
 
-  const twitterTitle = document.querySelector('meta[name="twitter:title"]')?.getAttribute('content');
+  const twitterTitle = document
+    .querySelector('meta[name="twitter:title"]')
+    ?.getAttribute('content');
   if (twitterTitle) return twitterTitle.trim();
 
   if (document.title) return document.title.replace(/\s*-?\s*Instagram$/i, '').trim();
@@ -398,20 +428,29 @@ export function getReelTitle() {
 }
 
 export function findShareOptionTemplate(dialog) {
-  const options = Array.from(dialog.querySelectorAll('div[role="button"][tabindex], a[role="link"]'))
-    .filter((el) => {
-      const aria = (el.getAttribute('aria-label') || '').toLowerCase();
-      const title = (el.getAttribute('title') || '').toLowerCase();
-      if (aria.includes('close') || title.includes('close')) return false;
-      if (aria.includes('kapat') || title.includes('kapat')) return false;
-      return true;
-    });
+  const options = Array.from(
+    dialog.querySelectorAll('div[role="button"][tabindex], a[role="link"]'),
+  ).filter((el) => {
+    const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+    const title = (el.getAttribute('title') || '').toLowerCase();
+    if (aria.includes('close') || title.includes('close')) return false;
+    if (aria.includes('kapat') || title.includes('kapat')) return false;
+    return true;
+  });
 
-  return options.find((el) => /copy\s*link|linki\s*kopyala|bağlantı\s*kopyala/i.test(el.textContent || '')) || options[0] || null;
+  return (
+    options.find((el) =>
+      /copy\s*link|linki\s*kopyala|bağlantı\s*kopyala/i.test(el.textContent || ''),
+    ) ||
+    options[0] ||
+    null
+  );
 }
 
 export function createInstagramOption(template, { attr, label, onClick }) {
-  const wrapper = template?.parentElement ? template.parentElement.cloneNode(true) : document.createElement('div');
+  const wrapper = template?.parentElement
+    ? template.parentElement.cloneNode(true)
+    : document.createElement('div');
   if (!wrapper) return null;
 
   const button = wrapper.querySelector('div[role="button"], a[role="link"]') || template;
@@ -442,7 +481,8 @@ export function createInstagramOption(template, { attr, label, onClick }) {
   const svg = cleanButton.querySelector('svg');
   if (svg) {
     svg.setAttribute('viewBox', '0 0 24 24');
-    svg.innerHTML = '<path d="M9 3h2v9.528a3.25 3.25 0 1 1-2 2.97V3zm6 3h2v6.528a3.25 3.25 0 1 1-2 2.97V6z" fill="currentColor"/>';
+    svg.innerHTML =
+      '<path d="M9 3h2v9.528a3.25 3.25 0 1 1-2 2.97V3zm6 3h2v6.528a3.25 3.25 0 1 1-2 2.97V6z" fill="currentColor"/>';
   }
 
   return wrapper;
@@ -450,15 +490,17 @@ export function createInstagramOption(template, { attr, label, onClick }) {
 
 function pickFromSrcset(srcset) {
   if (!srcset) return { url: null, width: 0 };
-  return srcset
-    .split(',')
-    .map((entry) => entry.trim())
-    .map((entry) => {
-      const [url, size] = entry.split(/\s+/);
-      const width = parseInt((size || '').replace(/\D/g, ''), 10);
-      return { url, width: Number.isFinite(width) ? width : 0 };
-    })
-    .sort((a, b) => b.width - a.width)[0] || { url: null, width: 0 };
+  return (
+    srcset
+      .split(',')
+      .map((entry) => entry.trim())
+      .map((entry) => {
+        const [url, size] = entry.split(/\s+/);
+        const width = parseInt((size || '').replace(/\D/g, ''), 10);
+        return { url, width: Number.isFinite(width) ? width : 0 };
+      })
+      .sort((a, b) => b.width - a.width)[0] || { url: null, width: 0 }
+  );
 }
 
 function parseWidthFromUrl(url) {
@@ -515,7 +557,12 @@ function isLikelyAvatar({ url, alt, width }) {
   const altText = (alt || '').toLowerCase();
   const urlText = (url || '').toLowerCase();
   const small = Number.isFinite(width) && width > 0 && width <= 200;
-  if (/profile\s*picture|profil\s*fotograf|profil\s*foto|profil\s*fotografi|profil\s*resmi/.test(altText)) return true;
+  if (
+    /profile\s*picture|profil\s*fotograf|profil\s*foto|profil\s*fotografi|profil\s*resmi/.test(
+      altText,
+    )
+  )
+    return true;
   if (/profile_pic|pfp|avatar/.test(urlText)) return true;
   if (small && /s\d{2,3}x\d{2,3}/.test(urlText)) return true;
   return false;
@@ -526,12 +573,14 @@ export const INSTAGRAM_SCOPE_TYPES = {
   article: 'article',
   reelsFeed: 'reels-feed',
   postPage: 'post-page',
-  page: 'page'
+  page: 'page',
 };
 
 function isReelsFeedPage() {
   try {
-    const segments = String(location?.pathname || '/').split('/').filter(Boolean);
+    const segments = String(location?.pathname || '/')
+      .split('/')
+      .filter(Boolean);
     if (!segments.length) return false;
     const idx = segments.findIndex((seg) => seg === 'reels' || seg === 'reel');
     if (idx === -1) return false;
@@ -546,10 +595,14 @@ function isReelsFeedPage() {
 
 function isPostPermalinkPage() {
   try {
-    const segments = String(location?.pathname || '/').split('/').filter(Boolean);
+    const segments = String(location?.pathname || '/')
+      .split('/')
+      .filter(Boolean);
     if (!segments.length) return false;
     if (isReelsFeedPage()) return false;
-    const idx = segments.findIndex((seg) => seg === 'p' || seg === 'reel' || seg === 'reels' || seg === 'tv');
+    const idx = segments.findIndex(
+      (seg) => seg === 'p' || seg === 'reel' || seg === 'reels' || seg === 'tv',
+    );
     if (idx === -1) return false;
     if (segments[idx] === 'reels' && segments.length === idx + 1) return false;
     return segments.length > idx + 1;
@@ -565,7 +618,7 @@ function findPostPageScope(root = document) {
     'div._aagu',
     'div._aagv',
     'div._acnb',
-    'div.html-div'
+    'div.html-div',
   ];
 
   const stopAt =
@@ -640,7 +693,10 @@ export function detectInstagramScope() {
   const visibleArticles = Array.from(document.querySelectorAll('article')).map((el) => {
     const rect = el.getBoundingClientRect();
     const visibleWidth = Math.max(0, Math.min(rect.right, viewportWidth) - Math.max(rect.left, 0));
-    const visibleHeight = Math.max(0, Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0));
+    const visibleHeight = Math.max(
+      0,
+      Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0),
+    );
     return { el, area: visibleWidth * visibleHeight };
   });
   const bestVisible = visibleArticles.sort((a, b) => b.area - a.area)[0];
@@ -818,8 +874,6 @@ export function createActionBarDownloadButton(templateButton, { attr, label, onC
     `;
   });
 
-
-
   button.addEventListener('click', onClick);
   button.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -833,7 +887,8 @@ export function createActionBarDownloadButton(templateButton, { attr, label, onC
 
 export function insertActionButtonNear(templateButton, newButton, actionBarHint = null) {
   if (!templateButton || !newButton) return;
-  const actionBar = actionBarHint || findActionBarContainer(templateButton) || templateButton.parentElement;
+  const actionBar =
+    actionBarHint || findActionBarContainer(templateButton) || templateButton.parentElement;
   if (!actionBar) return;
 
   const templateRoot = getImmediateChild(actionBar, templateButton) || templateButton;
@@ -854,7 +909,7 @@ export function insertActionButtonNear(templateButton, newButton, actionBarHint 
   }
 
   const saveButton = actionBar.querySelector(
-    'svg[aria-label="Save"], [role="button"][aria-label="Save"], button[aria-label="Save"]'
+    'svg[aria-label="Save"], [role="button"][aria-label="Save"], button[aria-label="Save"]',
   );
   const saveRoot = saveButton?.closest?.('[role="button"], button') || saveButton;
   let desiredRef = saveRoot ? getImmediateChild(actionBar, saveRoot) : null;
@@ -865,11 +920,9 @@ export function insertActionButtonNear(templateButton, newButton, actionBarHint 
 
   const alreadyPlaced =
     insertNode.parentElement === actionBar &&
-    (
-      (desiredRef && insertNode.nextSibling === desiredRef) ||
+    ((desiredRef && insertNode.nextSibling === desiredRef) ||
       (!desiredRef && templateRoot && templateRoot.nextElementSibling === insertNode) ||
-      (!desiredRef && !templateRoot && actionBar.lastElementChild === insertNode)
-    );
+      (!desiredRef && !templateRoot && actionBar.lastElementChild === insertNode));
   if (alreadyPlaced) return;
 
   if (insertNode.parentElement && insertNode.parentElement !== actionBar) {
@@ -919,7 +972,7 @@ export async function safeSendMessage(payload) {
 }
 
 export function registerInstagramMenuProvider(id, buildOptions) {
-  if (!id || typeof buildOptions !== 'function') return () => { };
+  if (!id || typeof buildOptions !== 'function') return () => {};
   menuProviders.set(id, buildOptions);
   ensureMenuObserver();
   scheduleInjectMenuButtons();
@@ -1020,7 +1073,7 @@ function injectMenuButtons() {
       const node = createActionBarDownloadButton(shareButton, {
         attr: INSTAGRAM_DOWNLOAD_MENU_ATTR,
         label: t('instagramDownloadIcon'),
-        onClick: handleMenuClick
+        onClick: handleMenuClick,
       });
       if (!node) return;
       bindButton(node);
@@ -1082,7 +1135,8 @@ function handleMenuClick(event) {
 }
 
 function resolveThemeColors() {
-  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const prefersDark =
+    window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   const isDark = document.body?.dataset?.theme === 'dark' || prefersDark;
   if (isDark) {
     return {
@@ -1090,7 +1144,7 @@ function resolveThemeColors() {
       text: 'rgba(255,255,255,0.95)',
       border: 'rgba(255,255,255,0.08)',
       hover: 'rgba(255,255,255,0.08)',
-      shadow: '0 10px 30px rgba(0,0,0,0.35)'
+      shadow: '0 10px 30px rgba(0,0,0,0.35)',
     };
   }
   return {
@@ -1098,7 +1152,7 @@ function resolveThemeColors() {
     text: '#111',
     border: 'rgba(0,0,0,0.12)',
     hover: 'rgba(0,0,0,0.05)',
-    shadow: '0 12px 32px rgba(0,0,0,0.12)'
+    shadow: '0 12px 32px rgba(0,0,0,0.12)',
   };
 }
 
@@ -1288,7 +1342,7 @@ function detectCarousel(scope) {
     activeIndex,
     activeSlide,
     slides,
-    dots
+    dots,
   };
 }
 
@@ -1301,8 +1355,17 @@ function extractImagesFromSlide(slide) {
   slide.querySelectorAll('img').forEach((img) => {
     const fromSrcset = pickFromSrcset(img.getAttribute('srcset'));
     const candidate = fromSrcset.url || img.currentSrc || img.getAttribute('src');
-    const weight = fromSrcset.width || img.naturalWidth || parseInt(img.getAttribute('width'), 10) || parseWidthFromUrl(candidate) || 0;
-    const isAvatar = isLikelyAvatar({ url: candidate, alt: img.getAttribute('alt'), width: weight });
+    const weight =
+      fromSrcset.width ||
+      img.naturalWidth ||
+      parseInt(img.getAttribute('width'), 10) ||
+      parseWidthFromUrl(candidate) ||
+      0;
+    const isAvatar = isLikelyAvatar({
+      url: candidate,
+      alt: img.getAttribute('alt'),
+      width: weight,
+    });
     const normalized = normalizeMediaUrl(candidate);
     if (!normalized) return;
     results.push({
@@ -1311,7 +1374,7 @@ function extractImagesFromSlide(slide) {
       weight: Number.isFinite(weight) ? weight : 0,
       ext: inferExt(normalized, 'jpg'),
       isAvatar,
-      element: img
+      element: img,
     });
   });
   return results;
@@ -1325,9 +1388,15 @@ export function findInstagramMediaSources(targetArticle) {
     const inDialog = targetArticle.closest && targetArticle.closest('div[role=\"dialog\"]');
     scopeType = inDialog
       ? INSTAGRAM_SCOPE_TYPES.dialog
-      : (isReelsFeedPage() ? INSTAGRAM_SCOPE_TYPES.reelsFeed : (isPermalink ? INSTAGRAM_SCOPE_TYPES.postPage : INSTAGRAM_SCOPE_TYPES.article));
+      : isReelsFeedPage()
+        ? INSTAGRAM_SCOPE_TYPES.reelsFeed
+        : isPermalink
+          ? INSTAGRAM_SCOPE_TYPES.postPage
+          : INSTAGRAM_SCOPE_TYPES.article;
   }
-  const scopeRoot = isPermalink ? (detection.scope || targetArticle || document) : (targetArticle || detection.scope || document);
+  const scopeRoot = isPermalink
+    ? detection.scope || targetArticle || document
+    : targetArticle || detection.scope || document;
   const articleRoot =
     targetArticle?.tagName === 'ARTICLE'
       ? targetArticle
@@ -1335,8 +1404,14 @@ export function findInstagramMediaSources(targetArticle) {
   const postScope = findPostPageScope(scopeRoot);
   // Prefer the tighter post container when available; on Reels/Feed pages the button container
   // might not include the actual media nodes.
-  let mediaScope = articleRoot || targetArticle || scopeRoot.querySelector?.('article') || scopeRoot;
-  if (postScope && (scopeType === INSTAGRAM_SCOPE_TYPES.dialog || scopeType === INSTAGRAM_SCOPE_TYPES.postPage || isPermalink)) {
+  let mediaScope =
+    articleRoot || targetArticle || scopeRoot.querySelector?.('article') || scopeRoot;
+  if (
+    postScope &&
+    (scopeType === INSTAGRAM_SCOPE_TYPES.dialog ||
+      scopeType === INSTAGRAM_SCOPE_TYPES.postPage ||
+      isPermalink)
+  ) {
     mediaScope = postScope;
   }
   if (scopeType === INSTAGRAM_SCOPE_TYPES.reelsFeed) {
@@ -1360,7 +1435,7 @@ export function findInstagramMediaSources(targetArticle) {
       hasVideo: false,
       isCarousel: false,
       carouselTotal: 0,
-      scopeType
+      scopeType,
     };
   }
 
@@ -1373,9 +1448,8 @@ export function findInstagramMediaSources(targetArticle) {
     return detectCarousel(root);
   };
 
-  carousel = tryDetectCarousel(mediaScope)
-    || tryDetectCarousel(articleRoot)
-    || tryDetectCarousel(scopeRoot);
+  carousel =
+    tryDetectCarousel(mediaScope) || tryDetectCarousel(articleRoot) || tryDetectCarousel(scopeRoot);
 
   if (!carousel && mediaScope?.parentElement) {
     let walkUp = mediaScope.parentElement;
@@ -1397,7 +1471,7 @@ export function findInstagramMediaSources(targetArticle) {
       type,
       weight: Number.isFinite(weight) ? weight : 0,
       ext: inferExt(url, type === 'image' ? 'jpg' : 'mp4'),
-      ...extra
+      ...extra,
     });
   };
 
@@ -1409,11 +1483,24 @@ export function findInstagramMediaSources(targetArticle) {
       hasVideoElement = true;
       const visibleScore = visibilityScore(video);
       const src = video.currentSrc || video.getAttribute('src');
-      const weight = video.videoWidth || parseInt(video.getAttribute('width'), 10) || parseWidthFromUrl(src) || 0;
+      const weight =
+        video.videoWidth ||
+        parseInt(video.getAttribute('width'), 10) ||
+        parseWidthFromUrl(src) ||
+        0;
       addMedia(src, 'video', weight, { visibleScore });
       video.querySelectorAll('source[src]').forEach((source) => {
         const raw = source.getAttribute('src');
-        const res = parseInt(source.getAttribute('res') || source.getAttribute('data-res') || source.getAttribute('size') || '', 10) || parseWidthFromUrl(raw) || 0;
+        const res =
+          parseInt(
+            source.getAttribute('res') ||
+              source.getAttribute('data-res') ||
+              source.getAttribute('size') ||
+              '',
+            10,
+          ) ||
+          parseWidthFromUrl(raw) ||
+          0;
         addMedia(raw, 'video', res, { visibleScore });
       });
     });
@@ -1434,28 +1521,37 @@ export function findInstagramMediaSources(targetArticle) {
   if (carousel) {
     // In a carousel: collect images from ALL slides in DOM but mark
     // which one is the active slide image.
-    const activeSlideImages = extractImagesFromSlide(carousel.activeSlide)
-      .filter((img) => !img.isAvatar);
+    const activeSlideImages = extractImagesFromSlide(carousel.activeSlide).filter(
+      (img) => !img.isAvatar,
+    );
 
     carousel.slides.forEach((slide) => {
       const slideImages = extractImagesFromSlide(slide);
       slideImages.forEach((img) => {
         // Tag images from the active slide
-        const isInActiveSlide = (slide === carousel.activeSlide);
+        const isInActiveSlide = slide === carousel.activeSlide;
         media.push({ ...img, isActiveSlide: isInActiveSlide });
       });
     });
 
     // Pick the best image from the active slide
-    activeSlideImage = activeSlideImages
-      .sort((a, b) => b.weight - a.weight)[0] || null;
+    activeSlideImage = activeSlideImages.sort((a, b) => b.weight - a.weight)[0] || null;
   } else {
     // No carousel — collect all images from the media scope
     mediaScope.querySelectorAll('img').forEach((img) => {
       const fromSrcset = pickFromSrcset(img.getAttribute('srcset'));
       const candidate = fromSrcset.url || img.currentSrc || img.getAttribute('src');
-      const weight = fromSrcset.width || img.naturalWidth || parseInt(img.getAttribute('width'), 10) || parseWidthFromUrl(candidate) || 0;
-      const isAvatar = isLikelyAvatar({ url: candidate, alt: img.getAttribute('alt'), width: weight });
+      const weight =
+        fromSrcset.width ||
+        img.naturalWidth ||
+        parseInt(img.getAttribute('width'), 10) ||
+        parseWidthFromUrl(candidate) ||
+        0;
+      const isAvatar = isLikelyAvatar({
+        url: candidate,
+        alt: img.getAttribute('alt'),
+        width: weight,
+      });
       const normalized = normalizeMediaUrl(candidate);
       if (!normalized) return;
       media.push({
@@ -1464,7 +1560,7 @@ export function findInstagramMediaSources(targetArticle) {
         weight: Number.isFinite(weight) ? weight : 0,
         ext: inferExt(normalized, 'jpg'),
         isAvatar,
-        element: img
+        element: img,
       });
     });
   }
@@ -1474,21 +1570,22 @@ export function findInstagramMediaSources(targetArticle) {
   const visibleImages = images
     .map((img) => ({
       ...img,
-      visibleScore: visibilityScore(img.element)
+      visibleScore: visibilityScore(img.element),
     }))
     .filter((img) => img.visibleScore > 0.05);
   const videoPool = media.filter((item) => item.type === 'video');
   let bestVideo = null;
   if (scopeType === INSTAGRAM_SCOPE_TYPES.reelsFeed) {
     bestVideo =
-      videoPool
-        .sort((a, b) => (b.visibleScore || 0) - (a.visibleScore || 0) || b.weight - a.weight)[0] || null;
+      videoPool.sort(
+        (a, b) => (b.visibleScore || 0) - (a.visibleScore || 0) || b.weight - a.weight,
+      )[0] || null;
   } else {
-    bestVideo =
-      videoPool
-        .sort((a, b) => b.weight - a.weight)[0] || null;
+    bestVideo = videoPool.sort((a, b) => b.weight - a.weight)[0] || null;
   }
-  const ogVideoUrl = document.querySelector('meta[property="og:video"], meta[property="og:video:secure_url"]')?.getAttribute('content');
+  const ogVideoUrl = document
+    .querySelector('meta[property="og:video"], meta[property="og:video:secure_url"]')
+    ?.getAttribute('content');
   if (!hasVideoElement && normalizeMediaUrl(ogVideoUrl)) {
     hasVideoElement = true;
   }
@@ -1503,10 +1600,12 @@ export function findInstagramMediaSources(targetArticle) {
     bestImage = activeSlideImage;
     visibleImage = activeSlideImage;
   } else {
-    bestImage = (imagePool.length ? imagePool : imagesAll)
-      .sort((a, b) => b.weight - a.weight)[0] || null;
-    visibleImage = (visibleImages.length ? visibleImages : imagePool)
-      .sort((a, b) => (b.visibleScore || 0) - (a.visibleScore || 0) || b.weight - a.weight)[0] || null;
+    bestImage =
+      (imagePool.length ? imagePool : imagesAll).sort((a, b) => b.weight - a.weight)[0] || null;
+    visibleImage =
+      (visibleImages.length ? visibleImages : imagePool).sort(
+        (a, b) => (b.visibleScore || 0) - (a.visibleScore || 0) || b.weight - a.weight,
+      )[0] || null;
   }
 
   const isCarousel = Boolean(carousel);
@@ -1521,7 +1620,7 @@ export function findInstagramMediaSources(targetArticle) {
     hasVideo: hasVideoElement,
     isCarousel,
     carouselTotal,
-    scopeType
+    scopeType,
   };
 }
 
@@ -1529,7 +1628,12 @@ function visibilityScore(el) {
   if (!el) return 0;
   const style = window.getComputedStyle ? getComputedStyle(el) : null;
   if (style) {
-    if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) <= 0.05) return 0;
+    if (
+      style.display === 'none' ||
+      style.visibility === 'hidden' ||
+      parseFloat(style.opacity) <= 0.05
+    )
+      return 0;
   }
   const rect = el.getBoundingClientRect();
   const vw = window.innerWidth || document.documentElement.clientWidth || 0;

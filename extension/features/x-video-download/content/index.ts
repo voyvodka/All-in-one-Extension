@@ -10,7 +10,15 @@ export default {
   apply: () => {
     const cleanup = registerTwitterMenuProvider(
       'twitter-video',
-      ({ tweetUrl, tweetTitle, hasVideo }: { tweetUrl: string; tweetTitle: string; hasVideo: boolean }) => {
+      ({
+        tweetUrl,
+        tweetTitle,
+        hasVideo,
+      }: {
+        tweetUrl: string;
+        tweetTitle: string;
+        hasVideo: boolean;
+      }) => {
         if (!tweetUrl || !hasVideo) return [];
 
         return [
@@ -18,21 +26,21 @@ export default {
             label: t('downloadVideo'),
             onClick: async () => {
               await startMp4Download({ tweetUrl, tweetTitle });
-            }
-          }
+            },
+          },
         ];
-      }
+      },
     );
 
     return () => {
       cleanup();
     };
-  }
+  },
 };
 
 async function startMp4Download({
   tweetUrl,
-  tweetTitle
+  tweetTitle,
 }: {
   tweetUrl: string;
   tweetTitle: string;
@@ -42,7 +50,7 @@ async function startMp4Download({
       type: MESSAGE_TYPES.X_VIDEO_DOWNLOAD,
       openPopup: true,
       tweetUrl,
-      tweetTitle: tweetTitle || 'twitter-video'
+      tweetTitle: tweetTitle || 'twitter-video',
     });
   } catch (error) {
     console.error('Error sending Video download message:', error);

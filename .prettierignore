@@ -1,0 +1,5 @@
+extension-dist/
+extension-dev-dist/
+artifacts/
+node_modules/
+example/

@@ -1,5 +1,10 @@
 import { buildTimestampFile } from '../../../background/utils.js';
-import { createJob, addJob, updateJob, registerDownloadId } from '../../../background/downloads/store.js';
+import {
+  createJob,
+  addJob,
+  updateJob,
+  registerDownloadId,
+} from '../../../background/downloads/store.js';
 import { getMp3DownloadUrl, getMp4DownloadUrl } from '../../../background/providers/loaderTo.js';
 import { MESSAGE_TYPES } from '../../../shared/contracts/message-types.js';
 import type { ProgressEvent } from '../../../background/providers/loaderTo.js';
@@ -12,7 +17,7 @@ export interface DownloadResult {
 export async function startYoutubeDownload(
   kind: string,
   videoId: string,
-  videoTitle: string
+  videoTitle: string,
 ): Promise<DownloadResult> {
   const isMp4 = kind === MESSAGE_TYPES.YT_VIDEO_DOWNLOAD;
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
@@ -23,7 +28,7 @@ export async function startYoutubeDownload(
     type: kind,
     title: videoTitle,
     fileName,
-    sourceUrl: videoUrl
+    sourceUrl: videoUrl,
   });
   await addJob(job);
 
@@ -37,7 +42,7 @@ export async function startYoutubeDownload(
             j.progress = Math.max(j.progress || 0, Math.min(99, Math.round(progress.progress)));
           });
         }
-      }
+      },
     );
 
     const result = await new Promise<DownloadResult>((resolve) => {
@@ -45,7 +50,7 @@ export async function startYoutubeDownload(
         {
           url: downloadUrl,
           filename: fileName,
-          saveAs: true
+          saveAs: true,
         },
         (downloadId) => {
           if (chrome.runtime.lastError) {
@@ -70,7 +75,7 @@ export async function startYoutubeDownload(
             });
             resolve({ success: false, error: 'USER_CANCELED' });
           }
-        }
+        },
       );
     });
 

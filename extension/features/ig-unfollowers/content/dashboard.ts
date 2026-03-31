@@ -10,10 +10,7 @@
  */
 
 import { getLocale, t } from '../../../shared/i18n.js';
-import {
-  getInstagramAnalyzerState,
-  getSettings
-} from '../../../shared/storage.js';
+import { getInstagramAnalyzerState, getSettings } from '../../../shared/storage.js';
 import type {
   InstagramAnalyzerAccountState,
   InstagramAnalyzerDurableAccount,
@@ -21,7 +18,7 @@ import type {
   InstagramAnalyzerScanHistoryEntry,
   InstagramAnalyzerSnapshotUser,
   InstagramAnalyzerState,
-  ThemeChoice
+  ThemeChoice,
 } from '../../../shared/storage.js';
 import { MESSAGE_TYPES } from '../../../shared/contracts/message-types.js';
 
@@ -76,7 +73,7 @@ function formatDateTime(timestamp: number): string {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   });
 }
 
@@ -94,15 +91,22 @@ function formatRelativeTime(timestamp: number): string {
 }
 
 function isContextInvalidatedError(error: unknown): boolean {
-  return /context invalidated/i.test(String((error as { message?: string } | null)?.message ?? error ?? ''));
+  return /context invalidated/i.test(
+    String((error as { message?: string } | null)?.message ?? error ?? ''),
+  );
 }
 
-async function sendDashboardMessage(payload: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+async function sendDashboardMessage(
+  payload: Record<string, unknown>,
+): Promise<Record<string, unknown> | null> {
   if (!chrome?.runtime?.id) return null;
   return new Promise((resolve) => {
     try {
       chrome.runtime.sendMessage(payload, (response) => {
-        if (chrome.runtime.lastError) { resolve(null); return; }
+        if (chrome.runtime.lastError) {
+          resolve(null);
+          return;
+        }
         resolve(response as Record<string, unknown> | null);
       });
     } catch {
@@ -116,7 +120,11 @@ function parseRgb(color: string): [number, number, number] | null {
   if (rgbMatch) return [Number(rgbMatch[1]), Number(rgbMatch[2]), Number(rgbMatch[3])];
   const hex = color.replace('#', '');
   if (/^[a-f0-9]{6}$/i.test(hex)) {
-    return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
+    return [
+      parseInt(hex.slice(0, 2), 16),
+      parseInt(hex.slice(2, 4), 16),
+      parseInt(hex.slice(4, 6), 16),
+    ];
   }
   return null;
 }
@@ -146,12 +154,15 @@ function inferSiteTheme(): DashboardTheme | null {
 
 function resolveTheme(themeChoice: ThemeChoice): DashboardTheme {
   if (themeChoice === 'dark' || themeChoice === 'light') return themeChoice;
-  return inferSiteTheme() ?? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  return (
+    inferSiteTheme() ??
+    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+  );
 }
 
 function resolveAccount(
   state: InstagramAnalyzerState,
-  viewerId: string | null
+  viewerId: string | null,
 ): InstagramAnalyzerAccountState | null {
   if (viewerId && state.accounts[viewerId]) return state.accounts[viewerId] ?? null;
   if (state.currentViewerId && state.accounts[state.currentViewerId]) {
@@ -160,7 +171,9 @@ function resolveAccount(
   return null;
 }
 
-function getHistoryPoints(account: InstagramAnalyzerAccountState | null): InstagramAnalyzerScanHistoryEntry[] {
+function getHistoryPoints(
+  account: InstagramAnalyzerAccountState | null,
+): InstagramAnalyzerScanHistoryEntry[] {
   return account?.history ?? [];
 }
 
@@ -216,34 +229,43 @@ function renderLineChart(lines: ChartLine[], labels: string[], emptyMsg: string)
   const range = max - min || 1;
   const n = labels.length;
 
-  const polylines = validLines.map((line) => {
-    const pts = line.values.map((v, i) => {
-      const x = padL + (i / (n - 1)) * chartW;
-      const y = padT + chartH - ((v - min) / range) * chartH;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    });
-    return `<polyline points="${pts.join(' ')}" stroke="${line.color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
-  }).join('');
+  const polylines = validLines
+    .map((line) => {
+      const pts = line.values.map((v, i) => {
+        const x = padL + (i / (n - 1)) * chartW;
+        const y = padT + chartH - ((v - min) / range) * chartH;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      });
+      return `<polyline points="${pts.join(' ')}" stroke="${line.color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
+    })
+    .join('');
 
   // Y axis labels (3 ticks)
-  const yTicks = [0, 0.5, 1].map((t) => {
-    const val = Math.round(min + t * range);
-    const y = padT + chartH - t * chartH;
-    return `<text x="${(padL - 4).toFixed(0)}" y="${y.toFixed(0)}" fill="currentColor" font-size="9" text-anchor="end" dominant-baseline="middle" opacity="0.5">${val}</text>
+  const yTicks = [0, 0.5, 1]
+    .map((t) => {
+      const val = Math.round(min + t * range);
+      const y = padT + chartH - t * chartH;
+      return `<text x="${(padL - 4).toFixed(0)}" y="${y.toFixed(0)}" fill="currentColor" font-size="9" text-anchor="end" dominant-baseline="middle" opacity="0.5">${val}</text>
 <line x1="${padL}" y1="${y.toFixed(0)}" x2="${(padL + chartW).toFixed(0)}" y2="${y.toFixed(0)}" stroke="currentColor" stroke-width="0.5" opacity="0.1"/>`;
-  }).join('');
+    })
+    .join('');
 
   // X axis labels (first and last)
-  const xLabels = [0, n - 1].map((i) => {
-    const x = padL + (i / (n - 1)) * chartW;
-    const label = labels[i] ?? '';
-    return `<text x="${x.toFixed(0)}" y="${(h - 4).toFixed(0)}" fill="currentColor" font-size="8" text-anchor="${i === 0 ? 'start' : 'end'}" opacity="0.5">${escHtml(label)}</text>`;
-  }).join('');
+  const xLabels = [0, n - 1]
+    .map((i) => {
+      const x = padL + (i / (n - 1)) * chartW;
+      const label = labels[i] ?? '';
+      return `<text x="${x.toFixed(0)}" y="${(h - 4).toFixed(0)}" fill="currentColor" font-size="8" text-anchor="${i === 0 ? 'start' : 'end'}" opacity="0.5">${escHtml(label)}</text>`;
+    })
+    .join('');
 
   // Legend
-  const legend = validLines.map((line) =>
-    `<span class="chart-legend-item"><span class="chart-legend-dot" style="background:${line.color}"></span>${escHtml(line.label)}</span>`
-  ).join('');
+  const legend = validLines
+    .map(
+      (line) =>
+        `<span class="chart-legend-item"><span class="chart-legend-dot" style="background:${line.color}"></span>${escHtml(line.label)}</span>`,
+    )
+    .join('');
 
   return `
     <div class="chart-legend">${legend}</div>
@@ -303,21 +325,27 @@ function renderBarChart(groups: BarGroup[], emptyMsg: string): string {
 
   // X axis labels (show every other group if many)
   const step = validGroups.length > 8 ? Math.ceil(validGroups.length / 6) : 1;
-  const xLabels = validGroups.map((group, gi) => {
-    if (gi % step !== 0) return '';
-    const x = padL + gi * groupW + groupW / 2;
-    const label = group.label.slice(0, 6);
-    return `<text x="${x.toFixed(0)}" y="${(h - 4).toFixed(0)}" fill="currentColor" font-size="7" text-anchor="middle" opacity="0.5">${escHtml(label)}</text>`;
-  }).join('');
+  const xLabels = validGroups
+    .map((group, gi) => {
+      if (gi % step !== 0) return '';
+      const x = padL + gi * groupW + groupW / 2;
+      const label = group.label.slice(0, 6);
+      return `<text x="${x.toFixed(0)}" y="${(h - 4).toFixed(0)}" fill="currentColor" font-size="7" text-anchor="middle" opacity="0.5">${escHtml(label)}</text>`;
+    })
+    .join('');
 
   // Center line
   const centerLine = `<line x1="${padL}" y1="${midY.toFixed(0)}" x2="${(padL + chartW).toFixed(0)}" y2="${midY.toFixed(0)}" stroke="currentColor" stroke-width="0.5" opacity="0.2"/>`;
 
   // Legend (first group's bars)
   const firstGroup = validGroups[0];
-  const legend = firstGroup?.bars.map((bar) =>
-    `<span class="chart-legend-item"><span class="chart-legend-dot" style="background:${bar.color}"></span>${escHtml(bar.label)}</span>`
-  ).join('') ?? '';
+  const legend =
+    firstGroup?.bars
+      .map(
+        (bar) =>
+          `<span class="chart-legend-item"><span class="chart-legend-dot" style="background:${bar.color}"></span>${escHtml(bar.label)}</span>`,
+      )
+      .join('') ?? '';
 
   return `
     <div class="chart-legend">${legend}</div>
@@ -1423,7 +1451,7 @@ const DASHBOARD_CSS = `
 function renderDashboard(
   state: DashboardState,
   account: InstagramAnalyzerAccountState | null,
-  isUnfollowPending: (id: string) => boolean
+  isUnfollowPending: (id: string) => boolean,
 ): string {
   const history = getHistoryPoints(account);
   const username = state.activeUsername || account?.summary.username || '';
@@ -1442,6 +1470,10 @@ function renderDashboard(
       ? t('analyzerScanRescan')
       : t('analyzerScanStart');
 
+  void profileUrl;
+  void lastScanLabel;
+  void scanLabel;
+
   return `
     ${renderKpiSection(account, history)}
     ${renderChartsSection(history)}
@@ -1451,8 +1483,6 @@ function renderDashboard(
     ${renderHistorySection(state, history)}
     <div style="height:8px"></div>
   `.trim();
-
-  void profileUrl; void lastScanLabel; void scanLabel;
 }
 
 /* ─────────────────────────────────────────────────────────────────── */
@@ -1461,16 +1491,28 @@ function renderDashboard(
 
 function renderKpiSection(
   account: InstagramAnalyzerAccountState | null,
-  history: InstagramAnalyzerScanHistoryEntry[]
+  history: InstagramAnalyzerScanHistoryEntry[],
 ): string {
   const cur = account?.summary;
   const prev = history.length >= 2 ? history[1] : null;
   const latest = history.length >= 1 ? history[0] : null;
 
-  const followingVals = history.slice(0, SPARKLINE_POINTS).reverse().map((h) => h.followingCount);
-  const followerVals = history.slice(0, SPARKLINE_POINTS).reverse().map((h) => h.followerCount);
-  const nfVals = history.slice(0, SPARKLINE_POINTS).reverse().map((h) => h.nonFollowerCount);
-  const wlVals = history.slice(0, SPARKLINE_POINTS).reverse().map((h) => h.whitelistedCount);
+  const followingVals = history
+    .slice(0, SPARKLINE_POINTS)
+    .reverse()
+    .map((h) => h.followingCount);
+  const followerVals = history
+    .slice(0, SPARKLINE_POINTS)
+    .reverse()
+    .map((h) => h.followerCount);
+  const nfVals = history
+    .slice(0, SPARKLINE_POINTS)
+    .reverse()
+    .map((h) => h.nonFollowerCount);
+  const wlVals = history
+    .slice(0, SPARKLINE_POINTS)
+    .reverse()
+    .map((h) => h.whitelistedCount);
 
   function delta(current: number, previous: number | null): string {
     if (previous == null || !cur?.lastScannedAt) return '';
@@ -1481,7 +1523,13 @@ function renderKpiSection(
     return `<span class="db-kpi-delta ${cls}">${sign}${d}</span>`;
   }
 
-  function kpiCard(label: string, value: string | number, vals: number[], color: string, deltaHtml: string): string {
+  function kpiCard(
+    label: string,
+    value: string | number,
+    vals: number[],
+    color: string,
+    deltaHtml: string,
+  ): string {
     return `
       <div class="db-kpi-card">
         <div class="db-kpi-label">${escHtml(label)}</div>
@@ -1499,9 +1547,7 @@ function renderKpiSection(
   const nfDelta = delta(cur?.nonFollowerCount ?? 0, prev ? prev.nonFollowerCount : null);
   const wlDelta = delta(cur?.whitelistedCount ?? 0, prev ? prev.whitelistedCount : null);
 
-  const followerDisplay = latest?.diffs.followersAvailable
-    ? String(latest.followerCount)
-    : '—';
+  const followerDisplay = latest?.diffs.followersAvailable ? String(latest.followerCount) : '—';
 
   return `
     <div class="db-section">
@@ -1528,26 +1574,34 @@ function renderChartsSection(history: InstagramAnalyzerScanHistoryEntry[]): stri
   const labels = pts.map((h) => formatDateTime(h.scannedAt).split(',')[0] ?? '');
   const emptyMsg = t('dashboardChartNeedMore');
 
-  const followingFollowersChart = renderLineChart([
-    {
-      values: pts.map((h) => h.followingCount),
-      color: 'var(--c-following)',
-      label: t('analyzerFollowingCountLabel')
-    },
-    {
-      values: pts.filter((h) => h.diffs.followersAvailable).map((h) => h.followerCount),
-      color: 'var(--c-followers)',
-      label: t('analyzerFollowerCountLabel')
-    }
-  ], labels, emptyMsg);
+  const followingFollowersChart = renderLineChart(
+    [
+      {
+        values: pts.map((h) => h.followingCount),
+        color: 'var(--c-following)',
+        label: t('analyzerFollowingCountLabel'),
+      },
+      {
+        values: pts.filter((h) => h.diffs.followersAvailable).map((h) => h.followerCount),
+        color: 'var(--c-followers)',
+        label: t('analyzerFollowerCountLabel'),
+      },
+    ],
+    labels,
+    emptyMsg,
+  );
 
-  const nfChart = renderLineChart([
-    {
-      values: pts.map((h) => h.nonFollowerCount),
-      color: 'var(--c-nonfollowers)',
-      label: t('analyzerNonFollowerCountLabel')
-    }
-  ], labels, emptyMsg);
+  const nfChart = renderLineChart(
+    [
+      {
+        values: pts.map((h) => h.nonFollowerCount),
+        color: 'var(--c-nonfollowers)',
+        label: t('analyzerNonFollowerCountLabel'),
+      },
+    ],
+    labels,
+    emptyMsg,
+  );
 
   return `
     <div class="db-section">
@@ -1580,14 +1634,26 @@ function renderChangesChartSection(history: InstagramAnalyzerScanHistoryEntry[])
     label: formatDateTime(h.scannedAt).split(',')[0] ?? '',
     bars: [
       { value: h.diffs.followed.length, color: 'var(--c-pos)', label: t('analyzerDiffFollowed') },
-      { value: -h.diffs.unfollowed.length, color: 'var(--c-neg)', label: t('analyzerDiffUnfollowed') },
+      {
+        value: -h.diffs.unfollowed.length,
+        color: 'var(--c-neg)',
+        label: t('analyzerDiffUnfollowed'),
+      },
       ...(h.diffs.followersAvailable
         ? [
-            { value: h.diffs.followersGained.length, color: 'var(--c-pos-light)', label: t('analyzerDiffFollowersGained') },
-            { value: -h.diffs.followersLost.length, color: 'var(--c-neg-light)', label: t('analyzerDiffFollowersLost') }
+            {
+              value: h.diffs.followersGained.length,
+              color: 'var(--c-pos-light)',
+              label: t('analyzerDiffFollowersGained'),
+            },
+            {
+              value: -h.diffs.followersLost.length,
+              color: 'var(--c-neg-light)',
+              label: t('analyzerDiffFollowersLost'),
+            },
           ]
-        : [])
-    ]
+        : []),
+    ],
   }));
 
   return `
@@ -1608,7 +1674,7 @@ function renderChangesChartSection(history: InstagramAnalyzerScanHistoryEntry[])
 function renderCompareSection(
   state: DashboardState,
   account: InstagramAnalyzerAccountState | null,
-  history: InstagramAnalyzerScanHistoryEntry[]
+  history: InstagramAnalyzerScanHistoryEntry[],
 ): string {
   if (history.length < 2) {
     return `
@@ -1622,19 +1688,30 @@ function renderCompareSection(
   }
 
   const scanB = history.find((h) => h.scanId === state.compareScanBId) ?? history[0]!;
-  const scanA = history.find((h) => h.scanId === state.compareScanAId) ??
-    history.find((h) => h.scanId !== scanB.scanId) ?? history[1]!;
+  const scanA =
+    history.find((h) => h.scanId === state.compareScanAId) ??
+    history.find((h) => h.scanId !== scanB.scanId) ??
+    history[1]!;
 
   const followingDelta = scanB.followingCount - scanA.followingCount;
-  const followerDelta = (scanA.diffs.followersAvailable && scanB.diffs.followersAvailable)
-    ? scanB.followerCount - scanA.followerCount
-    : null;
+  const followerDelta =
+    scanA.diffs.followersAvailable && scanB.diffs.followersAvailable
+      ? scanB.followerCount - scanA.followerCount
+      : null;
   const nfDelta = scanB.nonFollowerCount - scanA.nonFollowerCount;
 
-  function metricCard(label: string, valB: number | string, valA: number | string, delta: number | null): string {
+  function metricCard(
+    label: string,
+    valB: number | string,
+    valA: number | string,
+    delta: number | null,
+  ): string {
     const dSign = delta == null ? '' : delta > 0 ? '+' : '';
     const dClass = delta == null ? '' : delta > 0 ? 'pos' : delta < 0 ? 'neg' : '';
-    const dLabel = delta == null ? '' : `<span class="db-compare-metric-delta ${dClass}">${dSign}${delta}</span>`;
+    const dLabel =
+      delta == null
+        ? ''
+        : `<span class="db-compare-metric-delta ${dClass}">${dSign}${delta}</span>`;
     return `
       <div class="db-compare-metric">
         <div class="db-compare-metric-label">${escHtml(label)}</div>
@@ -1645,21 +1722,36 @@ function renderCompareSection(
     `;
   }
 
-  const diffSections = state.compareExpanded ? `
+  const diffSections = state.compareExpanded
+    ? `
     <div class="db-compare-diff">
       ${renderDiffGroup(t('analyzerDiffFollowed'), scanB.diffs.followed, 'var(--c-pos)')}
       ${renderDiffGroup(t('analyzerDiffUnfollowed'), scanB.diffs.unfollowed, 'var(--c-neg)')}
-      ${scanB.diffs.followersAvailable
-        ? renderDiffGroup(t('analyzerDiffFollowersGained'), scanB.diffs.followersGained, 'var(--c-followers)') +
-          renderDiffGroup(t('analyzerDiffFollowersLost'), scanB.diffs.followersLost, 'var(--c-neg)')
-        : ''}
+      ${
+        scanB.diffs.followersAvailable
+          ? renderDiffGroup(
+              t('analyzerDiffFollowersGained'),
+              scanB.diffs.followersGained,
+              'var(--c-followers)',
+            ) +
+            renderDiffGroup(
+              t('analyzerDiffFollowersLost'),
+              scanB.diffs.followersLost,
+              'var(--c-neg)',
+            )
+          : ''
+      }
     </div>
-  ` : '';
+  `
+    : '';
 
   // Scan picker options
-  const scanOptions = history.map((h) =>
-    `<option value="${escHtml(h.scanId)}" ${h.scanId === scanB.scanId ? 'selected' : ''}>${escHtml(formatDateTime(h.scannedAt))} — ${t('analyzerHistoryPillNonFollowers')} ${h.nonFollowerCount}</option>`
-  ).join('');
+  const scanOptions = history
+    .map(
+      (h) =>
+        `<option value="${escHtml(h.scanId)}" ${h.scanId === scanB.scanId ? 'selected' : ''}>${escHtml(formatDateTime(h.scannedAt))} — ${t('analyzerHistoryPillNonFollowers')} ${h.nonFollowerCount}</option>`,
+    )
+    .join('');
 
   void account;
 
@@ -1675,10 +1767,12 @@ function renderCompareSection(
         </div>
         <div class="db-compare-metrics">
           ${metricCard(t('analyzerFollowingCountLabel'), scanB.followingCount, scanA.followingCount, followingDelta)}
-          ${metricCard(t('analyzerFollowerCountLabel'),
+          ${metricCard(
+            t('analyzerFollowerCountLabel'),
             scanB.diffs.followersAvailable ? scanB.followerCount : '—',
             scanA.diffs.followersAvailable ? scanA.followerCount : '—',
-            followerDelta)}
+            followerDelta,
+          )}
           ${metricCard(t('analyzerNonFollowerCountLabel'), scanB.nonFollowerCount, scanA.nonFollowerCount, nfDelta)}
         </div>
         <div class="db-compare-summary">
@@ -1690,7 +1784,9 @@ function renderCompareSection(
             <span class="db-compare-summary-val neg">-${scanB.diffs.unfollowed.length}</span>
             <span>${t('analyzerDiffUnfollowed')}</span>
           </span>
-          ${scanB.diffs.followersAvailable ? `
+          ${
+            scanB.diffs.followersAvailable
+              ? `
             <span class="db-compare-summary-item">
               <span class="db-compare-summary-val pos">+${scanB.diffs.followersGained.length}</span>
               <span>${t('analyzerDiffFollowersGained')}</span>
@@ -1699,7 +1795,9 @@ function renderCompareSection(
               <span class="db-compare-summary-val neg">-${scanB.diffs.followersLost.length}</span>
               <span>${t('analyzerDiffFollowersLost')}</span>
             </span>
-          ` : ''}
+          `
+              : ''
+          }
         </div>
         <div class="db-compare-expand-row">
           <button class="db-btn" type="button" data-action="toggle-compare-expand">
@@ -1712,17 +1810,26 @@ function renderCompareSection(
   `;
 }
 
-function renderDiffGroup(label: string, users: InstagramAnalyzerSnapshotUser[], _color: string): string {
+function renderDiffGroup(
+  label: string,
+  users: InstagramAnalyzerSnapshotUser[],
+  _color: string,
+): string {
   if (!users.length) return '';
   return `
     <div>
       <div class="db-compare-diff-label">${escHtml(label)} (${users.length})</div>
       <div class="db-diff-list">
-        ${users.slice(0, 30).map((u) => `
+        ${users
+          .slice(0, 30)
+          .map(
+            (u) => `
           <div class="db-diff-item">
             <a href="https://www.instagram.com/${encodeURIComponent(u.username)}/" target="_blank" rel="noopener noreferrer">@${escHtml(u.username)}</a>
           </div>
-        `).join('')}
+        `,
+          )
+          .join('')}
         ${users.length > 30 ? `<div style="padding:6px 10px;font-size:11px;color:var(--text-3)">+${users.length - 30} ${t('dashboardMore')}</div>` : ''}
       </div>
     </div>
@@ -1736,10 +1843,15 @@ function renderDiffGroup(label: string, users: InstagramAnalyzerSnapshotUser[], 
 function renderListSection(
   state: DashboardState,
   account: InstagramAnalyzerAccountState | null,
-  isUnfollowPending: (id: string) => boolean
+  isUnfollowPending: (id: string) => boolean,
 ): string {
   const allItems = getListItems(state.listSource, account);
-  const filtered = filterListItems(allItems, state.listSearchQuery, state.listSource, account?.whitelist ?? []);
+  const filtered = filterListItems(
+    allItems,
+    state.listSearchQuery,
+    state.listSource,
+    account?.whitelist ?? [],
+  );
   const totalPages = Math.max(1, Math.ceil(filtered.length / LIST_PAGE_SIZE));
   const page = Math.min(Math.max(1, state.listPage), totalPages);
   const pageItems = filtered.slice((page - 1) * LIST_PAGE_SIZE, page * LIST_PAGE_SIZE);
@@ -1749,31 +1861,38 @@ function renderListSection(
     { value: 'non-followers', label: t('dashboardListNonFollowers') },
     { value: 'whitelist', label: t('analyzerTabWhitelisted') },
     { value: 'following', label: t('dashboardListFollowing') },
-    { value: 'followers', label: t('dashboardListFollowers') }
+    { value: 'followers', label: t('dashboardListFollowers') },
   ];
 
-  const sourceSelect = sourceOptions.map((opt) =>
-    `<option value="${opt.value}" ${state.listSource === opt.value ? 'selected' : ''}>${escHtml(opt.label)}</option>`
-  ).join('');
+  const sourceSelect = sourceOptions
+    .map(
+      (opt) =>
+        `<option value="${opt.value}" ${state.listSource === opt.value ? 'selected' : ''}>${escHtml(opt.label)}</option>`,
+    )
+    .join('');
 
-  const listHtml = pageItems.length === 0
-    ? `<div class="db-list-empty">${allItems.length === 0 ? t('analyzerResultsEmpty') : t('dashboardListNoResults')}</div>`
-    : pageItems.map((item) => {
-        const isResult = 'fullName' in item;
-        const username = item.username;
-        const fullName = isResult ? (item as InstagramAnalyzerResultItem).fullName : '';
-        const isPrivate = isResult ? (item as InstagramAnalyzerResultItem).isPrivate : false;
-        const isVerified = isResult ? (item as InstagramAnalyzerResultItem).isVerified : false;
-        const avatarUrl = isResult ? (item as InstagramAnalyzerResultItem).profilePictureUrl : '';
-        const itemId = item.id;
-        const isWl = whitelistSet.has(itemId);
-        const unfollowPending = isUnfollowPending(itemId);
+  const listHtml =
+    pageItems.length === 0
+      ? `<div class="db-list-empty">${allItems.length === 0 ? t('analyzerResultsEmpty') : t('dashboardListNoResults')}</div>`
+      : pageItems
+          .map((item) => {
+            const isResult = 'fullName' in item;
+            const username = item.username;
+            const fullName = isResult ? (item as InstagramAnalyzerResultItem).fullName : '';
+            const isPrivate = isResult ? (item as InstagramAnalyzerResultItem).isPrivate : false;
+            const isVerified = isResult ? (item as InstagramAnalyzerResultItem).isVerified : false;
+            const avatarUrl = isResult
+              ? (item as InstagramAnalyzerResultItem).profilePictureUrl
+              : '';
+            const itemId = item.id;
+            const isWl = whitelistSet.has(itemId);
+            const unfollowPending = isUnfollowPending(itemId);
 
-        const avatarContent = avatarUrl
-          ? `<img src="${escHtml(avatarUrl)}" alt="${escHtml(username)}" loading="lazy" />`
-          : escHtml(username.slice(0, 1).toUpperCase());
+            const avatarContent = avatarUrl
+              ? `<img src="${escHtml(avatarUrl)}" alt="${escHtml(username)}" loading="lazy" />`
+              : escHtml(username.slice(0, 1).toUpperCase());
 
-        return `
+            return `
           <div class="db-list-item">
             <div class="db-list-avatar">${avatarContent}</div>
             <div class="db-list-user">
@@ -1792,7 +1911,8 @@ function renderListSection(
             </button>
           </div>
         `;
-      }).join('');
+          })
+          .join('');
 
   return `
     <div class="db-section">
@@ -1824,22 +1944,27 @@ function renderListSection(
 
 function getListItems(
   source: ListSource,
-  account: InstagramAnalyzerAccountState | null
+  account: InstagramAnalyzerAccountState | null,
 ): Array<InstagramAnalyzerResultItem | InstagramAnalyzerSnapshotUser> {
   if (!account) return [];
   const whitelistSet = new Set(account.whitelist);
 
   switch (source) {
-    case 'non-followers': return account.results;
-    case 'whitelist': return account.results.filter((r) => whitelistSet.has(r.id));
-    case 'following': return account.followingSnapshot;
-    case 'followers': return account.followersSnapshot;
-    default: return account.results;
+    case 'non-followers':
+      return account.results;
+    case 'whitelist':
+      return account.results.filter((r) => whitelistSet.has(r.id));
+    case 'following':
+      return account.followingSnapshot;
+    case 'followers':
+      return account.followersSnapshot;
+    default:
+      return account.results;
   }
 }
 
 function isRichListItem(
-  item: InstagramAnalyzerResultItem | InstagramAnalyzerSnapshotUser
+  item: InstagramAnalyzerResultItem | InstagramAnalyzerSnapshotUser,
 ): item is InstagramAnalyzerResultItem {
   return 'fullName' in item;
 }
@@ -1862,13 +1987,17 @@ function filterListItems(
   items: Array<InstagramAnalyzerResultItem | InstagramAnalyzerSnapshotUser>,
   query: string,
   _source: ListSource,
-  _whitelist: string[]
+  _whitelist: string[],
 ): Array<InstagramAnalyzerResultItem | InstagramAnalyzerSnapshotUser> {
   if (!query.trim()) return items;
   const q = normalizeText(query.trim());
   return items.filter((item) => {
     if (normalizeText(item.username).includes(q)) return true;
-    if ('fullName' in item && normalizeText((item as InstagramAnalyzerResultItem).fullName).includes(q)) return true;
+    if (
+      'fullName' in item &&
+      normalizeText((item as InstagramAnalyzerResultItem).fullName).includes(q)
+    )
+      return true;
     return false;
   });
 }
@@ -1879,7 +2008,7 @@ function filterListItems(
 
 function renderHistorySection(
   state: DashboardState,
-  history: InstagramAnalyzerScanHistoryEntry[]
+  history: InstagramAnalyzerScanHistoryEntry[],
 ): string {
   if (history.length === 0) {
     return `
@@ -1892,10 +2021,12 @@ function renderHistorySection(
     `;
   }
 
-  const rows = history.map((entry) => {
-    const isExpanded = state.historyExpandedScanId === entry.scanId;
+  const rows = history
+    .map((entry) => {
+      const isExpanded = state.historyExpandedScanId === entry.scanId;
 
-    const detailHtml = isExpanded ? `
+      const detailHtml = isExpanded
+        ? `
       <div class="db-history-detail">
         <div class="db-history-detail-grid">
           <div class="db-history-stat">
@@ -1922,7 +2053,9 @@ function renderHistorySection(
             <span class="db-history-stat-k">${t('analyzerDiffUnfollowed')}</span>
             <span class="db-history-stat-v" style="color:var(--c-neg)">-${entry.diffs.unfollowed.length}</span>
           </div>
-          ${entry.diffs.followersAvailable ? `
+          ${
+            entry.diffs.followersAvailable
+              ? `
             <div class="db-history-stat">
               <span class="db-history-stat-k">${t('analyzerDiffFollowersGained')}</span>
               <span class="db-history-stat-v" style="color:var(--c-followers)">+${entry.diffs.followersGained.length}</span>
@@ -1931,15 +2064,18 @@ function renderHistorySection(
               <span class="db-history-stat-k">${t('analyzerDiffFollowersLost')}</span>
               <span class="db-history-stat-v" style="color:var(--c-neg)">-${entry.diffs.followersLost.length}</span>
             </div>
-          ` : ''}
+          `
+              : ''
+          }
         </div>
         <div class="db-history-detail-actions">
           <button class="db-btn db-btn-primary" type="button" data-action="compare-from-history" data-scan-id="${escHtml(entry.scanId)}">${t('dashboardCompareFromHistory')}</button>
         </div>
       </div>
-    ` : '';
+    `
+        : '';
 
-    return `
+      return `
       <div class="db-history-row" data-expanded="${String(isExpanded)}" data-action="toggle-history" data-scan-id="${escHtml(entry.scanId)}" tabindex="0" role="button">
         <div class="db-history-row-main">
           <div class="db-history-row-date">${escHtml(formatDateTime(entry.scannedAt))}</div>
@@ -1951,16 +2087,19 @@ function renderHistorySection(
         <div class="db-history-pills">
           <span class="db-history-pill" title="${escHtml(t('analyzerHistoryTooltipFollowed'))}">${t('analyzerHistoryPillFollowed')} ${entry.diffs.followed.length}</span>
           <span class="db-history-pill" title="${escHtml(t('analyzerHistoryTooltipUnfollowed'))}">${t('analyzerHistoryPillUnfollowed')} ${entry.diffs.unfollowed.length}</span>
-          ${entry.diffs.followersAvailable
-            ? `<span class="db-history-pill" title="${escHtml(t('analyzerHistoryTooltipFollowersGained'))}">${t('analyzerHistoryPillFollowersGained')} ${entry.diffs.followersGained.length}</span>
+          ${
+            entry.diffs.followersAvailable
+              ? `<span class="db-history-pill" title="${escHtml(t('analyzerHistoryTooltipFollowersGained'))}">${t('analyzerHistoryPillFollowersGained')} ${entry.diffs.followersGained.length}</span>
                <span class="db-history-pill" title="${escHtml(t('analyzerHistoryTooltipFollowersLost'))}">${t('analyzerHistoryPillFollowersLost')} ${entry.diffs.followersLost.length}</span>`
-            : ''}
+              : ''
+          }
         </div>
         <span class="db-history-expand-icon">▶</span>
       </div>
       ${detailHtml}
     `;
-  }).join('');
+    })
+    .join('');
 
   return `
     <div class="db-section">
@@ -1988,7 +2127,7 @@ export function openDashboard(
   onScan: () => void,
   onToggleWhitelist: (id: string) => void,
   onUnfollow: (id: string) => void,
-  isUnfollowPending: (id: string) => boolean
+  isUnfollowPending: (id: string) => boolean,
 ): () => void {
   // Remove existing instance
   const existing = document.getElementById(DASHBOARD_HOST_ID);
@@ -2010,7 +2149,7 @@ export function openDashboard(
     compareScanAId: null,
     compareScanBId: null,
     historyExpandedScanId: null,
-    isDisposed: false
+    isDisposed: false,
   };
 
   // Shadow root container
@@ -2072,7 +2211,7 @@ export function openDashboard(
       followingIds: Set<string>;
       followerIds: Set<string>;
       nonFollowerIds: Set<string>;
-    }
+    },
   ): void {
     window.clearTimeout(hoverHideTimer);
     window.clearTimeout(hoverShowTimer);
@@ -2090,9 +2229,15 @@ export function openDashboard(
     const isWl = whitelistSet.has(id);
     const profileUrl = `https://www.instagram.com/${encodeURIComponent(username)}/`;
     const unfollowPending = isUnfollowPending(id);
-    const followingLabel = relationState.followingIds.has(id) ? t('analyzerHoverYes') : t('analyzerHoverNo');
-    const followerLabel = relationState.followerIds.has(id) ? t('analyzerHoverYes') : t('analyzerHoverNo');
-    const followsBackLabel = relationState.nonFollowerIds.has(id) ? t('analyzerHoverNo') : t('analyzerHoverYes');
+    const followingLabel = relationState.followingIds.has(id)
+      ? t('analyzerHoverYes')
+      : t('analyzerHoverNo');
+    const followerLabel = relationState.followerIds.has(id)
+      ? t('analyzerHoverYes')
+      : t('analyzerHoverNo');
+    const followsBackLabel = relationState.nonFollowerIds.has(id)
+      ? t('analyzerHoverNo')
+      : t('analyzerHoverYes');
 
     const avatarInitial = username.slice(0, 1).toUpperCase();
     const avatarContent = avatarUrl
@@ -2107,11 +2252,19 @@ export function openDashboard(
       : '';
 
     const tagsHtml = [
-      isWl ? `<span class="db-hover-tag db-hover-tag--wl">★ ${escHtml(t('analyzerTabWhitelisted'))}</span>` : '',
-      unfollowPending ? `<span class="db-hover-tag db-hover-tag--pending">${escHtml(t('analyzerHoverPending'))}</span>` : '',
-      isPrivate ? `<span class="db-hover-tag db-hover-tag--prv">${escHtml(t('analyzerPrivateBadge'))}</span>` : '',
-      !isPrivate ? `<span class="db-hover-tag">${escHtml(t('analyzerHoverPublic'))}</span>` : ''
-    ].filter(Boolean).join('');
+      isWl
+        ? `<span class="db-hover-tag db-hover-tag--wl">★ ${escHtml(t('analyzerTabWhitelisted'))}</span>`
+        : '',
+      unfollowPending
+        ? `<span class="db-hover-tag db-hover-tag--pending">${escHtml(t('analyzerHoverPending'))}</span>`
+        : '',
+      isPrivate
+        ? `<span class="db-hover-tag db-hover-tag--prv">${escHtml(t('analyzerPrivateBadge'))}</span>`
+        : '',
+      !isPrivate ? `<span class="db-hover-tag">${escHtml(t('analyzerHoverPublic'))}</span>` : '',
+    ]
+      .filter(Boolean)
+      .join('');
 
     const relationSummary = relationState.nonFollowerIds.has(id)
       ? t('dashboardListNonFollowers')
@@ -2196,7 +2349,11 @@ export function openDashboard(
     // Position then reveal
     hoverAnchorEl = anchorEl;
     const fromBottom = positionHoverCard(anchorEl);
-    hoverCard.classList.remove('db-hover-card--from-bottom', 'db-hover-card--from-top', 'db-hover-card--visible');
+    hoverCard.classList.remove(
+      'db-hover-card--from-bottom',
+      'db-hover-card--from-top',
+      'db-hover-card--visible',
+    );
     hoverCard.classList.add(fromBottom ? 'db-hover-card--from-bottom' : 'db-hover-card--from-top');
 
     hoverShowTimer = window.setTimeout(() => {
@@ -2236,7 +2393,7 @@ export function openDashboard(
     top = Math.max(panelRect.top + 8, Math.min(panelRect.bottom - cardH - 8, top));
 
     hoverCard.style.left = `${left}px`;
-    hoverCard.style.top  = `${top}px`;
+    hoverCard.style.top = `${top}px`;
     return fromBottom;
   }
 
@@ -2296,7 +2453,8 @@ export function openDashboard(
     // Capture scroll position
     const bodyEl = panel.querySelector('.db-body') as HTMLElement | null;
     const prevBodyScroll = bodyEl?.scrollTop ?? 0;
-    const prevListSearch = (panel.querySelector('.db-list-search') as HTMLInputElement | null)?.value ?? '';
+    const prevListSearch =
+      (panel.querySelector('.db-list-search') as HTMLInputElement | null)?.value ?? '';
     const searchFocused = shadowRoot.activeElement?.getAttribute('data-action') === 'list-search';
     const listEl = panel.querySelector('.db-list-items') as HTMLElement | null;
     listScrollTop = listEl?.scrollTop ?? listScrollTop;
@@ -2342,7 +2500,9 @@ export function openDashboard(
     panel.querySelector('[data-action="scan"]')?.addEventListener('click', onScan);
 
     // List source change
-    const sourceSelect = panel.querySelector('[data-action="change-list-source"]') as HTMLSelectElement | null;
+    const sourceSelect = panel.querySelector(
+      '[data-action="change-list-source"]',
+    ) as HTMLSelectElement | null;
     sourceSelect?.addEventListener('change', () => {
       state.listSource = (sourceSelect.value as ListSource) || 'non-followers';
       state.listPage = 1;
@@ -2358,9 +2518,27 @@ export function openDashboard(
     });
 
     // Prevent Instagram from capturing keyboard inside shadow root
-    listSearchInput?.addEventListener('keydown', (e) => { e.stopPropagation(); }, true);
-    listSearchInput?.addEventListener('keypress', (e) => { e.stopPropagation(); }, true);
-    listSearchInput?.addEventListener('keyup', (e) => { e.stopPropagation(); }, true);
+    listSearchInput?.addEventListener(
+      'keydown',
+      (e) => {
+        e.stopPropagation();
+      },
+      true,
+    );
+    listSearchInput?.addEventListener(
+      'keypress',
+      (e) => {
+        e.stopPropagation();
+      },
+      true,
+    );
+    listSearchInput?.addEventListener(
+      'keyup',
+      (e) => {
+        e.stopPropagation();
+      },
+      true,
+    );
 
     // List pagination
     panel.querySelector('[data-action="list-prev"]')?.addEventListener('click', () => {
@@ -2379,7 +2557,7 @@ export function openDashboard(
         getListItems(state.listSource, account),
         state.listSearchQuery,
         state.listSource,
-        account?.whitelist ?? []
+        account?.whitelist ?? [],
       );
       if (!items.length) return;
       const text = items.map((i) => `@${i.username}`).join('\n');
@@ -2395,7 +2573,9 @@ export function openDashboard(
           document.execCommand('copy');
           ta.remove();
         }
-      } catch { /* noop */ }
+      } catch {
+        /* noop */
+      }
     });
 
     // Export list as CSV
@@ -2405,7 +2585,7 @@ export function openDashboard(
         getListItems(state.listSource, account),
         state.listSearchQuery,
         state.listSource,
-        account?.whitelist ?? []
+        account?.whitelist ?? [],
       );
       if (!items.length) return;
       const header = 'username,id';
@@ -2442,14 +2622,14 @@ export function openDashboard(
     const relationState = {
       followingIds: new Set(account?.followingSnapshot.map((entry) => entry.id) ?? []),
       followerIds: new Set(account?.followersSnapshot.map((entry) => entry.id) ?? []),
-      nonFollowerIds: new Set(account?.results.map((entry) => entry.id) ?? [])
+      nonFollowerIds: new Set(account?.results.map((entry) => entry.id) ?? []),
     };
     const allListItems = [
       ...getListItems(state.listSource, account),
       ...getListItems('non-followers', account),
       ...getListItems('whitelist', account),
       ...getListItems('following', account),
-      ...getListItems('followers', account)
+      ...getListItems('followers', account),
     ];
     const itemById = new Map<string, InstagramAnalyzerResultItem | InstagramAnalyzerSnapshotUser>();
     allListItems.forEach((it) => {
@@ -2495,7 +2675,9 @@ export function openDashboard(
     });
 
     // Compare pick scan B
-    const comparePick = panel.querySelector('[data-action="compare-pick-b"]') as HTMLSelectElement | null;
+    const comparePick = panel.querySelector(
+      '[data-action="compare-pick-b"]',
+    ) as HTMLSelectElement | null;
     comparePick?.addEventListener('change', () => {
       state.compareScanBId = comparePick.value || null;
       state.compareScanAId = null;
@@ -2512,30 +2694,35 @@ export function openDashboard(
       };
       row.addEventListener('click', handler);
       row.addEventListener('keydown', (e: KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handler();
+        }
       });
     });
 
     // Compare from history
-    panel.querySelectorAll<HTMLButtonElement>('[data-action="compare-from-history"]').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        state.compareScanBId = btn.dataset['scanId'] ?? null;
-        state.compareScanAId = null;
-        state.compareExpanded = true;
-        const bodyEl = panel.querySelector('.db-body') as HTMLElement | null;
-        if (bodyEl) {
-          // Scroll to compare section (approximate)
-          const compareCard = panel.querySelector('.db-compare-card') as HTMLElement | null;
-          if (compareCard) {
-            const bodyRect = bodyEl.getBoundingClientRect();
-            const cardRect = compareCard.getBoundingClientRect();
-            bodyEl.scrollTop += cardRect.top - bodyRect.top - 24;
+    panel
+      .querySelectorAll<HTMLButtonElement>('[data-action="compare-from-history"]')
+      .forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          state.compareScanBId = btn.dataset['scanId'] ?? null;
+          state.compareScanAId = null;
+          state.compareExpanded = true;
+          const bodyEl = panel.querySelector('.db-body') as HTMLElement | null;
+          if (bodyEl) {
+            // Scroll to compare section (approximate)
+            const compareCard = panel.querySelector('.db-compare-card') as HTMLElement | null;
+            if (compareCard) {
+              const bodyRect = bodyEl.getBoundingClientRect();
+              const cardRect = compareCard.getBoundingClientRect();
+              bodyEl.scrollTop += cardRect.top - bodyRect.top - 24;
+            }
           }
-        }
-        render();
+          render();
+        });
       });
-    });
 
     // Keyboard shortcut: Esc to close
     document.addEventListener('keydown', handleKeyDown, { capture: true });
@@ -2548,7 +2735,10 @@ export function openDashboard(
     }
   }
 
-  const handleStorageChange = (changes: Record<string, chrome.storage.StorageChange>, area: string): void => {
+  const handleStorageChange = (
+    changes: Record<string, chrome.storage.StorageChange>,
+    area: string,
+  ): void => {
     if (area !== 'local') return;
     if (changes['instagramAnalyzer']) {
       void (async () => {
@@ -2559,7 +2749,7 @@ export function openDashboard(
             // Hydrate durable data
             const response = await sendDashboardMessage({
               type: MESSAGE_TYPES.IG_ANALYZER_GET_DURABLE_ACCOUNT,
-              viewerId: state.activeViewerId
+              viewerId: state.activeViewerId,
             });
             if (response?.success) {
               const durable = response['account'] as InstagramAnalyzerDurableAccount | undefined;
@@ -2579,7 +2769,10 @@ export function openDashboard(
       })();
     }
     if (changes['theme']) {
-      wrapper.setAttribute('data-theme', resolveTheme(changes['theme'].newValue as ThemeChoice ?? 'system'));
+      wrapper.setAttribute(
+        'data-theme',
+        resolveTheme((changes['theme'].newValue as ThemeChoice) ?? 'system'),
+      );
     }
   };
 
@@ -2594,7 +2787,7 @@ export function openDashboard(
       try {
         const response = await sendDashboardMessage({
           type: MESSAGE_TYPES.IG_ANALYZER_GET_DURABLE_ACCOUNT,
-          viewerId: activeViewerId
+          viewerId: activeViewerId,
         });
         if (response?.success && !state.isDisposed) {
           const durable = response['account'] as InstagramAnalyzerDurableAccount | undefined;
@@ -2607,7 +2800,9 @@ export function openDashboard(
             render();
           }
         }
-      } catch { /* noop */ }
+      } catch {
+        /* noop */
+      }
     })();
   }
 
@@ -2620,7 +2815,9 @@ export function openDashboard(
         // Re-render so i18n is fresh
         render();
       }
-    } catch { /* noop */ }
+    } catch {
+      /* noop */
+    }
   })();
 
   return close;
@@ -2653,10 +2850,12 @@ export function toggleDashboard(params: {
     params.activeUsername,
     params.analyzerState,
     params.themeChoice,
-    () => { closeDashboard = null; },
+    () => {
+      closeDashboard = null;
+    },
     params.onScan,
     params.onToggleWhitelist,
     params.onUnfollow,
-    params.isUnfollowPending
+    params.isUnfollowPending,
   );
 }

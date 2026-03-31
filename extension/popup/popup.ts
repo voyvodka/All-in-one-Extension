@@ -5,9 +5,14 @@ import {
   onDownloadsChanged,
   onInstagramAnalyzerChanged,
   setLanguage,
-  setTheme
+  setTheme,
 } from '../shared/storage.js';
-import type { DownloadJob, DownloadsState, InstagramAnalyzerState, ThemeChoice } from '../shared/storage.js';
+import type {
+  DownloadJob,
+  DownloadsState,
+  InstagramAnalyzerState,
+  ThemeChoice,
+} from '../shared/storage.js';
 import { MESSAGE_TYPES } from '../shared/contracts/message-types.js';
 import { t, getLocale, setLocale, resolveLocale } from '../shared/i18n.js';
 import type { Locale } from '../shared/storage.js';
@@ -35,7 +40,7 @@ const subTabs = Array.from(document.querySelectorAll<HTMLElement>('.subtab'));
 const subTabViews = Array.from(document.querySelectorAll<HTMLElement>('.download-group'));
 const subTabLabelEls: Record<string, HTMLElement | null> = {
   active: document.querySelector<HTMLElement>('[data-subtab-label="active"]'),
-  history: document.querySelector<HTMLElement>('[data-subtab-label="history"]')
+  history: document.querySelector<HTMLElement>('[data-subtab-label="history"]'),
 };
 
 /* ── Constants ───────────────────────────────────────────────────── */
@@ -43,8 +48,10 @@ const SUBTAB_KEY = 'aioPopupDownloadsTab';
 const defaultSubTab = 'active';
 const SORT_KEY = 'aioPopupSortAsc';
 const BUG_REPORT_URL = 'https://github.com/voyvodka/All-in-one-Extension/issues/new/choose';
-const GITHUB_RELEASES_API = 'https://api.github.com/repos/voyvodka/All-in-one-Extension/releases/latest';
-const HOW_TO_UPDATE_URL = 'https://github.com/voyvodka/All-in-one-Extension/blob/main/docs/INSTALL.md';
+const GITHUB_RELEASES_API =
+  'https://api.github.com/repos/voyvodka/All-in-one-Extension/releases/latest';
+const HOW_TO_UPDATE_URL =
+  'https://github.com/voyvodka/All-in-one-Extension/blob/main/docs/INSTALL.md';
 const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const MIN_UPDATE_LOADING_MS = 700;
 const UPDATE_CACHE_KEY = 'aioUpdateCheck';
@@ -71,13 +78,18 @@ let currentSubTab = defaultSubTab;
 let analyzerOpenError: string | null = null;
 let current: { language: Locale; theme: ThemeChoice } = {
   language: resolveLocale(),
-  theme: 'system'
+  theme: 'system',
 };
 let downloads: DownloadsState = { active: [], history: [] };
 let instagramAnalyzer: InstagramAnalyzerState = { currentViewerId: null, accounts: {} };
 
 const savedSortAsc = (() => {
-  try { const r = localStorage.getItem(SORT_KEY); return r === null ? null : r === 'true'; } catch { return null; }
+  try {
+    const r = localStorage.getItem(SORT_KEY);
+    return r === null ? null : r === 'true';
+  } catch {
+    return null;
+  }
 })();
 let sortAscending = savedSortAsc ?? false;
 
@@ -92,7 +104,13 @@ sortDownloadsBtn?.classList.toggle('rotated', sortAscending);
 
 void initializePopup();
 
-const savedSubTab = (() => { try { return localStorage.getItem(SUBTAB_KEY); } catch { return null; } })();
+const savedSubTab = (() => {
+  try {
+    return localStorage.getItem(SUBTAB_KEY);
+  } catch {
+    return null;
+  }
+})();
 selectSubTab(savedSubTab ?? defaultSubTab, false);
 
 // Render footer immediately then check updates
@@ -122,7 +140,11 @@ themeSelect?.addEventListener('change', async () => {
 
 sortDownloadsBtn?.addEventListener('click', () => {
   sortAscending = !sortAscending;
-  try { localStorage.setItem(SORT_KEY, String(sortAscending)); } catch { /* noop */ }
+  try {
+    localStorage.setItem(SORT_KEY, String(sortAscending));
+  } catch {
+    /* noop */
+  }
   sortDownloadsBtn?.classList.toggle('rotated', sortAscending);
   renderDownloads(downloads);
 });
@@ -132,7 +154,11 @@ clearHistoryBtn?.addEventListener('click', async () => {
 });
 
 bugBtn?.addEventListener('click', () => {
-  try { chrome.tabs?.create?.({ url: BUG_REPORT_URL }); } catch { window.open(BUG_REPORT_URL, '_blank', 'noopener,noreferrer'); }
+  try {
+    chrome.tabs?.create?.({ url: BUG_REPORT_URL });
+  } catch {
+    window.open(BUG_REPORT_URL, '_blank', 'noopener,noreferrer');
+  }
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -157,7 +183,10 @@ onDownloadsChanged((next) => {
   maybeShowActiveDownloads(previous, next);
   renderDownloads(downloads);
 });
-onInstagramAnalyzerChanged((next) => { instagramAnalyzer = next; renderInstagramAnalyzer(instagramAnalyzer); });
+onInstagramAnalyzerChanged((next) => {
+  instagramAnalyzer = next;
+  renderInstagramAnalyzer(instagramAnalyzer);
+});
 
 /* ── Popup init ──────────────────────────────────────────────────── */
 async function initializePopup(): Promise<void> {
@@ -169,7 +198,7 @@ async function initializePopup(): Promise<void> {
     setLocale(current.language);
     [downloads, instagramAnalyzer] = await Promise.all([
       getDownloadsState(),
-      getInstagramAnalyzerState()
+      getInstagramAnalyzerState(),
     ]);
     maybeShowActiveDownloads(null, downloads);
     initError = null;
@@ -209,8 +238,16 @@ function selectSubTab(name: string, persist = false): void {
   const tabName = ['active', 'history'].includes(name) ? name : defaultSubTab;
   currentSubTab = tabName;
   subTabs.forEach((tab) => tab.classList.toggle('active', tab.dataset['subtab'] === tabName));
-  subTabViews.forEach((view) => view.classList.toggle('active', view.dataset['subtab'] === tabName));
-  if (persist) { try { localStorage.setItem(SUBTAB_KEY, tabName); } catch { /* noop */ } }
+  subTabViews.forEach((view) =>
+    view.classList.toggle('active', view.dataset['subtab'] === tabName),
+  );
+  if (persist) {
+    try {
+      localStorage.setItem(SUBTAB_KEY, tabName);
+    } catch {
+      /* noop */
+    }
+  }
 }
 
 function maybeShowActiveDownloads(previous: DownloadsState | null, next: DownloadsState): void {
@@ -243,14 +280,16 @@ function renderInstagramAnalyzer(state: InstagramAnalyzerState): void {
   instagramAnalyzerEl.innerHTML = '';
 
   if (initError) {
-    instagramAnalyzerEl.appendChild(createStateCard({
-      variant: 'error',
-      icon: '!',
-      title: t('popupLoadErrorTitle'),
-      body: t('popupLoadErrorBody'),
-      actionLabel: t('tryAgain'),
-      onAction: retryInitialize
-    }));
+    instagramAnalyzerEl.appendChild(
+      createStateCard({
+        variant: 'error',
+        icon: '!',
+        title: t('popupLoadErrorTitle'),
+        body: t('popupLoadErrorBody'),
+        actionLabel: t('tryAgain'),
+        onAction: retryInitialize,
+      }),
+    );
     return;
   }
 
@@ -262,7 +301,7 @@ function renderInstagramAnalyzer(state: InstagramAnalyzerState): void {
   const vm = createInstagramAnalyzerViewModel({
     state,
     localeCode: getLocale(),
-    t
+    t,
   });
   const card = el('section', 'analyzer-card');
   if (vm.selectedViewerId) {
@@ -315,14 +354,15 @@ function renderInstagramAnalyzer(state: InstagramAnalyzerState): void {
     try {
       const response = await chrome.runtime.sendMessage({
         type: MESSAGE_TYPES.IG_ANALYZER_OPEN,
-        fallbackUrl: vm.openUrl
+        fallbackUrl: vm.openUrl,
       });
       if (response?.success) {
         analyzerOpenError = null;
         window.close();
         return;
       }
-      analyzerOpenError = typeof response?.error === 'string' ? response.error : t('analyzerErrorBody');
+      analyzerOpenError =
+        typeof response?.error === 'string' ? response.error : t('analyzerErrorBody');
       renderInstagramAnalyzer(instagramAnalyzer);
       return;
     } catch (error) {
@@ -338,21 +378,30 @@ function renderInstagramAnalyzer(state: InstagramAnalyzerState): void {
   instagramAnalyzerEl.appendChild(card);
 }
 
-interface RenderListOptions { allowCancel: boolean; kind: 'active' | 'history'; }
+interface RenderListOptions {
+  allowCancel: boolean;
+  kind: 'active' | 'history';
+}
 
 function renderDownloadList(
   rootEl: HTMLElement | null,
   items: DownloadJob[],
-  { allowCancel, kind }: RenderListOptions
+  { allowCancel, kind }: RenderListOptions,
 ): void {
   if (!rootEl) return;
   rootEl.innerHTML = '';
 
   if (initError) {
-    rootEl.appendChild(createStateCard({
-      variant: 'error', icon: '!', title: t('popupLoadErrorTitle'),
-      body: t('popupLoadErrorBody'), actionLabel: t('tryAgain'), onAction: retryInitialize
-    }));
+    rootEl.appendChild(
+      createStateCard({
+        variant: 'error',
+        icon: '!',
+        title: t('popupLoadErrorTitle'),
+        body: t('popupLoadErrorBody'),
+        actionLabel: t('tryAgain'),
+        onAction: retryInitialize,
+      }),
+    );
     return;
   }
 
@@ -364,10 +413,14 @@ function renderDownloadList(
   if (!items.length) {
     const emptyTitleKey = kind === 'active' ? 'emptyActiveTitle' : 'emptyHistoryTitle';
     const emptyBodyKey = kind === 'active' ? 'emptyActiveBody' : 'emptyHistoryBody';
-    rootEl.appendChild(createStateCard({
-      variant: 'empty', icon: kind === 'active' ? '↓' : '⏱',
-      title: t(emptyTitleKey), body: t(emptyBodyKey)
-    }));
+    rootEl.appendChild(
+      createStateCard({
+        variant: 'empty',
+        icon: kind === 'active' ? '↓' : '⏱',
+        title: t(emptyTitleKey),
+        body: t(emptyBodyKey),
+      }),
+    );
     return;
   }
 
@@ -413,29 +466,37 @@ function createDownloadCard(job: DownloadJob, allowCancel: boolean): HTMLElement
   // Action button
   const actions = el('div', 'row-actions');
   if (allowCancel && (job.status === 'preparing' || job.status === 'downloading')) {
-    actions.appendChild(createActionButton({
-      label: t('cancel'),
-      onClick: async () => {
-        await chrome.runtime.sendMessage({
-          type: MESSAGE_TYPES.CANCEL_DOWNLOAD,
-          jobId: job.id, downloadId: job.downloadId
-        });
-      }
-    }));
+    actions.appendChild(
+      createActionButton({
+        label: t('cancel'),
+        onClick: async () => {
+          await chrome.runtime.sendMessage({
+            type: MESSAGE_TYPES.CANCEL_DOWNLOAD,
+            jobId: job.id,
+            downloadId: job.downloadId,
+          });
+        },
+      }),
+    );
   } else if (!allowCancel && canRetryJob(job)) {
-    actions.appendChild(createActionButton({
-      label: t('retry'),
-      onClick: async () => {
-        await chrome.runtime.sendMessage({ type: MESSAGE_TYPES.RETRY_DOWNLOAD, jobId: job.id });
-      }
-    }));
+    actions.appendChild(
+      createActionButton({
+        label: t('retry'),
+        onClick: async () => {
+          await chrome.runtime.sendMessage({ type: MESSAGE_TYPES.RETRY_DOWNLOAD, jobId: job.id });
+        },
+      }),
+    );
   }
 
   // Chevron
   const chevron = el('button', 'chevron', '▾') as HTMLButtonElement;
   chevron.type = 'button';
   chevron.setAttribute('aria-label', t('toggleDetails'));
-  chevron.addEventListener('click', (e) => { e.stopPropagation(); toggleExpandedJob(job.id); });
+  chevron.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleExpandedJob(job.id);
+  });
 
   row.appendChild(dot);
   row.appendChild(center);
@@ -463,7 +524,9 @@ function createDownloadCard(job: DownloadJob, allowCancel: boolean): HTMLElement
   grid.appendChild(createDetailItem(t('fileNameLabel'), job.fileName || '-', { wide: true }));
   grid.appendChild(createDetailItem(t('sourceLabel'), job.sourceUrl || '-', { wide: true }));
   if (vm.displayError) {
-    grid.appendChild(createDetailItem(t('errorLabel'), vm.displayError, { wide: true, error: true }));
+    grid.appendChild(
+      createDetailItem(t('errorLabel'), vm.displayError, { wide: true, error: true }),
+    );
   }
   details.appendChild(grid);
 
@@ -473,7 +536,11 @@ function createDownloadCard(job: DownloadJob, allowCancel: boolean): HTMLElement
 }
 
 /* ── Helper builders ─────────────────────────────────────────────── */
-function createProgressBlock(statusInfo: StatusInfo, progress: number, progressLabel: string): HTMLElement {
+function createProgressBlock(
+  statusInfo: StatusInfo,
+  progress: number,
+  progressLabel: string,
+): HTMLElement {
   const block = el('div', 'progress-block');
   const meta = el('div', 'progress-meta');
   meta.appendChild(el('span', '', statusInfo.label));
@@ -487,24 +554,51 @@ function createProgressBlock(statusInfo: StatusInfo, progress: number, progressL
   return block;
 }
 
-interface DetailItemOptions { wide?: boolean; error?: boolean; }
-function createDetailItem(label: string, value: string, { wide = false, error = false }: DetailItemOptions = {}): HTMLElement {
+interface DetailItemOptions {
+  wide?: boolean;
+  error?: boolean;
+}
+function createDetailItem(
+  label: string,
+  value: string,
+  { wide = false, error = false }: DetailItemOptions = {},
+): HTMLElement {
   const item = el('div', `detail-item${wide ? ' is-wide' : ''}`);
   item.appendChild(el('span', 'detail-k', label));
   item.appendChild(el('span', `detail-v${error ? ' is-error' : ''}`, value));
   return item;
 }
 
-interface ActionButtonParams { label: string; onClick: () => Promise<void>; }
+interface ActionButtonParams {
+  label: string;
+  onClick: () => Promise<void>;
+}
 function createActionButton({ label, onClick }: ActionButtonParams): HTMLButtonElement {
   const button = el('button', 'link-btn', label) as HTMLButtonElement;
   button.type = 'button';
-  button.addEventListener('click', async (e) => { e.stopPropagation(); await onClick(); });
+  button.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    await onClick();
+  });
   return button;
 }
 
-interface StateCardParams { variant: string; icon: string; title: string; body: string; actionLabel?: string; onAction?: () => void; }
-function createStateCard({ variant, icon, title, body, actionLabel, onAction }: StateCardParams): HTMLElement {
+interface StateCardParams {
+  variant: string;
+  icon: string;
+  title: string;
+  body: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}
+function createStateCard({
+  variant,
+  icon,
+  title,
+  body,
+  actionLabel,
+  onAction,
+}: StateCardParams): HTMLElement {
   const card = el('section', `state-card is-${variant}`);
   card.appendChild(el('span', 'state-icon', icon));
   card.appendChild(el('p', 'state-title', title));
@@ -533,11 +627,16 @@ function createSkeletonCard(): HTMLElement {
 
 function canRetryJob(job: DownloadJob): boolean {
   const retryable: string[] = [
-    MESSAGE_TYPES.YT_AUDIO_DOWNLOAD, MESSAGE_TYPES.YT_VIDEO_DOWNLOAD,
-    MESSAGE_TYPES.IG_AUDIO_DOWNLOAD, MESSAGE_TYPES.IG_VIDEO_DOWNLOAD, MESSAGE_TYPES.IG_IMAGE_DOWNLOAD,
+    MESSAGE_TYPES.YT_AUDIO_DOWNLOAD,
+    MESSAGE_TYPES.YT_VIDEO_DOWNLOAD,
+    MESSAGE_TYPES.IG_AUDIO_DOWNLOAD,
+    MESSAGE_TYPES.IG_VIDEO_DOWNLOAD,
+    MESSAGE_TYPES.IG_IMAGE_DOWNLOAD,
     MESSAGE_TYPES.IG_IMAGE_ZIP_DOWNLOAD,
-    MESSAGE_TYPES.X_AUDIO_DOWNLOAD, MESSAGE_TYPES.X_VIDEO_DOWNLOAD,
-    MESSAGE_TYPES.X_IMAGE_DOWNLOAD, MESSAGE_TYPES.X_IMAGE_ZIP_DOWNLOAD
+    MESSAGE_TYPES.X_AUDIO_DOWNLOAD,
+    MESSAGE_TYPES.X_VIDEO_DOWNLOAD,
+    MESSAGE_TYPES.X_IMAGE_DOWNLOAD,
+    MESSAGE_TYPES.X_IMAGE_ZIP_DOWNLOAD,
   ];
   return retryable.includes(job?.type);
 }
@@ -629,15 +728,24 @@ function applyTheme(themeValue: ThemeChoice | string): void {
     onSystemChange: (nextTheme: ResolvedTheme) => {
       document.body.dataset['theme'] = nextTheme;
       document.documentElement.style.colorScheme = nextTheme;
-    }
+    },
   });
 }
 
 /* ── Footer: version + update checker ────────────────────────────── */
-interface UpdateCacheEntry { checkedAt: number; latestTag: string | null; downloadUrl: string | null; error: boolean; }
+interface UpdateCacheEntry {
+  checkedAt: number;
+  latestTag: string | null;
+  downloadUrl: string | null;
+  error: boolean;
+}
 
 function getCurrentVersion(): string {
-  try { return chrome.runtime.getManifest().version || '0.0.0'; } catch { return '0.0.0'; }
+  try {
+    return chrome.runtime.getManifest().version || '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
 }
 
 function compareVersions(a: string, b: string): number {
@@ -658,11 +766,17 @@ function getCachedUpdateCheck(): UpdateCacheEntry | null {
     if (!raw) return null;
     const entry = JSON.parse(raw) as UpdateCacheEntry;
     return typeof entry.checkedAt === 'number' ? entry : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function setCachedUpdateCheck(entry: UpdateCacheEntry): void {
-  try { localStorage.setItem(UPDATE_CACHE_KEY, JSON.stringify(entry)); } catch { /* noop */ }
+  try {
+    localStorage.setItem(UPDATE_CACHE_KEY, JSON.stringify(entry));
+  } catch {
+    /* noop */
+  }
 }
 
 function createCheckNowButton(): HTMLButtonElement {
@@ -677,13 +791,20 @@ function createCheckNowButton(): HTMLButtonElement {
 }
 
 function createDownloadButton(downloadUrl: string): HTMLButtonElement {
-  const dlBtn = el('button', 'update-link update-link-primary', t('updateDownload')) as HTMLButtonElement;
+  const dlBtn = el(
+    'button',
+    'update-link update-link-primary',
+    t('updateDownload'),
+  ) as HTMLButtonElement;
   dlBtn.type = 'button';
   dlBtn.title = t('updateDownloadTitle');
   dlBtn.setAttribute('aria-label', t('updateDownloadTitle'));
   dlBtn.addEventListener('click', () => {
-    try { chrome.downloads?.download?.({ url: downloadUrl, saveAs: true }); }
-    catch { window.open(downloadUrl, '_blank', 'noopener,noreferrer'); }
+    try {
+      chrome.downloads?.download?.({ url: downloadUrl, saveAs: true });
+    } catch {
+      window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+    }
   });
   return dlBtn;
 }
@@ -694,8 +815,11 @@ function createHowToButton(): HTMLButtonElement {
   howTo.title = t('updateHowToTitle');
   howTo.setAttribute('aria-label', t('updateHowToTitle'));
   howTo.addEventListener('click', () => {
-    try { chrome.tabs?.create?.({ url: HOW_TO_UPDATE_URL }); }
-    catch { window.open(HOW_TO_UPDATE_URL, '_blank', 'noopener,noreferrer'); }
+    try {
+      chrome.tabs?.create?.({ url: HOW_TO_UPDATE_URL });
+    } catch {
+      window.open(HOW_TO_UPDATE_URL, '_blank', 'noopener,noreferrer');
+    }
   });
   return howTo;
 }
@@ -706,19 +830,27 @@ function createReloadButton(): HTMLButtonElement {
   reloadBtn.title = t('updateReloadTitle');
   reloadBtn.setAttribute('aria-label', t('updateReloadTitle'));
   reloadBtn.addEventListener('click', () => {
-    try { chrome.runtime.reload(); }
-    catch (err) { console.warn('AIO: reload failed', err); }
+    try {
+      chrome.runtime.reload();
+    } catch (err) {
+      console.warn('AIO: reload failed', err);
+    }
   });
   return reloadBtn;
 }
 
-function renderFooter(state: 'loading' | 'latest' | 'error' | 'update', latestTag?: string, downloadUrl?: string): void {
+function renderFooter(
+  state: 'loading' | 'latest' | 'error' | 'update',
+  latestTag?: string,
+  downloadUrl?: string,
+): void {
   footerState = state;
   footerLatestTag = latestTag;
   footerDownloadUrl = downloadUrl;
 
   const version = getCurrentVersion();
-  if (footerVersionEl) footerVersionEl.textContent = t('footerVersion').replace('{version}', version);
+  if (footerVersionEl)
+    footerVersionEl.textContent = t('footerVersion').replace('{version}', version);
   if (!footerUpdateEl) return;
   footerUpdateEl.innerHTML = '';
 
@@ -744,7 +876,11 @@ function renderFooter(state: 'loading' | 'latest' | 'error' | 'update', latestTa
     const secondaryRow = el('div', 'footer-update-secondary');
 
     mainRow.appendChild(
-      el('span', 'update-badge', t('updateAvailable').replace('{version}', latestTag.replace(/^v/, '')))
+      el(
+        'span',
+        'update-badge',
+        t('updateAvailable').replace('{version}', latestTag.replace(/^v/, '')),
+      ),
     );
 
     if (downloadUrl) {
@@ -768,13 +904,19 @@ function appendDevReloadButton(root: HTMLElement): void {
   root.appendChild(container);
 }
 
-interface GitHubReleaseAsset { name: string; browser_download_url: string; }
-interface GitHubRelease { tag_name: string; assets: GitHubReleaseAsset[]; }
+interface GitHubReleaseAsset {
+  name: string;
+  browser_download_url: string;
+}
+interface GitHubRelease {
+  tag_name: string;
+  assets: GitHubReleaseAsset[];
+}
 
 async function fetchLatestRelease(): Promise<{ tag: string; downloadUrl: string | null }> {
   const response = await fetch(GITHUB_RELEASES_API, {
-    headers: { 'Accept': 'application/vnd.github.v3+json' },
-    cache: 'no-cache'
+    headers: { Accept: 'application/vnd.github.v3+json' },
+    cache: 'no-cache',
   });
   if (!response.ok) throw new Error(`GitHub API ${response.status}`);
   const data = (await response.json()) as GitHubRelease;
@@ -798,7 +940,7 @@ async function checkForUpdates({ force = false }: { force?: boolean } = {}): Pro
 
   const cached = getCachedUpdateCheck();
   const now = Date.now();
-  if (!force && cached && (now - cached.checkedAt) < UPDATE_CHECK_INTERVAL_MS && !cached.error) {
+  if (!force && cached && now - cached.checkedAt < UPDATE_CHECK_INTERVAL_MS && !cached.error) {
     await waitForMinimumLoading();
     if (cached.latestTag && compareVersions(cached.latestTag, version) > 0) {
       renderFooter('update', cached.latestTag, cached.downloadUrl ?? undefined);

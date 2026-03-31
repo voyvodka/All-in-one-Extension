@@ -1,6 +1,10 @@
 import { t } from '../../../shared/i18n.js';
 import { MESSAGE_TYPES } from '../../../shared/contracts/message-types.js';
-import { isInstagram, registerInstagramMenuProvider, safeSendMessage } from '../../instagram/shared.js';
+import {
+  isInstagram,
+  registerInstagramMenuProvider,
+  safeSendMessage,
+} from '../../instagram/shared.js';
 import type { InstagramMenuProviderContext } from '../../instagram/shared.js';
 
 export default {
@@ -19,22 +23,29 @@ export default {
         return [
           {
             label: t('downloadAudio'),
-            action: () => startAudioDownload({ reelUrl, reelTitle, directMedia: bestVideo ? { url: bestVideo.url ?? '', type: bestVideo.type, ext: bestVideo.ext } : null })
-          }
+            action: () =>
+              startAudioDownload({
+                reelUrl,
+                reelTitle,
+                directMedia: bestVideo
+                  ? { url: bestVideo.url ?? '', type: bestVideo.type, ext: bestVideo.ext }
+                  : null,
+              }),
+          },
         ];
-      }
+      },
     );
 
     return () => {
       cleanupProvider?.();
     };
-  }
+  },
 };
 
 async function startAudioDownload({
   reelUrl,
   reelTitle,
-  directMedia
+  directMedia,
 }: {
   reelUrl: string;
   reelTitle: string;
@@ -46,7 +57,7 @@ async function startAudioDownload({
       openPopup: true,
       reelUrl,
       reelTitle: reelTitle || 'instagram-reel',
-      directMedia
+      directMedia,
     });
   } catch (error) {
     console.error('Error sending Audio download message:', error);

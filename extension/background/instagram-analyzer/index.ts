@@ -1,6 +1,6 @@
 import {
   createInstagramAnalyzerAccountState,
-  updateInstagramAnalyzer
+  updateInstagramAnalyzer,
 } from '../../shared/storage.js';
 import type {
   InstagramAnalyzerAccountState,
@@ -9,7 +9,7 @@ import type {
   InstagramAnalyzerResultItem,
   InstagramAnalyzerScanHistoryEntry,
   InstagramAnalyzerSnapshotUser,
-  InstagramAnalyzerState
+  InstagramAnalyzerState,
 } from '../../shared/storage.js';
 import { getDurableAnalyzerAccount, putDurableAnalyzerAccount } from './db.js';
 
@@ -97,7 +97,7 @@ function buildJob(
   viewerId: string,
   username: string,
   jobId: string,
-  now: number
+  now: number,
 ): InstagramAnalyzerJob {
   return {
     jobId,
@@ -108,16 +108,17 @@ function buildJob(
     updatedAt: now,
     pagesCompleted: 0,
     processedCount: 0,
-    nextCursor: null
+    nextCursor: null,
   };
 }
 
 function ensureAccount(
   state: InstagramAnalyzerState,
   viewerId: string,
-  username: string
+  username: string,
 ): InstagramAnalyzerAccountState {
-  const existing = state.accounts[viewerId] ?? createInstagramAnalyzerAccountState(viewerId, username);
+  const existing =
+    state.accounts[viewerId] ?? createInstagramAnalyzerAccountState(viewerId, username);
   if (username) {
     existing.summary.username = username;
     if (existing.job) {
@@ -134,13 +135,15 @@ function countWhitelisted(results: InstagramAnalyzerResultItem[], whitelist: str
   return results.reduce((count, item) => count + (whitelistSet.has(item.id) ? 1 : 0), 0);
 }
 
-function sortSnapshotUsers(items: InstagramAnalyzerSnapshotUser[]): InstagramAnalyzerSnapshotUser[] {
+function sortSnapshotUsers(
+  items: InstagramAnalyzerSnapshotUser[],
+): InstagramAnalyzerSnapshotUser[] {
   return [...items].sort((left, right) => left.username.localeCompare(right.username));
 }
 
 function mergeSnapshotUsers(
   existing: InstagramAnalyzerSnapshotUser[],
-  incoming: InstagramAnalyzerSnapshotUser[]
+  incoming: InstagramAnalyzerSnapshotUser[],
 ): InstagramAnalyzerSnapshotUser[] {
   const itemMap = new Map(existing.map((item) => [item.id, item]));
   incoming.forEach((item) => {
@@ -156,14 +159,14 @@ function extractSnapshotUsers(edges: InstagramGraphEdge[]): InstagramAnalyzerSna
       .filter((node): node is InstagramGraphNode => Boolean(node?.id && node?.username))
       .map((node) => ({
         id: node.id as string,
-        username: node.username as string
-      }))
+        username: node.username as string,
+      })),
   );
 }
 
 function diffSnapshotUsers(
   nextItems: InstagramAnalyzerSnapshotUser[],
-  previousItems: InstagramAnalyzerSnapshotUser[]
+  previousItems: InstagramAnalyzerSnapshotUser[],
 ): InstagramAnalyzerSnapshotUser[] {
   const previousIds = new Set(previousItems.map((item) => item.id));
   return nextItems.filter((item) => !previousIds.has(item.id));
@@ -179,7 +182,7 @@ function buildHistoryEntry({
   followersAvailable,
   nonFollowerCount,
   pagesCompleted,
-  whitelistedCount
+  whitelistedCount,
 }: {
   scanId: string;
   scannedAt: number;
@@ -209,12 +212,15 @@ function buildHistoryEntry({
       followersLost: followersAvailable
         ? diffSnapshotUsers(previousFollowersSnapshot, followersSnapshot)
         : [],
-      followersAvailable
-    }
+      followersAvailable,
+    },
   };
 }
 
-function createEmptyDurableAccount(viewerId: string, username: string): InstagramAnalyzerDurableAccount {
+function createEmptyDurableAccount(
+  viewerId: string,
+  username: string,
+): InstagramAnalyzerDurableAccount {
   return {
     viewerId,
     username,
@@ -222,14 +228,14 @@ function createEmptyDurableAccount(viewerId: string, username: string): Instagra
     results: [],
     history: [],
     followingSnapshot: [],
-    followersSnapshot: []
+    followersSnapshot: [],
   };
 }
 
 function normalizeDurableAccount(
   account: InstagramAnalyzerDurableAccount | null,
   viewerId: string,
-  username: string
+  username: string,
 ): InstagramAnalyzerDurableAccount {
   if (!account) {
     return createEmptyDurableAccount(viewerId, username);
@@ -238,7 +244,7 @@ function normalizeDurableAccount(
   return {
     ...account,
     viewerId,
-    username: username || account.username || ''
+    username: username || account.username || '',
   };
 }
 
@@ -263,7 +269,7 @@ async function setProgressState(
   processedCount: number,
   nonFollowerCount: number,
   pagesCompleted: number,
-  nextCursor: string | null
+  nextCursor: string | null,
 ): Promise<void> {
   const now = Date.now();
   await updateInstagramAnalyzer((state) => {
@@ -282,7 +288,7 @@ async function setProgressState(
       updatedAt: now,
       pagesCompleted,
       processedCount,
-      nextCursor
+      nextCursor,
     };
     return state;
   });
@@ -298,7 +304,7 @@ async function setCompletedState(
   followersSnapshot: InstagramAnalyzerSnapshotUser[],
   followersAvailable: boolean,
   durableAccountBefore: InstagramAnalyzerDurableAccount,
-  pagesCompleted: number
+  pagesCompleted: number,
 ): Promise<void> {
   const now = Date.now();
   let durableAccountToPersist: InstagramAnalyzerDurableAccount | null = null;
@@ -306,7 +312,8 @@ async function setCompletedState(
   await updateInstagramAnalyzer((state) => {
     const account = ensureAccount(state, viewerId, username);
     const whitelistedCount = countWhitelisted(results, account.whitelist);
-    const resolvedUsername = username || account.summary.username || durableAccountBefore.username || '';
+    const resolvedUsername =
+      username || account.summary.username || durableAccountBefore.username || '';
     const historyEntry = buildHistoryEntry({
       scanId: jobId,
       scannedAt: now,
@@ -317,7 +324,7 @@ async function setCompletedState(
       followersAvailable,
       nonFollowerCount: results.length,
       pagesCompleted,
-      whitelistedCount
+      whitelistedCount,
     });
     const nextHistory = [historyEntry, ...durableAccountBefore.history]
       .sort((left, right) => right.scannedAt - left.scannedAt)
@@ -330,7 +337,9 @@ async function setCompletedState(
       results,
       history: nextHistory,
       followingSnapshot,
-      followersSnapshot: followersAvailable ? followersSnapshot : durableAccountBefore.followersSnapshot
+      followersSnapshot: followersAvailable
+        ? followersSnapshot
+        : durableAccountBefore.followersSnapshot,
     };
 
     account.summary.status = 'completed';
@@ -353,7 +362,7 @@ async function setCompletedState(
       updatedAt: now,
       pagesCompleted,
       processedCount,
-      nextCursor: null
+      nextCursor: null,
     };
     return state;
   });
@@ -367,7 +376,7 @@ async function setErrorState(
   viewerId: string,
   username: string,
   jobId: string,
-  errorMessage: string
+  errorMessage: string,
 ): Promise<void> {
   const now = Date.now();
   await updateInstagramAnalyzer((state) => {
@@ -382,14 +391,16 @@ async function setErrorState(
       username: username || account.summary.username,
       status: 'error',
       updatedAt: now,
-      lastError: errorMessage
+      lastError: errorMessage,
     };
     return state;
   });
 }
 
 function normalizeAnalyzerError(error: unknown): string {
-  const message = String((error as { message?: string } | null)?.message ?? error ?? 'Unknown error');
+  const message = String(
+    (error as { message?: string } | null)?.message ?? error ?? 'Unknown error',
+  );
   if (/401|403|login|session|auth/i.test(message)) {
     return 'Instagram oturumu dogrulanamadi. Hesabin acik oldugundan emin olup tekrar dene.';
   }
@@ -410,13 +421,13 @@ function extractNonFollowerResults(edges: InstagramGraphEdge[]): InstagramAnalyz
       fullName: node.full_name ?? '',
       isPrivate: node.is_private === true,
       isVerified: node.is_verified === true,
-      profilePictureUrl: node.profile_pic_url ?? ''
+      profilePictureUrl: node.profile_pic_url ?? '',
     }));
 }
 
 function mergeResults(
   existing: InstagramAnalyzerResultItem[],
-  incoming: InstagramAnalyzerResultItem[]
+  incoming: InstagramAnalyzerResultItem[],
 ): InstagramAnalyzerResultItem[] {
   const resultMap = new Map(existing.map((item) => [item.id, item]));
   incoming.forEach((item) => {
@@ -433,14 +444,14 @@ async function fetchScanPage(
   cursor: string | null,
   csrfToken: string,
   queryHash = QUERY_HASH,
-  connectionKey: 'edge_follow' | 'edge_followed_by' = 'edge_follow'
+  connectionKey: 'edge_follow' | 'edge_followed_by' = 'edge_follow',
 ): Promise<InstagramScanPage> {
   const url = new URL('https://www.instagram.com/graphql/query/');
   const variables: Record<string, string> = {
     id: viewerId,
     include_reel: 'true',
     fetch_mutual: 'false',
-    first: String(PAGE_SIZE)
+    first: String(PAGE_SIZE),
   };
   if (cursor) {
     variables['after'] = cursor;
@@ -457,8 +468,8 @@ async function fetchScanPage(
     headers: {
       accept: 'application/json',
       'x-csrftoken': csrfToken,
-      'x-ig-app-id': IG_APP_ID
-    }
+      'x-ig-app-id': IG_APP_ID,
+    },
   });
 
   if (!response.ok) {
@@ -466,9 +477,10 @@ async function fetchScanPage(
   }
 
   const data = (await response.json()) as InstagramGraphResponse;
-  const edgeFollow = connectionKey === 'edge_followed_by'
-    ? data?.data?.user?.edge_followed_by
-    : data?.data?.user?.edge_follow;
+  const edgeFollow =
+    connectionKey === 'edge_followed_by'
+      ? data?.data?.user?.edge_followed_by
+      : data?.data?.user?.edge_follow;
   if (!edgeFollow || !Array.isArray(edgeFollow.edges)) {
     throw new Error(`Instagram ${connectionKey} payload is missing`);
   }
@@ -476,13 +488,14 @@ async function fetchScanPage(
   return {
     edges: edgeFollow.edges,
     hasNextPage: Boolean(edgeFollow.page_info?.has_next_page),
-    nextCursor: typeof edgeFollow.page_info?.end_cursor === 'string' ? edgeFollow.page_info.end_cursor : null
+    nextCursor:
+      typeof edgeFollow.page_info?.end_cursor === 'string' ? edgeFollow.page_info.end_cursor : null,
   };
 }
 
 async function fetchFollowersSnapshot(
   viewerId: string,
-  csrfToken: string
+  csrfToken: string,
 ): Promise<FollowersSnapshotResult> {
   try {
     let cursor: string | null = null;
@@ -490,7 +503,13 @@ async function fetchFollowersSnapshot(
     let snapshot: InstagramAnalyzerSnapshotUser[] = [];
 
     while (hasNextPage) {
-      const page = await fetchScanPage(viewerId, cursor, csrfToken, FOLLOWERS_QUERY_HASH, 'edge_followed_by');
+      const page = await fetchScanPage(
+        viewerId,
+        cursor,
+        csrfToken,
+        FOLLOWERS_QUERY_HASH,
+        'edge_followed_by',
+      );
       snapshot = mergeSnapshotUsers(snapshot, extractSnapshotUsers(page.edges));
       cursor = page.nextCursor;
       hasNextPage = page.hasNextPage && Boolean(cursor);
@@ -501,7 +520,7 @@ async function fetchFollowersSnapshot(
 
     return {
       available: true,
-      snapshot
+      snapshot,
     };
   } catch (error) {
     try {
@@ -510,7 +529,9 @@ async function fetchFollowersSnapshot(
       let snapshot: InstagramAnalyzerSnapshotUser[] = [];
 
       while (hasNextPage) {
-        const url = new URL(`https://www.instagram.com/api/v1/friendships/${encodeURIComponent(viewerId)}/followers/`);
+        const url = new URL(
+          `https://www.instagram.com/api/v1/friendships/${encodeURIComponent(viewerId)}/followers/`,
+        );
         url.searchParams.set('count', String(PAGE_SIZE));
         url.searchParams.set('search_surface', 'follow_list_page');
         if (cursor) {
@@ -526,22 +547,27 @@ async function fetchFollowersSnapshot(
             accept: 'application/json',
             'x-csrftoken': csrfToken,
             'x-ig-app-id': IG_APP_ID,
-            'x-requested-with': 'XMLHttpRequest'
-          }
+            'x-requested-with': 'XMLHttpRequest',
+          },
         });
 
         if (!response.ok) {
-          throw new Error(`Instagram followers fallback failed: ${response.status}`);
+          throw new Error(`Instagram followers fallback failed: ${response.status}`, {
+            cause: error,
+          });
         }
 
-        const data = await response.json() as InstagramRestFollowersResponse;
+        const data = (await response.json()) as InstagramRestFollowersResponse;
         const users = Array.isArray(data.users) ? data.users : [];
-        snapshot = mergeSnapshotUsers(snapshot, users
-          .filter((user): user is InstagramRestUser => Boolean(user?.pk && user?.username))
-          .map((user) => ({
-            id: String(user.pk),
-            username: String(user.username)
-          })));
+        snapshot = mergeSnapshotUsers(
+          snapshot,
+          users
+            .filter((user): user is InstagramRestUser => Boolean(user?.pk && user?.username))
+            .map((user) => ({
+              id: String(user.pk),
+              username: String(user.username),
+            })),
+        );
 
         cursor = typeof data.next_max_id === 'string' ? data.next_max_id : null;
         hasNextPage = Boolean(cursor);
@@ -552,13 +578,13 @@ async function fetchFollowersSnapshot(
 
       return {
         available: true,
-        snapshot
+        snapshot,
       };
     } catch (fallbackError) {
       return {
         available: false,
         error: normalizeAnalyzerError(fallbackError ?? error),
-        snapshot: []
+        snapshot: [],
       };
     }
   }
@@ -570,50 +596,62 @@ async function fetchViewerUsernameById(viewerId: string, csrfToken: string): Pro
   }
 
   try {
-    const response = await fetch(`https://www.instagram.com/api/v1/users/${encodeURIComponent(viewerId)}/info/`, {
-      method: 'GET',
-      credentials: 'include',
-      mode: 'cors',
-      cache: 'no-store',
-      headers: {
-        accept: 'application/json',
-        'x-csrftoken': csrfToken,
-        'x-ig-app-id': IG_APP_ID,
-        'x-requested-with': 'XMLHttpRequest'
-      }
-    });
+    const response = await fetch(
+      `https://www.instagram.com/api/v1/users/${encodeURIComponent(viewerId)}/info/`,
+      {
+        method: 'GET',
+        credentials: 'include',
+        mode: 'cors',
+        cache: 'no-store',
+        headers: {
+          accept: 'application/json',
+          'x-csrftoken': csrfToken,
+          'x-ig-app-id': IG_APP_ID,
+          'x-requested-with': 'XMLHttpRequest',
+        },
+      },
+    );
 
     if (!response.ok) {
       return '';
     }
 
-    const data = await response.json() as { user?: { username?: string } };
+    const data = (await response.json()) as { user?: { username?: string } };
     return typeof data.user?.username === 'string' ? data.user.username : '';
   } catch {
     return '';
   }
 }
 
-export async function resolveInstagramViewerUsername(viewerId: string, csrfToken: string): Promise<string> {
+export async function resolveInstagramViewerUsername(
+  viewerId: string,
+  csrfToken: string,
+): Promise<string> {
   return fetchViewerUsernameById(viewerId, csrfToken);
 }
 
-export async function getInstagramAnalyzerDurableAccount(viewerId: string): Promise<InstagramAnalyzerDurableAccount> {
+export async function getInstagramAnalyzerDurableAccount(
+  viewerId: string,
+): Promise<InstagramAnalyzerDurableAccount> {
   return normalizeDurableAccount(await getDurableAnalyzerAccount(viewerId), viewerId, '');
 }
 
 export async function removeInstagramAnalyzerResult(
   viewerId: string,
   targetId: string,
-  username: string
+  username: string,
 ): Promise<InstagramAnalyzerDurableAccount> {
-  const durableAccount = normalizeDurableAccount(await getDurableAnalyzerAccount(viewerId), viewerId, username);
+  const durableAccount = normalizeDurableAccount(
+    await getDurableAnalyzerAccount(viewerId),
+    viewerId,
+    username,
+  );
   const nextAccount: InstagramAnalyzerDurableAccount = {
     ...durableAccount,
     username: username || durableAccount.username,
     updatedAt: Date.now(),
     results: durableAccount.results.filter((item) => item.id !== targetId),
-    followingSnapshot: durableAccount.followingSnapshot.filter((item) => item.id !== targetId)
+    followingSnapshot: durableAccount.followingSnapshot.filter((item) => item.id !== targetId),
   };
   await putDurableAnalyzerAccount(nextAccount);
   return nextAccount;
@@ -622,7 +660,7 @@ export async function removeInstagramAnalyzerResult(
 export async function startInstagramAnalyzerScan({
   viewerId,
   username,
-  csrfToken
+  csrfToken,
 }: InstagramAnalyzerStartParams): Promise<InstagramAnalyzerResult> {
   if (runningViewerIds.has(viewerId)) {
     return { success: false, error: 'Bu hesap icin zaten devam eden bir tarama var.' };
@@ -639,7 +677,11 @@ export async function startInstagramAnalyzerScan({
     }
 
     await setRunningState(viewerId, username, jobId);
-    const durableAccountBefore = normalizeDurableAccount(await getDurableAnalyzerAccount(viewerId), viewerId, username);
+    const durableAccountBefore = normalizeDurableAccount(
+      await getDurableAnalyzerAccount(viewerId),
+      viewerId,
+      username,
+    );
 
     let cursor: string | null = null;
     let hasNextPage = true;
@@ -664,7 +706,7 @@ export async function startInstagramAnalyzerScan({
         processedCount,
         results.length,
         pagesCompleted,
-        cursor
+        cursor,
       );
 
       if (hasNextPage) {
@@ -673,7 +715,9 @@ export async function startInstagramAnalyzerScan({
     }
 
     const followersSnapshotResult = await fetchFollowersSnapshot(viewerId, csrfToken);
-    const followersError = followersSnapshotResult.available ? '' : followersSnapshotResult.error || '';
+    const followersError = followersSnapshotResult.available
+      ? ''
+      : followersSnapshotResult.error || '';
 
     await setCompletedState(
       viewerId,
@@ -685,11 +729,9 @@ export async function startInstagramAnalyzerScan({
       followersSnapshotResult.snapshot,
       followersSnapshotResult.available,
       durableAccountBefore,
-      pagesCompleted
+      pagesCompleted,
     );
-    return followersError
-      ? { success: true, error: followersError }
-      : { success: true };
+    return followersError ? { success: true, error: followersError } : { success: true };
   } catch (error) {
     const normalizedError = normalizeAnalyzerError(error);
     await setErrorState(viewerId, username, jobId, normalizedError);
