@@ -1,5 +1,12 @@
 # Changelog
 
+
+## 0.5.1
+
+### Features
+
+- auto-add release notes from changelog to GitHub release
+
 ## 0.5.0
 
 - Added a step-by-step update wizard that takes over the popup body when a new version is available, guiding users through download, extract, and reload in three clear steps.
