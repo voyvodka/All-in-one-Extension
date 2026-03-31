@@ -47,7 +47,7 @@ function dosDateTime(ts: number = Date.now()): DosDateTime {
   return { dosTime, dosDate };
 }
 
-export interface ZipEntry {
+interface ZipEntry {
   name: string;
   data: Uint8Array;
   modTime?: number;

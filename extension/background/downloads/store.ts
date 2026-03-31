@@ -1,18 +1,11 @@
 import { getDownloadsState, updateDownloads } from '../../shared/storage.js';
 import type { DownloadJob } from '../../shared/storage.js';
 
-export type { DownloadJob };
-
 const downloadIdToJobId = new Map<number, string>();
 
 export function registerDownloadId(downloadId: number, jobId: string): void {
   if (!downloadId || !jobId) return;
   downloadIdToJobId.set(downloadId, jobId);
-}
-
-export function unregisterDownloadId(downloadId: number): void {
-  if (!downloadId) return;
-  downloadIdToJobId.delete(downloadId);
 }
 
 export function getJobIdByDownloadId(downloadId: number): string | undefined {
@@ -28,7 +21,7 @@ export async function loadDownloadMap(): Promise<void> {
   });
 }
 
-export interface CreateJobParams {
+interface CreateJobParams {
   type: string;
   title: string;
   sourceUrl: string;

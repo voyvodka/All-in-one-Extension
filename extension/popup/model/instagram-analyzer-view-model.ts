@@ -5,17 +5,17 @@ import type {
 } from '../../shared/storage.js';
 import type { I18nKey } from '../../shared/i18n.js';
 
-export interface AnalyzerBadgeInfo {
+interface AnalyzerBadgeInfo {
   label: string;
   tone: 'neutral' | 'info' | 'success' | 'warning' | 'error';
 }
 
-export interface AnalyzerMetricInfo {
+interface AnalyzerMetricInfo {
   label: string;
   value: string;
 }
 
-export interface InstagramAnalyzerViewModel {
+interface InstagramAnalyzerViewModel {
   accountLabel: string;
   accountValue: string;
   badge: AnalyzerBadgeInfo;
@@ -125,7 +125,7 @@ function getBody(
   return t('analyzerNoScanBody');
 }
 
-export interface CreateInstagramAnalyzerViewModelParams {
+interface CreateInstagramAnalyzerViewModelParams {
   localeCode: string;
   now?: number;
   state: InstagramAnalyzerState;

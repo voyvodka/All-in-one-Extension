@@ -117,10 +117,9 @@ export interface InstagramAnalyzerState {
   accounts: Record<string, InstagramAnalyzerAccountState>;
 }
 
-export type SettingsChange = Partial<Settings>;
-export type JobUpdater = (job: DownloadJob) => void;
-export type DownloadsUpdater = (state: DownloadsState) => DownloadsState | void;
-export type InstagramAnalyzerUpdater = (
+type SettingsChange = Partial<Settings>;
+type DownloadsUpdater = (state: DownloadsState) => DownloadsState | void;
+type InstagramAnalyzerUpdater = (
   state: InstagramAnalyzerState,
 ) => InstagramAnalyzerState | void;
 
@@ -408,11 +407,6 @@ export async function setSettings(settings: Partial<Settings>): Promise<Partial<
   return settings;
 }
 
-export async function setEnabled(enabled: boolean): Promise<boolean> {
-  await new Promise<void>((resolve) => chrome.storage.local.set({ enabled }, resolve));
-  return enabled;
-}
-
 export async function setLanguage(language: Locale | null | undefined): Promise<Locale | null> {
   const normalized = language || null;
   await new Promise<void>((resolve) => chrome.storage.local.set({ language: normalized }, resolve));
@@ -423,24 +417,6 @@ export async function setTheme(theme: string): Promise<ThemeChoice> {
   const normalized: ThemeChoice = theme === 'dark' || theme === 'light' ? theme : 'system';
   await new Promise<void>((resolve) => chrome.storage.local.set({ theme: normalized }, resolve));
   return normalized;
-}
-
-export async function upsertFeatureState(
-  featureId: string,
-  nextState: boolean | ((current: boolean) => boolean),
-): Promise<Partial<Settings>> {
-  const current = await getSettings();
-  const currentValue = Boolean(current.features?.[featureId]);
-  const resolved = typeof nextState === 'function' ? nextState(currentValue) : nextState;
-  const updated: Settings = {
-    ...current,
-    features: {
-      ...current.features,
-      [featureId]: Boolean(resolved),
-    },
-  };
-  await setSettings(updated);
-  return updated;
 }
 
 export function onSettingsChanged(callback: (change: SettingsChange) => void): void {
@@ -470,7 +446,7 @@ export async function getDownloadsState(): Promise<DownloadsState> {
   };
 }
 
-export async function setDownloadsState(next: DownloadsState): Promise<DownloadsState> {
+async function setDownloadsState(next: DownloadsState): Promise<DownloadsState> {
   const normalized: DownloadsState = {
     active: Array.isArray(next.active) ? next.active : [],
     history: Array.isArray(next.history) ? next.history : [],
@@ -519,7 +495,8 @@ export async function getInstagramAnalyzerState(): Promise<InstagramAnalyzerStat
         { instagramAnalyzer: DEFAULT_INSTAGRAM_ANALYZER_STATE },
         resolve as (items: Record<string, unknown>) => void,
       );
-    } catch {
+    } catch (err) {
+      console.warn('Failed to read instagramAnalyzer state:', err);
       resolve({ instagramAnalyzer: DEFAULT_INSTAGRAM_ANALYZER_STATE });
     }
   });
@@ -528,7 +505,7 @@ export async function getInstagramAnalyzerState(): Promise<InstagramAnalyzerStat
   );
 }
 
-export async function setInstagramAnalyzerState(
+async function setInstagramAnalyzerState(
   next: InstagramAnalyzerState,
 ): Promise<InstagramAnalyzerState> {
   const normalized = normalizeInstagramAnalyzerState(next);
@@ -538,7 +515,8 @@ export async function setInstagramAnalyzerState(
   await new Promise<void>((resolve) => {
     try {
       chrome.storage.local.set({ instagramAnalyzer: normalized }, resolve);
-    } catch {
+    } catch (err) {
+      console.warn('Failed to write instagramAnalyzer state:', err);
       resolve();
     }
   });

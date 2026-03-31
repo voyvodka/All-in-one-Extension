@@ -92,7 +92,7 @@ if (allowedProtocols.has(location.protocol)) {
     applyFeatures();
 
     onSettingsChanged(() => {
-      refreshSettings().then(applyFeatures);
+      refreshSettings().then(applyFeatures).catch(console.error);
     });
 
     async function refreshSettings(): Promise<void> {

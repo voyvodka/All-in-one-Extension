@@ -1,20 +1,18 @@
 import type { DownloadJob, DownloadStatus } from '../../shared/storage.js';
 import type { I18nKey } from '../../shared/i18n.js';
 
-export type { DownloadJob };
-
 export interface StatusInfo {
   icon: string;
   label: string;
   tone: 'info' | 'success' | 'error' | 'warning';
 }
 
-export interface PillInfo {
+interface PillInfo {
   className: string;
   label: string;
 }
 
-export interface DownloadViewModel {
+interface DownloadViewModel {
   displayError: string;
   displayName: string;
   pill: PillInfo;
@@ -97,7 +95,7 @@ const STATUS_MAP: Record<DownloadStatus, Omit<StatusInfo, 'label'> & { labelKey:
   cancelled: { icon: '⚠️', labelKey: 'statusCancelled', tone: 'warning' },
 };
 
-export interface CreateDownloadViewModelParams {
+interface CreateDownloadViewModelParams {
   expandedJobId: string | null;
   localeCode: string;
   t: TranslateFn;

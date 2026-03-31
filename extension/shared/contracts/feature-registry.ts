@@ -1,6 +1,6 @@
-export type Platform = 'youtube' | 'instagram' | 'twitter';
-export type Kind = 'audio-download' | 'video-download' | 'image-download' | 'account-analysis';
-export type Surface = 'content' | 'background';
+type Platform = 'youtube' | 'instagram' | 'twitter';
+type Kind = 'audio-download' | 'video-download' | 'image-download' | 'account-analysis';
+type Surface = 'content' | 'background';
 
 export interface FeatureDescriptor {
   id: string;
@@ -94,10 +94,3 @@ export const featureModulePaths: string[] = contentFeatureDescriptors.map(
   (descriptor) => descriptor.modulePath,
 );
 
-export const featureDescriptorsById: ReadonlyMap<string, FeatureDescriptor> = new Map(
-  featureDescriptors.map((descriptor) => [descriptor.id, descriptor]),
-);
-
-export function getFeatureDescriptor(featureId: string): FeatureDescriptor | null {
-  return featureDescriptorsById.get(featureId) ?? null;
-}

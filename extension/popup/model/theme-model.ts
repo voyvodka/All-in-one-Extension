@@ -10,7 +10,7 @@ export function resolveTheme(
   return prefersDarkMedia?.matches ? 'dark' : 'light';
 }
 
-export interface SyncSystemThemeListenerParams {
+interface SyncSystemThemeListenerParams {
   chosenTheme: ThemeChoice | string;
   mediaQueryList: MediaQueryList | null;
   currentHandler: (() => void) | null;
