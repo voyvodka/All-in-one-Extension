@@ -5,6 +5,27 @@
 - Extension version lives in `extension/manifest.json`.
 - Release tags must use `vX.Y.Z` and match the manifest version exactly.
 
+## Quick release with `yarn release`
+
+```bash
+yarn release patch   # 0.4.2 → 0.4.3
+yarn release minor   # 0.4.2 → 0.5.0
+yarn release major   # 0.4.2 → 1.0.0
+```
+
+This single command:
+
+1. Bumps the version in `extension/manifest.json`.
+2. Generates a changelog draft from commits since the last tag, grouped by conventional commit type.
+3. Prepends the new section to `CHANGELOG.md`.
+
+The script does **not** commit, tag, or push. After running it:
+
+1. Review and edit `CHANGELOG.md`.
+2. `git add -A && git commit -m "chore: release vX.Y.Z"`
+3. `git tag vX.Y.Z`
+4. `git push origin main --tags`
+
 ## Branch and PR flow
 
 1. Work happens on feature branches.
@@ -44,26 +65,20 @@ All CI workflows run `yarn verify` (which includes `yarn build:check`) before pa
 ## Local commands
 
 ```bash
-yarn build                     # compile TS + copy static assets
-yarn verify                    # type-check + manifest + repo hygiene
-yarn package:extension         # build + package both zip variants
-yarn package:extension:nested  # legacy nested zip only
-yarn package:extension:unpacked # user-friendly zip only
-yarn release:verify            # verify version/tag/changelog alignment
+yarn release <patch|minor|major> # bump version + generate changelog draft
+yarn build                       # compile TS + copy static assets
+yarn verify                      # type-check + manifest + repo hygiene
+yarn package:extension           # build + package zip
+yarn package:extension:unpacked  # unpacked zip only (no build)
+yarn release:verify              # verify version/tag/changelog alignment
 ```
 
 ## Release artifacts
 
-- `all-in-one-toolkit-vX.Y.Z.zip`
-  - legacy nested layout
-  - zip root contains the `extension/` folder
 - `all-in-one-toolkit-unpacked-vX.Y.Z.zip`
-  - user-friendly unpacked layout
   - zip root contains a single `All-in-One Toolkit/` folder
   - users load that folder directly in `chrome://extensions`
   - includes `INSTALL.txt` inside the folder with short setup steps
-
-Tagged releases and `main` delivery artifacts publish both zip variants.
 
 Supporting docs:
 

@@ -35,6 +35,7 @@ const activeCountEl = document.getElementById('active-count');
 const historyCountEl = document.getElementById('history-count');
 const footerVersionEl = document.getElementById('footer-version');
 const footerUpdateEl = document.getElementById('footer-update');
+const appBodyEl = document.querySelector<HTMLElement>('.app-body');
 
 const subTabs = Array.from(document.querySelectorAll<HTMLElement>('.subtab'));
 const subTabViews = Array.from(document.querySelectorAll<HTMLElement>('.download-group'));
@@ -50,11 +51,11 @@ const SORT_KEY = 'aioPopupSortAsc';
 const BUG_REPORT_URL = 'https://github.com/voyvodka/All-in-one-Extension/issues/new/choose';
 const GITHUB_RELEASES_API =
   'https://api.github.com/repos/voyvodka/All-in-one-Extension/releases/latest';
-const HOW_TO_UPDATE_URL =
-  'https://github.com/voyvodka/All-in-one-Extension/blob/main/docs/INSTALL.md';
 const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const MIN_UPDATE_LOADING_MS = 700;
 const UPDATE_CACHE_KEY = 'aioUpdateCheck';
+const INSTALL_PATH_KEY = 'aioInstallPath';
+const WIZARD_STEP_KEY = 'aioUpdateWizardStep';
 const IS_DEV_BUILD = (() => {
   try {
     return /\bdev\b/i.test(chrome.runtime.getManifest().name || '');
@@ -779,6 +780,50 @@ function setCachedUpdateCheck(entry: UpdateCacheEntry): void {
   }
 }
 
+type WizardStep = 1 | 2 | 3;
+
+function getInstallPath(): string | null {
+  try {
+    return localStorage.getItem(INSTALL_PATH_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setInstallPath(path: string): void {
+  try {
+    localStorage.setItem(INSTALL_PATH_KEY, path);
+  } catch {
+    /* noop */
+  }
+}
+
+function getWizardStep(): WizardStep {
+  try {
+    const raw = localStorage.getItem(WIZARD_STEP_KEY);
+    const n = raw ? Number(raw) : 1;
+    return (n >= 1 && n <= 3 ? n : 1) as WizardStep;
+  } catch {
+    return 1;
+  }
+}
+
+function setWizardStep(step: WizardStep): void {
+  try {
+    localStorage.setItem(WIZARD_STEP_KEY, String(step));
+  } catch {
+    /* noop */
+  }
+}
+
+function clearWizardStep(): void {
+  try {
+    localStorage.removeItem(WIZARD_STEP_KEY);
+  } catch {
+    /* noop */
+  }
+}
+
 function createCheckNowButton(): HTMLButtonElement {
   const checkBtn = el('button', 'update-link', t('updateCheckNow')) as HTMLButtonElement;
   checkBtn.type = 'button';
@@ -788,40 +833,6 @@ function createCheckNowButton(): HTMLButtonElement {
     void checkForUpdates({ force: true });
   });
   return checkBtn;
-}
-
-function createDownloadButton(downloadUrl: string): HTMLButtonElement {
-  const dlBtn = el(
-    'button',
-    'update-link update-link-primary',
-    t('updateDownload'),
-  ) as HTMLButtonElement;
-  dlBtn.type = 'button';
-  dlBtn.title = t('updateDownloadTitle');
-  dlBtn.setAttribute('aria-label', t('updateDownloadTitle'));
-  dlBtn.addEventListener('click', () => {
-    try {
-      chrome.downloads?.download?.({ url: downloadUrl, saveAs: true });
-    } catch {
-      window.open(downloadUrl, '_blank', 'noopener,noreferrer');
-    }
-  });
-  return dlBtn;
-}
-
-function createHowToButton(): HTMLButtonElement {
-  const howTo = el('button', 'update-link', t('updateHowTo')) as HTMLButtonElement;
-  howTo.type = 'button';
-  howTo.title = t('updateHowToTitle');
-  howTo.setAttribute('aria-label', t('updateHowToTitle'));
-  howTo.addEventListener('click', () => {
-    try {
-      chrome.tabs?.create?.({ url: HOW_TO_UPDATE_URL });
-    } catch {
-      window.open(HOW_TO_UPDATE_URL, '_blank', 'noopener,noreferrer');
-    }
-  });
-  return howTo;
 }
 
 function createReloadButton(): HTMLButtonElement {
@@ -872,10 +883,7 @@ function renderFooter(
   }
 
   if (state === 'update' && latestTag) {
-    const mainRow = el('div', 'footer-update-main');
-    const secondaryRow = el('div', 'footer-update-secondary');
-
-    mainRow.appendChild(
+    footerUpdateEl.appendChild(
       el(
         'span',
         'update-badge',
@@ -883,14 +891,7 @@ function renderFooter(
       ),
     );
 
-    if (downloadUrl) {
-      mainRow.appendChild(createDownloadButton(downloadUrl));
-    }
-
-    secondaryRow.appendChild(createHowToButton());
-    secondaryRow.appendChild(createReloadButton());
-    footerUpdateEl.appendChild(mainRow);
-    footerUpdateEl.appendChild(secondaryRow);
+    showUpdateWizard(latestTag, downloadUrl);
   }
 }
 
@@ -902,6 +903,221 @@ function appendDevReloadButton(root: HTMLElement): void {
   const container = el('div', 'footer-update-secondary');
   container.appendChild(createReloadButton());
   root.appendChild(container);
+}
+
+/* ── Update wizard (renders inside app-body) ─────────────────────── */
+let savedBodyContent: DocumentFragment | null = null;
+
+let editingInstallPath = false;
+
+function showUpdateWizard(latestTag: string, downloadUrl?: string): void {
+  if (!appBodyEl) return;
+
+  // Save current body content
+  if (!savedBodyContent) {
+    savedBodyContent = document.createDocumentFragment();
+    while (appBodyEl.firstChild) {
+      savedBodyContent.appendChild(appBodyEl.firstChild);
+    }
+  } else {
+    appBodyEl.innerHTML = '';
+  }
+
+  const wizard = el('div', 'update-wizard');
+
+  // Version header
+  const header = el('div', 'wizard-header');
+  header.appendChild(
+    el(
+      'h2',
+      'wizard-title',
+      t('updateAvailable').replace('{version}', latestTag.replace(/^v/, '')),
+    ),
+  );
+  wizard.appendChild(header);
+
+  // Step indicators
+  const currentStep = getWizardStep();
+  const stepsRow = el('div', 'wizard-steps');
+  const stepLabels = [t('updateWizardStep1'), t('updateWizardStep2'), t('updateWizardStep3')];
+  for (let i = 1; i <= 3; i++) {
+    const cls = [
+      'wizard-step-dot',
+      i === currentStep ? 'active' : '',
+      i < currentStep ? 'done' : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+    const dot = el('span', cls, String(i));
+    dot.title = stepLabels[i - 1] ?? '';
+    stepsRow.appendChild(dot);
+    if (i < 3) {
+      const connector = el('span', `wizard-connector${i < currentStep ? ' done' : ''}`);
+      stepsRow.appendChild(connector);
+    }
+  }
+  wizard.appendChild(stepsRow);
+
+  // Step label
+  wizard.appendChild(el('p', 'wizard-step-label', stepLabels[currentStep - 1] ?? ''));
+
+  // Step content card
+  const card = el('div', 'wizard-card');
+
+  if (currentStep === 1) {
+    card.appendChild(el('p', 'wizard-card-desc', t('updateWizardStep1Desc')));
+    if (downloadUrl) {
+      const dlBtn = el('button', 'wizard-btn wizard-btn-primary', t('updateDownload'));
+      (dlBtn as HTMLButtonElement).type = 'button';
+      const capturedTag = latestTag;
+      const capturedUrl = downloadUrl;
+      dlBtn.addEventListener('click', () => {
+        try {
+          chrome.downloads?.download?.({ url: capturedUrl, saveAs: true });
+        } catch {
+          window.open(capturedUrl, '_blank', 'noopener,noreferrer');
+        }
+        setWizardStep(2);
+        showUpdateWizard(capturedTag, capturedUrl);
+        renderFooter('update', capturedTag, capturedUrl);
+      });
+      card.appendChild(dlBtn);
+    }
+  } else if (currentStep === 2) {
+    card.appendChild(el('p', 'wizard-card-desc', t('updateWizardStep2Desc')));
+
+    const savedPath = getInstallPath();
+    if (savedPath && !editingInstallPath) {
+      // Saved path: show it with copy + change actions
+      const pathBlock = el('div', 'wizard-path-block');
+      pathBlock.appendChild(el('span', 'wizard-path-label', t('installPathLabel')));
+      pathBlock.appendChild(el('code', 'wizard-path', savedPath));
+
+      const pathActions = el('div', 'wizard-path-actions');
+      const copyBtn = el('button', 'wizard-btn-inline', t('installPathCopy')) as HTMLButtonElement;
+      copyBtn.type = 'button';
+      copyBtn.addEventListener('click', () => {
+        void navigator.clipboard.writeText(savedPath).then(() => {
+          copyBtn.textContent = t('installPathCopied');
+          window.setTimeout(() => {
+            copyBtn.textContent = t('installPathCopy');
+          }, 1500);
+        });
+      });
+      const changeBtn = el(
+        'button',
+        'wizard-btn-inline',
+        t('installPathChange'),
+      ) as HTMLButtonElement;
+      changeBtn.type = 'button';
+      changeBtn.addEventListener('click', () => {
+        editingInstallPath = true;
+        showUpdateWizard(latestTag, downloadUrl);
+      });
+      pathActions.appendChild(copyBtn);
+      pathActions.appendChild(changeBtn);
+      pathBlock.appendChild(pathActions);
+      card.appendChild(pathBlock);
+    } else {
+      // No saved path or editing: show input pre-filled with current value
+      let extId = '';
+      try {
+        extId = chrome.runtime.id || '';
+      } catch {
+        /* noop */
+      }
+      if (extId) {
+        card.appendChild(el('p', 'wizard-ext-id', t('installPathExtId').replace('{id}', extId)));
+      }
+
+      const hintRow = el('p', 'wizard-card-hint');
+      const hintParts = t('installPathHint').split('{link}');
+      hintRow.appendChild(document.createTextNode(hintParts[0] ?? ''));
+      const extLink = el('button', 'wizard-btn-inline', 'chrome://extensions') as HTMLButtonElement;
+      extLink.type = 'button';
+      extLink.addEventListener('click', () => {
+        try {
+          chrome.tabs?.create?.({ url: 'chrome://extensions' });
+        } catch {
+          /* noop */
+        }
+      });
+      hintRow.appendChild(extLink);
+      if (hintParts[1]) hintRow.appendChild(document.createTextNode(hintParts[1]));
+      card.appendChild(hintRow);
+
+      const pathRow = el('div', 'wizard-path-row');
+      const pathInput = el('input', 'wizard-path-input') as HTMLInputElement;
+      pathInput.type = 'text';
+      pathInput.placeholder = t('installPathPlaceholder');
+      if (savedPath) pathInput.value = savedPath;
+      const saveBtn = el(
+        'button',
+        'wizard-btn wizard-btn-secondary',
+        t('installPathSave'),
+      ) as HTMLButtonElement;
+      saveBtn.type = 'button';
+      saveBtn.addEventListener('click', () => {
+        if (pathInput.value.trim()) {
+          setInstallPath(pathInput.value.trim());
+          editingInstallPath = false;
+          showUpdateWizard(latestTag, downloadUrl);
+        }
+      });
+      pathRow.appendChild(pathInput);
+      pathRow.appendChild(saveBtn);
+      card.appendChild(pathRow);
+    }
+
+    const nextBtn = el(
+      'button',
+      'wizard-btn wizard-btn-primary',
+      t('updateWizardNext'),
+    ) as HTMLButtonElement;
+    nextBtn.type = 'button';
+    nextBtn.addEventListener('click', () => {
+      setWizardStep(3);
+      showUpdateWizard(latestTag, downloadUrl);
+      renderFooter('update', latestTag, downloadUrl);
+    });
+    card.appendChild(nextBtn);
+  } else if (currentStep === 3) {
+    card.appendChild(el('p', 'wizard-card-desc', t('updateWizardStep3Desc')));
+    const reloadBtn = el(
+      'button',
+      'wizard-btn wizard-btn-primary',
+      t('updateReload'),
+    ) as HTMLButtonElement;
+    reloadBtn.type = 'button';
+    reloadBtn.addEventListener('click', () => {
+      try {
+        chrome.runtime.reload();
+      } catch (err) {
+        console.warn('AIO: reload failed', err);
+      }
+    });
+    card.appendChild(reloadBtn);
+  }
+
+  // Dismiss link — inside card, at the bottom
+  const dismissBtn = el('button', 'wizard-dismiss', t('updateWizardDismiss')) as HTMLButtonElement;
+  dismissBtn.type = 'button';
+  dismissBtn.addEventListener('click', () => {
+    clearWizardStep();
+    hideUpdateWizard();
+    renderFooter('latest');
+  });
+  card.appendChild(dismissBtn);
+
+  wizard.appendChild(card);
+  appBodyEl.appendChild(wizard);
+}
+
+function hideUpdateWizard(): void {
+  if (!appBodyEl || !savedBodyContent) return;
+  appBodyEl.innerHTML = '';
+  appBodyEl.appendChild(savedBodyContent);
+  savedBodyContent = null;
 }
 
 interface GitHubReleaseAsset {

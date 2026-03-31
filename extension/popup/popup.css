@@ -798,7 +798,6 @@ body {
   display: none;
 }
 
-.footer-update-main,
 .footer-update-secondary {
   display: inline-flex;
   align-items: center;
@@ -863,6 +862,249 @@ body {
 .footer-update .footer-error {
   font-size: 9px;
   color: var(--c-error);
+}
+
+/* ── Update Wizard (body overlay) ────────────────────────────────── */
+.update-wizard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px 16px;
+  height: 100%;
+  text-align: center;
+}
+
+.wizard-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.wizard-dismiss {
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--c-text-3);
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.wizard-dismiss:hover {
+  color: var(--c-text-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.wizard-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-accent);
+}
+
+/* Step indicator row */
+.wizard-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.wizard-step-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--c-border);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-text-3);
+  background: var(--c-surface);
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.wizard-step-dot.active {
+  border-color: var(--c-accent);
+  color: #fff;
+  background: var(--c-accent);
+  box-shadow: 0 0 0 3px var(--c-accent-muted);
+}
+
+.wizard-step-dot.done {
+  border-color: var(--c-success);
+  color: #fff;
+  background: var(--c-success);
+}
+
+.wizard-connector {
+  width: 40px;
+  height: 2px;
+  background: var(--c-border);
+  flex-shrink: 0;
+}
+
+.wizard-connector.done {
+  background: var(--c-success);
+}
+
+.wizard-step-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text);
+  margin: 0;
+}
+
+/* Step content card */
+.wizard-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  width: 100%;
+}
+
+.wizard-card-desc {
+  font-size: 12px;
+  color: var(--c-text-2);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.wizard-card-hint {
+  font-size: 11px;
+  color: var(--c-text-3);
+  font-style: italic;
+  margin: 0;
+}
+
+/* Wizard buttons */
+.wizard-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.wizard-btn-primary {
+  background: var(--c-accent);
+  color: #fff;
+  border-color: var(--c-accent);
+}
+
+.wizard-btn-primary:hover {
+  opacity: 0.9;
+}
+
+.wizard-btn-secondary {
+  background: var(--c-surface-2);
+  color: var(--c-accent);
+  border-color: var(--c-border);
+}
+
+.wizard-btn-secondary:hover {
+  border-color: var(--c-border-strong);
+}
+
+/* Install path */
+.wizard-path-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.wizard-path-label {
+  font-size: 11px;
+  color: var(--c-text-3);
+}
+
+.wizard-path {
+  display: block;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--c-accent);
+  background: var(--c-surface-2);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  word-break: break-all;
+  width: 100%;
+}
+
+.wizard-path-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.wizard-path-input {
+  flex: 1;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  padding: 6px 8px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-sm);
+  background: var(--c-surface);
+  color: var(--c-text);
+  min-width: 0;
+}
+
+.wizard-path-input:focus {
+  outline: none;
+  border-color: var(--c-accent);
+}
+
+.wizard-path-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.wizard-btn-inline {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--c-accent);
+  background: transparent;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.wizard-ext-id {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--c-text-2);
+  background: var(--c-surface-2);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  margin: 0;
+  user-select: all;
 }
 
 /* ── Focus ───────────────────────────────────────────────────────── */

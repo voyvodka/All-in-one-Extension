@@ -98,11 +98,11 @@ yarn build:check               # type-check only (no emit)
 yarn verify                    # build:check + validate:manifest + check:repo
 yarn validate:manifest         # validate manifest.json structure
 yarn check:repo                # repo hygiene (no .DS_Store, no secrets, etc.)
-yarn package:extension         # build + package both zip variants into artifacts/
-yarn package:extension:nested  # legacy nested zip
-yarn package:extension:unpacked # user-friendly zip
+yarn package:extension           # build + package zip into artifacts/
+yarn package:extension:unpacked  # unpacked zip only (no build)
 yarn package:extension:unpacked:dev # branded dev zip for side-by-side install
-yarn release:verify            # verify version/tag/changelog alignment
+yarn release <patch|minor|major> # bump version + generate changelog draft
+yarn release:verify              # verify version/tag/changelog alignment
 ```
 
 - `yarn verify` is the main pre-commit / CI gate.
@@ -111,12 +111,9 @@ yarn release:verify            # verify version/tag/changelog alignment
 
 ## Release artifacts
 
-Tagged releases publish two zip variants:
+Tagged releases publish:
 
-- `all-in-one-toolkit-vX.Y.Z.zip`
-  - keeps the historical nested layout
 - `all-in-one-toolkit-unpacked-vX.Y.Z.zip`
-  - optimized for manual installation
   - contains a single `All-in-One Toolkit/` folder and an `INSTALL.txt` helper file
 
 Release flow details live in `docs/RELEASE.md`.

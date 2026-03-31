@@ -6,10 +6,6 @@ export type I18nKey =
   | 'subtabHistory'
   | 'sort'
   | 'clearHistory'
-  | 'popupSubtitle'
-  | 'noRecords'
-  | 'loadingTitle'
-  | 'loadingBody'
   | 'emptyActiveTitle'
   | 'emptyActiveBody'
   | 'emptyHistoryTitle'
@@ -38,13 +34,8 @@ export type I18nKey =
   | 'retry'
   | 'toggleDetails'
   | 'language'
-  | 'languageTr'
-  | 'languageEn'
   | 'bugTitle'
   | 'theme'
-  | 'themeSystem'
-  | 'themeLight'
-  | 'themeDark'
   | 'downloadAction'
   | 'downloadAudio'
   | 'downloadVideo'
@@ -56,14 +47,10 @@ export type I18nKey =
   | 'footerVersion'
   | 'updateAvailable'
   | 'updateDownload'
-  | 'updateHowTo'
   | 'updateReload'
   | 'updateCheckNow'
   | 'updateChecking'
-  | 'updateLatest'
   | 'updateError'
-  | 'updateDownloadTitle'
-  | 'updateHowToTitle'
   | 'updateReloadTitle'
   | 'updateCheckNowTitle'
   | 'analyzerTitle'
@@ -184,7 +171,23 @@ export type I18nKey =
   | 'dashboardExportCsv'
   | 'dashboardMore'
   | 'dashboardOpenDashboard'
-  | 'dashboardOpenDashboardTitle';
+  | 'dashboardOpenDashboardTitle'
+  | 'updateWizardStep1'
+  | 'updateWizardStep2'
+  | 'updateWizardStep3'
+  | 'updateWizardStep1Desc'
+  | 'updateWizardStep2Desc'
+  | 'updateWizardStep3Desc'
+  | 'updateWizardDismiss'
+  | 'updateWizardNext'
+  | 'installPathLabel'
+  | 'installPathHint'
+  | 'installPathPlaceholder'
+  | 'installPathSave'
+  | 'installPathCopy'
+  | 'installPathCopied'
+  | 'installPathChange'
+  | 'installPathExtId';
 
 type I18nDictionary = Record<I18nKey, string>;
 
@@ -194,10 +197,6 @@ const messages: Record<Locale, I18nDictionary> = {
     subtabHistory: 'Geçmiş',
     sort: 'Sırala',
     clearHistory: 'Geçmişi temizle',
-    popupSubtitle: 'Desteklenen platformlardaki indirmeleri tek panelden yönet.',
-    noRecords: 'Kayıt yok.',
-    loadingTitle: 'Panel hazırlanıyor',
-    loadingBody: 'İndirme durumu ve ayarlar yükleniyor.',
     emptyActiveTitle: 'Aktif indirme yok',
     emptyActiveBody: 'Yeni bir indirme başlattığında kuyruk burada görünür.',
     emptyHistoryTitle: 'Geçmiş hazır değil',
@@ -226,13 +225,8 @@ const messages: Record<Locale, I18nDictionary> = {
     retry: 'İndir',
     toggleDetails: 'Detayları aç/kapat',
     language: 'Dil',
-    languageTr: 'Türkçe',
-    languageEn: 'İngilizce',
     bugTitle: 'Hata bildir',
     theme: 'Tema',
-    themeSystem: 'Sistem',
-    themeLight: 'Açık',
-    themeDark: 'Koyu',
     downloadAction: 'İndir',
     downloadAudio: 'Ses indir',
     downloadVideo: 'Video indir',
@@ -244,16 +238,28 @@ const messages: Record<Locale, I18nDictionary> = {
     footerVersion: 'All-in-One Toolkit v{version}',
     updateAvailable: 'Yeni sürüm: v{version}',
     updateDownload: 'İndir',
-    updateHowTo: 'Nasıl güncellenir?',
     updateReload: 'Yeniden yükle',
     updateCheckNow: 'Kontrol et',
     updateChecking: 'Güncelleme kontrol ediliyor...',
-    updateLatest: 'Güncel sürümü kullanıyorsunuz.',
     updateError: 'Güncelleme kontrol edilemedi.',
-    updateDownloadTitle: 'Son sürüm zip paketini indir.',
-    updateHowToTitle: 'Manuel güncelleme adımlarını aç.',
     updateReloadTitle: 'Dosyaları çıkardıktan sonra uzantıyı yeniden yükle.',
     updateCheckNowTitle: 'GitHub üzerinden güncellemeyi şimdi tekrar kontrol et.',
+    updateWizardStep1: '1. İndir',
+    updateWizardStep2: '2. Dosyaları çıkar',
+    updateWizardStep3: '3. Yeniden yükle',
+    updateWizardStep1Desc: 'Son sürüm zip paketini indir.',
+    updateWizardStep2Desc: 'Zip dosyasını mevcut uzantı klasörüne çıkar.',
+    updateWizardStep3Desc: 'Uzantıyı yeniden yükleyerek güncellemeyi tamamla.',
+    updateWizardDismiss: 'Kapat',
+    updateWizardNext: 'Sonraki adım',
+    installPathLabel: 'Uzantı yolu:',
+    installPathHint: '{link} sayfasından uzantı yolunu bulabilirsin.',
+    installPathPlaceholder: '/örnek/uzantı/klasörü',
+    installPathSave: 'Kaydet',
+    installPathCopy: 'Kopyala',
+    installPathCopied: 'Kopyalandı!',
+    installPathChange: 'Değiştir',
+    installPathExtId: 'Uzantı ID: {id}',
     analyzerTitle: 'Instagram Analyzer',
     analyzerAccountLabel: 'Hesap',
     analyzerUnknownAccount: 'Bilinmeyen hesap',
@@ -385,13 +391,7 @@ const messages: Record<Locale, I18nDictionary> = {
     subtabHistory: 'History',
     sort: 'Sort',
     clearHistory: 'Clear history',
-    popupSubtitle: 'Track every supported download flow from one compact panel.',
     language: 'Language',
-    languageTr: 'Türkçe',
-    languageEn: 'English',
-    noRecords: 'No records.',
-    loadingTitle: 'Preparing panel',
-    loadingBody: 'Loading download state and settings.',
     emptyActiveTitle: 'No active downloads',
     emptyActiveBody: 'When you start a new download, the queue will appear here.',
     emptyHistoryTitle: 'History is empty',
@@ -421,9 +421,6 @@ const messages: Record<Locale, I18nDictionary> = {
     toggleDetails: 'Toggle details',
     bugTitle: 'Report a bug',
     theme: 'Theme',
-    themeSystem: 'System',
-    themeLight: 'Light',
-    themeDark: 'Dark',
     downloadAction: 'Download',
     downloadAudio: 'Download audio',
     downloadVideo: 'Download video',
@@ -435,16 +432,28 @@ const messages: Record<Locale, I18nDictionary> = {
     footerVersion: 'All-in-One Toolkit v{version}',
     updateAvailable: 'New version: v{version}',
     updateDownload: 'Download',
-    updateHowTo: 'How to update?',
     updateReload: 'Reload',
     updateCheckNow: 'Check now',
     updateChecking: 'Checking for updates...',
-    updateLatest: 'You are using the latest version.',
     updateError: 'Could not check for updates.',
-    updateDownloadTitle: 'Download the latest unpacked zip package.',
-    updateHowToTitle: 'Open the manual update guide.',
     updateReloadTitle: 'Reload the extension after replacing the files.',
     updateCheckNowTitle: 'Check GitHub for updates again right now.',
+    updateWizardStep1: '1. Download',
+    updateWizardStep2: '2. Extract files',
+    updateWizardStep3: '3. Reload',
+    updateWizardStep1Desc: 'Download the latest version zip package.',
+    updateWizardStep2Desc: 'Extract the zip over the existing extension folder.',
+    updateWizardStep3Desc: 'Reload the extension to complete the update.',
+    updateWizardDismiss: 'Dismiss',
+    updateWizardNext: 'Next step',
+    installPathLabel: 'Extension path:',
+    installPathHint: 'You can find the extension path on {link}.',
+    installPathPlaceholder: '/example/extension/folder',
+    installPathSave: 'Save',
+    installPathCopy: 'Copy',
+    installPathCopied: 'Copied!',
+    installPathChange: 'Change',
+    installPathExtId: 'Extension ID: {id}',
     analyzerTitle: 'Instagram Analyzer',
     analyzerAccountLabel: 'Account',
     analyzerUnknownAccount: 'Unknown account',

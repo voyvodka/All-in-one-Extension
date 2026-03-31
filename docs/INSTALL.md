@@ -24,13 +24,13 @@ After loading, the extension should appear in Chrome and be ready to use.
 
 ## Update to a new version
 
-When a new version is available:
+The popup checks for updates automatically every 6 hours. When a new version is available, a step-by-step update wizard takes over the popup body and walks you through the process:
 
-1. Open the extension popup.
-2. If the footer shows a newer version, click `Download`.
-3. Save the newest `all-in-one-toolkit-unpacked-vX.Y.Z.zip` file.
-4. Extract it over the same `All-in-One Toolkit` folder you used before.
-5. In the popup, click `Reload`.
+1. **Step 1 — Download**: Click the download button to save the latest zip.
+2. **Step 2 — Extract**: Extract the zip over the same `All-in-One Toolkit` folder you used before. The wizard can remember your install path so you only need to enter it once.
+3. **Step 3 — Reload**: Click the reload button to restart the extension with the new files.
+
+You can dismiss the wizard at any time to return to the normal popup view.
 
 If your unzip tool asks whether existing files should be replaced, choose to replace them.
 

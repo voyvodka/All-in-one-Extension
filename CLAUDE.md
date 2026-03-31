@@ -23,6 +23,7 @@ yarn format:check      # Prettier check (CI gate)
 yarn validate:manifest
 yarn check:repo       # Repo hygiene
 yarn package:extension # Build + zip into artifacts/
+yarn release           # Bump version + generate changelog draft (patch|minor|major)
 yarn release:verify   # Version/tag/changelog alignment
 ```
 
