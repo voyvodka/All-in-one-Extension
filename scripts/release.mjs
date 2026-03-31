@@ -122,6 +122,8 @@ const run = (cmd) => {
   execSync(cmd, { cwd: rootDir, stdio: 'inherit' });
 };
 
+run('yarn format');
+run('yarn verify');
 run('git add -A');
 run(`git commit -m "chore: release v${newVersion}"`);
 run(`git tag v${newVersion}`);
